@@ -107,7 +107,7 @@ abstract final class AppTheme {
       searchBarTheme: SearchBarThemeData(
         backgroundColor: const WidgetStatePropertyAll(Color(0xFF292A28)),
         elevation: const WidgetStatePropertyAll(0),
-        shape: const WidgetStatePropertyAll(stadiumShape),
+        shape: WidgetStatePropertyAll(stadiumShape),
         side: WidgetStateProperty.resolveWith(
           (_) => BorderSide(color: scheme.outlineVariant),
         ),
