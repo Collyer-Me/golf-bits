@@ -21,4 +21,6 @@ Push to **`main`** after enabling **Pages → GitHub Actions** in the repo setti
 
 ## Connect to GitHub
 
-There is no remote configured yet. Follow **[GITHUB_SETUP.md](GITHUB_SETUP.md)** to create the repo on github.com, add `origin`, and push.
+Remote **`origin`**: [https://github.com/Collyer-Me/golf-bits.git](https://github.com/Collyer-Me/golf-bits.git)
+
+Push from this folder: `git push -u origin main` (see **[GITHUB_SETUP.md](GITHUB_SETUP.md)** for Pages and auth notes).

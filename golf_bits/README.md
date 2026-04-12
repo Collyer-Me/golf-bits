@@ -33,11 +33,11 @@ This repo includes [`.github/workflows/flutter-web-gh-pages.yml`](../.github/wor
 3. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
 4. Merge or push to **`main`** so the workflow runs (or open **Actions → Flutter Web → GitHub Pages → Run workflow** manually).
 
-When the workflow succeeds, open **Settings → Pages** again (or the job summary): the **site URL** is usually:
+When the workflow succeeds, open **Settings → Pages** again (or the job summary): the **site URL** for this repo is usually:
 
-`https://<your-username>.github.io/<repository-name>/`
+`https://collyer-me.github.io/golf-bits/`
 
-The build uses `--base-href "/<repository-name>/"` so assets load correctly for a **project site**.
+The workflow uses `--base-href "/golf-bits/"` (from the GitHub repository name) so assets load correctly for a **project site**.
 
 **Notes:**
 

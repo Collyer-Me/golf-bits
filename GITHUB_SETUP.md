@@ -1,6 +1,18 @@
 # Connect this folder to GitHub
 
-Git is already initialized here. After you create the empty repo on GitHub, run the commands in **Step 3** (replace placeholders).
+**This workspace:** remote **`origin`** is set to:
+
+`https://github.com/Collyer-Me/golf-bits.git`
+
+Next step on your machine: **`git push -u origin main`** (GitHub login or PAT when prompted).
+
+**GitHub Pages preview URL** (after Pages → GitHub Actions is enabled and the workflow succeeds):
+
+`https://collyer-me.github.io/golf-bits/`
+
+---
+
+Git was already initialized here. If you are setting up another clone, use **Step 3** below (replace placeholders).
 
 ## Step 1 — Create the repository on GitHub (website)
 
@@ -25,11 +37,17 @@ git config --global user.email "you@example.com"
 
 ## Step 3 — Link remote and push (run inside `bits`)
 
-Replace `YOUR_REPO_URL` with the URL from Step 1.
+**This repo (already linked):**
 
 ```bash
 cd "path\to\bits"
-git remote add origin YOUR_REPO_URL
+git push -u origin main
+```
+
+**Another URL:** if `origin` already exists, update it instead of `add`:
+
+```bash
+git remote set-url origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
 git push -u origin main
 ```
 
