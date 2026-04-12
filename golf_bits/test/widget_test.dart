@@ -2,10 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golf_bits/main.dart';
 
 void main() {
-  testWidgets('Home screen shows title and gallery entry', (WidgetTester tester) async {
+  testWidgets('Welcome flow shows wordmark and primary CTA', (WidgetTester tester) async {
     await tester.pumpWidget(const GolfBitsApp());
-    expect(find.text('Golf Bits'), findsOneWidget);
-    expect(find.textContaining('Material 3'), findsOneWidget);
-    expect(find.text('Style guide & components'), findsOneWidget);
+    expect(find.text('GOLF BITS'), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+    expect(find.textContaining('Track the bits'), findsOneWidget);
   });
 }
