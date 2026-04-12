@@ -9,7 +9,7 @@ class OutlinedSurfaceCard extends StatelessWidget {
     super.key,
     required this.child,
     this.borderColor,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(AppTheme.cardInnerPadding),
   });
 
   final Widget child;
@@ -24,7 +24,10 @@ class OutlinedSurfaceCard extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        side: BorderSide(color: border, width: borderColor != null ? 1.5 : 1),
+        side: BorderSide(
+          color: border,
+          width: borderColor != null ? AppTheme.emphasisBorderWidth : AppTheme.outlineBorderWidth,
+        ),
       ),
       child: Padding(
         padding: padding,

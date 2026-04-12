@@ -29,43 +29,43 @@ class LocationPermissionScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
+              SizedBox(height: AppTheme.space4),
               Center(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: scheme.primary.withValues(alpha: 0.45),
-                        blurRadius: 48,
-                        spreadRadius: 4,
+                        color: scheme.primary.withValues(alpha: AppTheme.opacityHeroGlow),
+                        blurRadius: AppTheme.locationGlowBlur,
+                        spreadRadius: AppTheme.locationGlowSpread,
                       ),
                     ],
                   ),
                   child: CircleAvatar(
-                    radius: 56,
+                    radius: AppTheme.iconHero,
                     backgroundColor: scheme.surfaceContainerHigh,
-                    child: Icon(Icons.location_on, size: 56, color: scheme.primary),
+                    child: Icon(Icons.location_on, size: AppTheme.iconHero, color: scheme.primary),
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: AppTheme.space8),
               Text(
                 'Play smarter, not harder',
                 textAlign: TextAlign.center,
                 style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: AppTheme.space3),
               Text(
                 'Location helps pick the right course and tee box automatically, '
                 'so you spend less time tapping and more time swinging.',
                 textAlign: TextAlign.center,
                 style: text.bodyLarge?.copyWith(
                   color: scheme.onSurfaceVariant,
-                  height: 1.45,
+                  height: AppTheme.bodyLineHeightRelaxed,
                 ),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: AppTheme.space7),
               OutlinedSurfaceCard(
                 borderColor: scheme.outlineVariant,
                 child: Column(
@@ -75,20 +75,20 @@ class LocationPermissionScreen extends StatelessWidget {
                       'Automatic tee selection',
                       style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: AppTheme.space3),
                     AspectRatio(
                       aspectRatio: 16 / 9,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: scheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                           border: Border.all(color: scheme.outlineVariant),
                         ),
                         child: Center(
                           child: Icon(
                             Icons.map_outlined,
-                            size: 48,
-                            color: scheme.primary.withValues(alpha: 0.7),
+                            size: AppTheme.iconLarge,
+                            color: scheme.primary.withValues(alpha: AppTheme.opacityMutedPrimary),
                           ),
                         ),
                       ),
@@ -108,12 +108,12 @@ class LocationPermissionScreen extends StatelessWidget {
                 },
                 child: const Text('Allow Location'),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: AppTheme.space3),
               TextButton(
                 onPressed: () => openAppHome(context),
                 child: const Text('Not now'),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: AppTheme.space2),
             ],
           ),
         ),

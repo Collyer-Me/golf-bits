@@ -3,11 +3,92 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// Material 3 theme: seed + explicit brand secondaries / surfaces (style guide).
+/// Material 3 theme + layout/letterspacing tokens (style guide). Prefer these over literals in UI.
 abstract final class AppTheme {
   static const double stadiumRadius = 999;
   static const double cardRadius = 20;
-  static const EdgeInsets screenPadding = EdgeInsets.symmetric(horizontal: 20, vertical: 16);
+
+  /// Horizontal / vertical padding for full-width screen bodies.
+  static const double pageHorizontal = 20;
+  static const double pageVertical = 16;
+  static const EdgeInsets screenPadding =
+      EdgeInsets.symmetric(horizontal: pageHorizontal, vertical: pageVertical);
+
+  /// Text fields, small contained surfaces.
+  static const double fieldRadius = 16;
+  static const double radiusSm = 4;
+  static const double radiusMd = 12;
+
+  /// 4dp-ish spacing scale (prefer over raw `SizedBox` / `EdgeInsets` numbers).
+  static const double space1 = 4;
+  static const double spaceHalf = 6;
+  static const double space2 = 8;
+  static const double space25 = 10;
+  static const double space3 = 12;
+  static const double space4 = 16;
+  static const double space5 = 20;
+  static const double space6 = 24;
+  static const double space7 = 28;
+  static const double space8 = 32;
+
+  /// Theme button vertical padding (between space3 and space4 on the grid).
+  static const double buttonPadV = 14;
+
+  /// Default [OutlinedSurfaceCard] / dense card interiors.
+  static const double cardInnerPadding = 20;
+
+  /// Letter-spacing for wordmark / step labels (brand).
+  static const double letterWordmark = 1.2;
+  static const double letterStepCaps = 1.2;
+  static const double letterTagline = 1.4;
+  static const double letterBadge = 0.6;
+  static const double letterSheetLabel = 1.1;
+
+  /// Shared opacity for borders / overlays (still tokenised).
+  static const double opacityBorderEmphasis = 0.55;
+  static const double opacitySecondaryFill = 0.18;
+  static const double opacitySecondaryBorder = 0.6;
+  static const double opacityPrimaryBorder = 0.35;
+
+  /// Card / list tile borders when using primary emphasis.
+  static const double emphasisBorderWidth = 1.5;
+  static const double outlineBorderWidth = 1;
+  static const double selectionRingWidth = 3;
+
+  /// Focus / selection glow (tee picker, etc.).
+  static const double elevationBlurSm = 12;
+
+  /// Body copy line height (shared relaxed paragraphs).
+  static const double bodyLineHeightRelaxed = 1.45;
+  static const double bodyLineHeightTight = 1.35;
+
+  /// Small trailing / chip icons.
+  static const double iconDense = 18;
+  static const double iconArrow = 20;
+  static const double chipOutlineWidth = 1.2;
+
+  /// Marketing / hero illustration sizes.
+  static const double iconIllustration = 40;
+  static const double iconLarge = 48;
+  static const double iconHero = 56;
+  static const double iconInline = 22;
+  static const double teeGlyphSize = 18;
+  static const double locationGlowBlur = 48;
+  static const double locationGlowSpread = 4;
+  static const double opacityHeroGlow = 0.45;
+  static const double opacityMutedPrimary = 0.7;
+  static const double pageIndicator = 8;
+  static const double pageIndicatorSelected = 10;
+
+  /// Filled button label tracking (matches [FilledButtonTheme]).
+  static const double letterButton = 0.8;
+
+  /// Readable label on circular tee / brand fills (uses [ColorScheme]).
+  static Color textOnFilledCircle(Color fill, ColorScheme scheme) {
+    if (fill == scheme.tertiary) return scheme.onTertiary;
+    final bright = ThemeData.estimateBrightnessForColor(fill);
+    return bright == Brightness.dark ? scheme.onSurface : scheme.surfaceContainerLowest;
+  }
 
   static ThemeData dark() {
     final base = ColorScheme.fromSeed(
@@ -21,15 +102,15 @@ abstract final class AppTheme {
     );
 
     final scheme = base.copyWith(
-      surfaceContainerLowest: const Color(0xFF0E100E),
-      surfaceContainerLow: const Color(0xFF1A1C1A),
-      surfaceContainer: const Color(0xFF1E201E),
-      surfaceContainerHigh: const Color(0xFF292A28),
-      surfaceContainerHighest: const Color(0xFF333533),
-      primaryContainer: const Color(0xFF1B3D1F),
+      surfaceContainerLowest: AppColors.surfaceContainerLowest,
+      surfaceContainerLow: AppColors.surfaceContainerLow,
+      surfaceContainer: AppColors.surfaceContainer,
+      surfaceContainerHigh: AppColors.surfaceContainerHigh,
+      surfaceContainerHighest: AppColors.surfaceContainerHighest,
+      primaryContainer: AppColors.primaryContainer,
       onPrimaryContainer: AppColors.accentLime,
-      secondaryContainer: const Color(0xFF292A28),
-      onSecondaryContainer: const Color(0xFFE8EAE8),
+      secondaryContainer: AppColors.secondaryContainer,
+      onSecondaryContainer: AppColors.onSecondaryContainer,
     );
 
     final rawText = ThemeData(brightness: Brightness.dark, useMaterial3: true).textTheme;
@@ -60,14 +141,36 @@ abstract final class AppTheme {
         color: scheme.surfaceContainer,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(cardRadius)),
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerHigh,
+        contentPadding: const EdgeInsets.symmetric(horizontal: space4, vertical: space3),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(fieldRadius)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(fieldRadius),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(fieldRadius),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(fieldRadius),
+          borderSide: BorderSide(color: scheme.error),
+        ),
+        hintStyle: textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+        labelStyle: textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        prefixIconColor: scheme.onSurfaceVariant,
+        suffixIconColor: scheme.onSurfaceVariant,
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: space6, vertical: buttonPadV),
           shape: stadiumShape,
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
+            letterSpacing: letterButton,
           ),
         ),
       ),
@@ -83,7 +186,7 @@ abstract final class AppTheme {
         shape: stadiumShape,
         side: BorderSide(color: scheme.outline),
         labelStyle: textTheme.labelLarge,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: space3, vertical: space2),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
@@ -105,7 +208,7 @@ abstract final class AppTheme {
         }),
       ),
       searchBarTheme: SearchBarThemeData(
-        backgroundColor: const WidgetStatePropertyAll(Color(0xFF292A28)),
+        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
         elevation: const WidgetStatePropertyAll(0),
         shape: WidgetStatePropertyAll(stadiumShape),
         side: WidgetStateProperty.resolveWith(

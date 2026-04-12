@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// Large “GOLF BITS” lockup (Lexend via theme).
 class BrandWordmark extends StatelessWidget {
   const BrandWordmark({
@@ -27,7 +29,7 @@ class BrandWordmark extends StatelessWidget {
         color: color,
         fontWeight: FontWeight.w900,
         fontStyle: FontStyle.italic,
-        letterSpacing: 1.2,
+        letterSpacing: AppTheme.letterWordmark,
       ),
     );
   }

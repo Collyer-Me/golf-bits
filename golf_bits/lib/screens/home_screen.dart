@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import 'component_gallery_screen.dart';
 import 'round_setup_screen.dart';
 
@@ -16,8 +17,8 @@ class HomeScreen extends StatelessWidget {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.flag, size: 22, color: theme.colorScheme.primary),
-            const SizedBox(width: 8),
+            Icon(Icons.flag, size: AppTheme.iconInline, color: theme.colorScheme.primary),
+            SizedBox(width: AppTheme.space2),
             Text(
               'Golf Bits',
               style: theme.textTheme.titleLarge?.copyWith(
@@ -37,21 +38,21 @@ class HomeScreen extends StatelessWidget {
       ),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppTheme.space6),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.flag_outlined,
-                size: 56,
+                size: AppTheme.iconHero,
                 color: theme.colorScheme.primary,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: AppTheme.space6),
               Text(
                 'Material 3 shell',
                 style: theme.textTheme.headlineSmall,
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: AppTheme.space2),
               Text(
                 'Open the gallery to preview colours, type, buttons, chips, navigation, and sheets.',
                 textAlign: TextAlign.center,
@@ -59,7 +60,7 @@ class HomeScreen extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: AppTheme.space6),
               FilledButton(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -68,16 +69,16 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_circle_outline, size: 22),
-                    SizedBox(width: 10),
+                    Icon(Icons.add_circle_outline, size: AppTheme.iconInline),
+                    SizedBox(width: AppTheme.space25),
                     Text('Start new round'),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: AppTheme.space3),
               OutlinedButton(
                 onPressed: () {
                   Navigator.of(context).push(

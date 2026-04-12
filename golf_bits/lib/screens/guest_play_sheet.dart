@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// Bottom sheet: guest mode trade-offs (Material list + buttons).
 class GuestPlaySheet extends StatelessWidget {
   const GuestPlaySheet({
@@ -33,10 +35,10 @@ class GuestPlaySheet extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 8,
-        bottom: MediaQuery.paddingOf(context).bottom + 24,
+        left: AppTheme.pageHorizontal,
+        right: AppTheme.pageHorizontal,
+        top: AppTheme.space2,
+        bottom: MediaQuery.paddingOf(context).bottom + AppTheme.space6,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -56,17 +58,17 @@ class GuestPlaySheet extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: AppTheme.space2),
           _bullet(context, true, 'Track bits and run rounds.'),
           _bullet(context, true, 'Round history saved on this device.'),
           _bullet(context, false, 'No cross-device history sync.'),
           _bullet(context, false, 'No friend groups or shared history.'),
-          const SizedBox(height: 24),
+          SizedBox(height: AppTheme.space6),
           FilledButton(
             onPressed: onContinueGuest,
             child: const Text('Continue as Guest'),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: AppTheme.space3),
           OutlinedButton(
             onPressed: onCreateAccountInstead,
             child: const Text('Create a free account instead'),
@@ -80,16 +82,16 @@ class GuestPlaySheet extends StatelessWidget {
   Widget _bullet(BuildContext context, bool pro, String label) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AppTheme.spaceHalf),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             pro ? Icons.check_circle : Icons.cancel_outlined,
             color: pro ? scheme.primary : scheme.onSurfaceVariant,
-            size: 22,
+            size: AppTheme.iconInline,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: AppTheme.space3),
           Expanded(
             child: Text(
               label,

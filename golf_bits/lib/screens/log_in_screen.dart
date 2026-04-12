@@ -27,24 +27,15 @@ class _LogInScreenState extends State<LogInScreen> {
     super.dispose();
   }
 
-  InputDecoration _field(
-    BuildContext context, {
+  InputDecoration _field({
     required String hint,
     required IconData icon,
-    Widget? suffix,
+    Widget? suffixIcon,
   }) {
-    final scheme = Theme.of(context).colorScheme;
     return InputDecoration(
       hintText: hint,
-      filled: true,
-      fillColor: scheme.surfaceContainerHigh,
-      prefixIcon: Icon(icon, color: scheme.onSurfaceVariant),
-      suffixIcon: suffix,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: scheme.outlineVariant),
-      ),
+      prefixIcon: Icon(icon),
+      suffixIcon: suffixIcon,
     );
   }
 
@@ -85,32 +76,31 @@ class _LogInScreenState extends State<LogInScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: AppTheme.screenPadding.copyWith(bottom: 24),
+          padding: AppTheme.screenPadding.copyWith(bottom: AppTheme.space6),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 8),
+                SizedBox(height: AppTheme.space2),
                 const BrandWordmark(size: BrandWordmarkSize.screen),
-                const SizedBox(height: 4),
+                SizedBox(height: AppTheme.space1),
                 Text(
                   'THE MODERN CADDY',
                   textAlign: TextAlign.center,
                   style: text.labelLarge?.copyWith(
                     color: scheme.onSurfaceVariant,
-                    letterSpacing: 1.4,
+                    letterSpacing: AppTheme.letterTagline,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: AppTheme.space7),
                 TextFormField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
                   decoration: _field(
-                    context,
                     hint: 'Email address',
                     icon: Icons.mail_outline,
                   ),
@@ -120,19 +110,17 @@ class _LogInScreenState extends State<LogInScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: AppTheme.buttonPadV),
                 TextFormField(
                   controller: _password,
                   obscureText: _obscure,
                   decoration: _field(
-                    context,
                     hint: 'Password',
                     icon: Icons.lock_outline,
-                    suffix: IconButton(
+                    suffixIcon: IconButton(
                       onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
                         _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -150,12 +138,12 @@ class _LogInScreenState extends State<LogInScreen> {
                     child: const Text('Forgot password?'),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: AppTheme.space2),
                 Row(
                   children: [
                     Expanded(child: Divider(color: scheme.outlineVariant)),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
                       child: Text(
                         'OR CONTINUE WITH',
                         style: text.labelSmall?.copyWith(
@@ -167,7 +155,7 @@ class _LogInScreenState extends State<LogInScreen> {
                     Expanded(child: Divider(color: scheme.outlineVariant)),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: AppTheme.space4),
                 Row(
                   children: [
                     Expanded(
@@ -181,7 +169,7 @@ class _LogInScreenState extends State<LogInScreen> {
                         label: const Text('Apple'),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: AppTheme.space3),
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
@@ -195,14 +183,14 @@ class _LogInScreenState extends State<LogInScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: AppTheme.space3),
                 Center(
                   child: TextButton(
                     onPressed: _openGuestSheet,
                     child: const Text('Continue as guest'),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: AppTheme.space2),
                 Wrap(
                   alignment: WrapAlignment.center,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -220,14 +208,14 @@ class _LogInScreenState extends State<LogInScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: AppTheme.space6),
                 FilledButton(
                   onPressed: _submit,
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('Log In'),
-                      SizedBox(width: 8),
+                      SizedBox(width: AppTheme.space2),
                       Icon(Icons.arrow_forward, size: 20),
                     ],
                   ),

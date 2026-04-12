@@ -54,9 +54,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 24),
+              SizedBox(height: AppTheme.space6),
               const BrandWordmark(size: BrandWordmarkSize.hero),
-              const SizedBox(height: 8),
+              SizedBox(height: AppTheme.space2),
               Text(
                 'Track the bits. Win the round.',
                 textAlign: TextAlign.center,
@@ -65,7 +65,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: AppTheme.space8),
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
@@ -74,22 +74,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   itemBuilder: (context, i) {
                     final s = _slides[i];
                     return OutlinedSurfaceCard(
-                      borderColor: scheme.primary.withValues(alpha: 0.35),
+                      borderColor: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             s.icon,
-                            size: 40,
+                            size: AppTheme.iconIllustration,
                             color: scheme.primary,
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: AppTheme.space5),
                           Text(
                             s.body,
                             textAlign: TextAlign.center,
                             style: text.bodyLarge?.copyWith(
                               color: scheme.onSurface,
-                              height: 1.45,
+                              height: AppTheme.bodyLineHeightRelaxed,
                             ),
                           ),
                         ],
@@ -98,16 +98,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: AppTheme.space4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(_slides.length, (i) {
                   final active = i == _page;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: active ? 10 : 8,
-                    height: active ? 10 : 8,
+                    margin: const EdgeInsets.symmetric(horizontal: AppTheme.space1),
+                    width: active ? AppTheme.pageIndicatorSelected : AppTheme.pageIndicator,
+                    height: active ? AppTheme.pageIndicatorSelected : AppTheme.pageIndicator,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: active ? scheme.primary : scheme.outlineVariant,
@@ -115,7 +115,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   );
                 }),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: AppTheme.space6),
               FilledButton(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -128,12 +128,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('Get Started'),
-                    SizedBox(width: 8),
+                    SizedBox(width: AppTheme.space2),
                     Icon(Icons.arrow_forward, size: 20),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: AppTheme.space3),
               OutlinedButton(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -144,7 +144,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 },
                 child: const Text('I already have an account'),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: AppTheme.space2),
             ],
           ),
         ),

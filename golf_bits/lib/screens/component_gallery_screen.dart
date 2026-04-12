@@ -32,41 +32,44 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
           _sectionTitle(context, 'Colour roles', 'Use ColorScheme from Theme — avoid raw hex in screens.'),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppTheme.space4),
               child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: AppTheme.space3,
+                runSpacing: AppTheme.space3,
                 children: [
-                  _swatch('Primary', scheme.primary),
-                  _swatch('Secondary', scheme.secondary),
-                  _swatch('Tertiary', scheme.tertiary),
-                  _swatch('Surface', scheme.surface),
-                  _swatch('Accent (token)', AppColors.accentLime),
+                  _swatch(context, 'Primary', scheme.primary),
+                  _swatch(context, 'Secondary', scheme.secondary),
+                  _swatch(context, 'Tertiary', scheme.tertiary),
+                  _swatch(context, 'Surface', scheme.surface),
+                  _swatch(context, 'Accent (token)', AppColors.accentLime),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'Typography (Lexend)', 'From google_fonts + ThemeData.textTheme.'),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppTheme.space4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Headline', style: text.headlineMedium),
                   Text('Title', style: text.titleMedium),
                   Text('Body on variant', style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant)),
-                  Text('LABEL · ALL CAPS', style: text.labelSmall?.copyWith(letterSpacing: 1.2)),
+                  Text(
+                    'LABEL · ALL CAPS',
+                    style: text.labelSmall?.copyWith(letterSpacing: AppTheme.letterStepCaps),
+                  ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'Buttons', 'Filled / tonal / outlined / text — stadium shape from theme.'),
           Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: AppTheme.space3,
+            runSpacing: AppTheme.space3,
             children: [
               FilledButton(onPressed: () {}, child: const Text('Primary')),
               FilledButton.tonal(onPressed: () {}, child: const Text('Tonal')),
@@ -74,17 +77,17 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
               TextButton(onPressed: () {}, child: const Text('Text')),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'Search', 'Material SearchBar (theme).'),
           const SearchBar(
             hintText: 'Search',
             leading: Icon(Icons.search),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'Chips', 'Filter-style toggles for events (positive / negative colours).'),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppTheme.space2,
+            runSpacing: AppTheme.space2,
             children: [
               FilterChip(
                 label: const Text('Birdie · +1'),
@@ -93,15 +96,17 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
                 checkmarkColor: scheme.onPrimary,
               ),
               FilterChip(
-                avatar: Icon(Icons.remove_circle_outline, size: 18, color: scheme.error),
+                avatar: Icon(Icons.remove_circle_outline, size: AppTheme.iconDense, color: scheme.error),
                 label: const Text('Three-putt · −1'),
                 selected: _threePutt,
                 onSelected: (v) => setState(() => _threePutt = v),
-                side: BorderSide(color: scheme.error.withOpacity(0.55)),
+                side: BorderSide(
+                  color: scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'Cards', 'Default Card + OutlinedSurfaceCard (accent border).'),
           OutlinedSurfaceCard(
             borderColor: scheme.primary,
@@ -111,16 +116,16 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
                 Text('ROUND IN PROGRESS', style: text.labelSmall?.copyWith(color: scheme.primary)),
                 Text('Royal Melbourne', style: text.headlineSmall),
                 Text('West course · 18 holes', style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppTheme.space3),
                 Wrap(
-                  spacing: 8,
+                  spacing: AppTheme.space2,
                   children: [
                     Chip(
-                      avatar: Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant),
+                      avatar: Icon(Icons.person, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
                       label: const Text('Alex'),
                     ),
                     Chip(
-                      avatar: Icon(Icons.person, size: 18, color: scheme.onSurfaceVariant),
+                      avatar: Icon(Icons.person, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
                       label: const Text('Jordan'),
                     ),
                   ],
@@ -128,7 +133,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppTheme.space3),
           const Card(
             child: ListTile(
               leading: CircleAvatar(child: Text('A')),
@@ -137,7 +142,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
               trailing: Icon(Icons.add),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'FAB', 'Standard FAB + extended pattern.'),
           Row(
             children: [
@@ -145,7 +150,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
                 onPressed: () {},
                 child: const Icon(Icons.edit),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppTheme.space4),
               FloatingActionButton.extended(
                 onPressed: () {},
                 icon: const Icon(Icons.edit),
@@ -153,13 +158,13 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'Bottom sheet', 'Modal sheet with Material padding.'),
           FilledButton.tonal(
             onPressed: () => _showEventSheet(context),
             child: const Text('Open sample event sheet'),
           ),
-          const SizedBox(height: 100),
+          SizedBox(height: AppTheme.space8 * 3),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -179,7 +184,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppTheme.space2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -190,21 +195,30 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
     );
   }
 
-  Widget _swatch(String label, Color color) {
+  Widget _swatch(BuildContext context, String label, Color color) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 48,
-          height: 48,
+          width: AppTheme.iconLarge,
+          height: AppTheme.iconLarge,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white24),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: AppTheme.opacityBorderEmphasis)),
           ),
         ),
-        const SizedBox(height: 4),
-        SizedBox(width: 72, child: Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10))),
+        const SizedBox(height: AppTheme.space1),
+        SizedBox(
+          width: AppTheme.space8 * 2 + AppTheme.space3,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: text.labelSmall,
+          ),
+        ),
       ],
     );
   }
@@ -220,10 +234,10 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
       builder: (ctx) {
         return Padding(
           padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 8,
-            bottom: MediaQuery.paddingOf(ctx).bottom + 24,
+            left: AppTheme.pageHorizontal,
+            right: AppTheme.pageHorizontal,
+            top: AppTheme.space2,
+            bottom: MediaQuery.paddingOf(ctx).bottom + AppTheme.space6,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -254,12 +268,15 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
               ),
               Text(
                 'SELECT EVENTS TO AWARD BITS',
-                style: text.labelSmall?.copyWith(letterSpacing: 1.1, color: scheme.onSurfaceVariant),
+                style: text.labelSmall?.copyWith(
+                  letterSpacing: AppTheme.letterSheetLabel,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.space4),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppTheme.space2,
+                runSpacing: AppTheme.space2,
                 alignment: WrapAlignment.center,
                 children: [
                   ActionChip(label: const Text('Birdie +1'), onPressed: () {}),

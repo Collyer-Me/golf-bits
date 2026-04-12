@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// Bottom sheet: quick-add a player (name + optional email).
 Future<void> showAddPlayerSheet(
   BuildContext context, {
@@ -33,29 +35,16 @@ class _AddPlayerSheetState extends State<_AddPlayerSheet> {
     super.dispose();
   }
 
-  InputDecoration _decoration(BuildContext context, String hint, {IconData? icon}) {
-    final scheme = Theme.of(context).colorScheme;
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: scheme.surfaceContainerHigh,
-      prefixIcon: icon != null ? Icon(icon, color: scheme.onSurfaceVariant) : null,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: scheme.outlineVariant),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 8,
-        bottom: MediaQuery.paddingOf(context).bottom + MediaQuery.viewInsetsOf(context).bottom + 24,
+        left: AppTheme.pageHorizontal,
+        right: AppTheme.pageHorizontal,
+        top: AppTheme.space2,
+        bottom: MediaQuery.paddingOf(context).bottom +
+            MediaQuery.viewInsetsOf(context).bottom +
+            AppTheme.space6,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -64,26 +53,32 @@ class _AddPlayerSheetState extends State<_AddPlayerSheet> {
           Row(
             children: [
               Icon(Icons.person_add_outlined, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 12),
+              SizedBox(width: AppTheme.space3),
               Text(
                 'Add New Player',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: AppTheme.space5),
           TextField(
             controller: _name,
             textInputAction: TextInputAction.next,
-            decoration: _decoration(context, 'Enter name…', icon: Icons.badge_outlined),
+            decoration: const InputDecoration(
+              hintText: 'Enter name…',
+              prefixIcon: const Icon(Icons.badge_outlined),
+            ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: AppTheme.buttonPadV),
           TextField(
             controller: _email,
             keyboardType: TextInputType.emailAddress,
-            decoration: _decoration(context, 'Email address (optional)', icon: Icons.mail_outline),
+            decoration: const InputDecoration(
+              hintText: 'Email address (optional)',
+              prefixIcon: const Icon(Icons.mail_outline),
+            ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: AppTheme.space6),
           FilledButton(
             onPressed: () {
               final n = _name.text.trim();
@@ -138,25 +133,26 @@ class _CourseSetupSheet extends StatefulWidget {
 class _CourseSetupSheetState extends State<_CourseSetupSheet> {
   int _holes = 9;
   bool _frontNine = true;
-  int _teeIndex = 1; // white default
+  int _teeIndex = 1;
 
-  static const _tees = [
-    _TeeVisual('CHAMP', Color(0xFF1A1A1A)),
-    _TeeVisual('WHITE', Color(0xFFE8E8E8)),
-    _TeeVisual('RED', Color(0xFFB71C1C)),
-  ];
+  List<_TeeVisual> _tees(ColorScheme scheme) => [
+        _TeeVisual('CHAMP', scheme.surfaceContainerLowest),
+        _TeeVisual('WHITE', scheme.surfaceContainerHighest),
+        _TeeVisual('RED', scheme.tertiary),
+      ];
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final tees = _tees(scheme);
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 8,
-        bottom: MediaQuery.paddingOf(context).bottom + 24,
+        left: AppTheme.pageHorizontal,
+        right: AppTheme.pageHorizontal,
+        top: AppTheme.space2,
+        bottom: MediaQuery.paddingOf(context).bottom + AppTheme.space6,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -169,9 +165,9 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.space5),
             Text('Round length', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            SizedBox(height: AppTheme.space2),
             SegmentedButton<int>(
               segments: const [
                 ButtonSegment(value: 9, label: Text('9')),
@@ -180,9 +176,9 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
               selected: {_holes},
               onSelectionChanged: (s) => setState(() => _holes = s.first),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.space5),
             Text('Starting nine', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            SizedBox(height: AppTheme.space2),
             SegmentedButton<bool>(
               segments: const [
                 ButtonSegment(value: true, label: Text('Front 9')),
@@ -191,33 +187,33 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
               selected: {_frontNine},
               onSelectionChanged: (s) => setState(() => _frontNine = s.first),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.space5),
             Text('Select tee box', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
+            SizedBox(height: AppTheme.space3),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(_tees.length, (i) {
-                final t = _tees[i];
+              children: List.generate(tees.length, (i) {
+                final t = tees[i];
                 final selected = i == _teeIndex;
                 return GestureDetector(
                   onTap: () => setState(() => _teeIndex = i),
                   child: Column(
                     children: [
                       Container(
-                        width: 56,
-                        height: 56,
+                        width: AppTheme.iconHero,
+                        height: AppTheme.iconHero,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: t.color,
                           border: Border.all(
                             color: selected ? scheme.primary : scheme.outlineVariant,
-                            width: selected ? 3 : 1,
+                            width: selected ? AppTheme.selectionRingWidth : AppTheme.outlineBorderWidth,
                           ),
                           boxShadow: selected
                               ? [
                                   BoxShadow(
-                                    color: scheme.primary.withValues(alpha: 0.35),
-                                    blurRadius: 12,
+                                    color: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
+                                    blurRadius: AppTheme.elevationBlurSm,
                                   ),
                                 ]
                               : null,
@@ -226,28 +222,28 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
                           child: Text(
                             t.label.isNotEmpty ? t.label[0] : '?',
                             style: TextStyle(
-                              color: t.color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                              color: AppTheme.textOnFilledCircle(t.color, scheme),
                               fontWeight: FontWeight.w900,
-                              fontSize: 18,
+                              fontSize: AppTheme.teeGlyphSize,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: AppTheme.spaceHalf),
                       Text(t.label, style: text.labelSmall),
                     ],
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: AppTheme.space7),
             FilledButton(
               onPressed: () {
                 Navigator.of(context).pop(
                   CourseSetupResult(
                     holes: _holes,
                     frontNineFirst: _frontNine,
-                    teeLabel: _tees[_teeIndex].label,
+                    teeLabel: tees[_teeIndex].label,
                   ),
                 );
               },
@@ -307,29 +303,16 @@ class _AddCustomEventSheetState extends State<_AddCustomEventSheet> {
     super.dispose();
   }
 
-  InputDecoration _decoration(BuildContext context, String label, {String? hint, int maxLines = 1}) {
-    final scheme = Theme.of(context).colorScheme;
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      filled: true,
-      fillColor: scheme.surfaceContainerHigh,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: scheme.outlineVariant),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 8,
-        bottom: MediaQuery.paddingOf(context).bottom + MediaQuery.viewInsetsOf(context).bottom + 24,
+        left: AppTheme.pageHorizontal,
+        right: AppTheme.pageHorizontal,
+        top: AppTheme.space2,
+        bottom: MediaQuery.paddingOf(context).bottom +
+            MediaQuery.viewInsetsOf(context).bottom +
+            AppTheme.space6,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -350,25 +333,29 @@ class _AddCustomEventSheetState extends State<_AddCustomEventSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: AppTheme.space2),
             TextField(
               controller: _name,
-              decoration: _decoration(context, 'EVENT NAME', hint: 'e.g. Sandy'),
+              decoration: const InputDecoration(
+                labelText: 'EVENT NAME',
+                hintText: 'e.g. Sandy',
+              ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: AppTheme.buttonPadV),
             TextField(
               controller: _desc,
               maxLines: 3,
-              decoration: _decoration(
-                context,
-                'DESCRIPTION',
-                hint: 'What earns this bit?',
-                maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'DESCRIPTION',
+                hintText: 'What earns this bit?',
               ),
             ),
-            const SizedBox(height: 20),
-            Text('Points', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            SizedBox(height: AppTheme.space5),
+            Text(
+              'Points',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: AppTheme.space2),
             Row(
               children: [
                 IconButton.filledTonal(
@@ -388,7 +375,7 @@ class _AddCustomEventSheetState extends State<_AddCustomEventSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: AppTheme.space6),
             FilledButton(
               onPressed: () {
                 final n = _name.text.trim();

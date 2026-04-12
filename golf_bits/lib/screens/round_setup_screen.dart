@@ -254,7 +254,12 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+            padding: const EdgeInsets.fromLTRB(
+              AppTheme.pageHorizontal,
+              AppTheme.space3,
+              AppTheme.pageHorizontal,
+              AppTheme.space2,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -263,20 +268,20 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                   style: text.labelSmall?.copyWith(
                     color: scheme.primary,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
+                    letterSpacing: AppTheme.letterStepCaps,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppTheme.spaceHalf),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   child: LinearProgressIndicator(
                     value: (_step + 1) / 4,
-                    minHeight: 4,
+                    minHeight: AppTheme.radiusSm,
                     backgroundColor: scheme.surfaceContainerHighest,
                     color: scheme.primary,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppTheme.space3),
                 Text(
                   _stepLabel,
                   style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -306,8 +311,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('Next'),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 20),
+                      SizedBox(width: AppTheme.space2),
+                      Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
                     ],
                   ),
                 ),
@@ -317,8 +322,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('Next'),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 20),
+                      SizedBox(width: AppTheme.space2),
+                      Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
                     ],
                   ),
                 ),
@@ -347,10 +352,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
           'Who’s playing?',
           style: text.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppTheme.space4),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: AppTheme.space2,
+          runSpacing: AppTheme.space2,
           children: [
             ..._players.map((p) {
               return InputChip(
@@ -359,7 +364,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                   children: [
                     Text(p.name),
                     if (p.isYou) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppTheme.spaceHalf),
                       Text(
                         'YOU',
                         style: text.labelSmall?.copyWith(
@@ -371,35 +376,38 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                   ],
                 ),
                 onDeleted: p.isYou ? null : () => _removePlayer(p),
-                deleteIcon: p.isYou ? null : const Icon(Icons.close, size: 18),
+                deleteIcon: p.isYou ? null : const Icon(Icons.close, size: AppTheme.iconDense),
                 selected: true,
                 showCheckmark: false,
               );
             }),
             ActionChip(
-              avatar: Icon(Icons.add, size: 18, color: scheme.primary),
+              avatar: Icon(Icons.add, size: AppTheme.iconDense, color: scheme.primary),
               label: const Text('Add Player'),
               shape: StadiumBorder(
-                side: BorderSide(color: scheme.primary.withValues(alpha: 0.6), width: 1.2),
+                side: BorderSide(
+                  color: scheme.primary.withValues(alpha: AppTheme.opacitySecondaryBorder),
+                  width: AppTheme.chipOutlineWidth,
+                ),
               ),
               backgroundColor: scheme.surfaceContainerLow,
               onPressed: _openAddPlayer,
             ),
           ],
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: AppTheme.space7),
         Text(
           'Recent players',
           style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppTheme.space3),
         ..._recent.map((r) {
           final already = _players.any((p) => p.name == r.name);
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AppTheme.space25),
             child: OutlinedSurfaceCard(
               borderColor: scheme.outlineVariant,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
               child: Row(
                 children: [
                   Expanded(
@@ -450,19 +458,22 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
               ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppTheme.space5),
         ..._filteredCourses.map((c) {
           final selected = _selectedCourseId == c.id;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AppTheme.space25),
             child: Material(
-              color: Colors.transparent,
+              color: scheme.surface.withValues(alpha: 0),
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppTheme.cardRadius),
                 onTap: () => setState(() => _selectedCourseId = c.id),
                 child: OutlinedSurfaceCard(
                   borderColor: selected ? scheme.primary : scheme.outlineVariant,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space4,
+                    vertical: AppTheme.buttonPadV,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -486,7 +497,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
             ),
           );
         }),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppTheme.space2),
         TextButton(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -518,7 +529,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
             Tab(text: 'Custom events'),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppTheme.space2),
         Expanded(
           child: TabBarView(
             controller: _eventTabController,
@@ -528,13 +539,16 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppTheme.space2),
         OutlinedButton.icon(
           onPressed: _addCustomEvent,
           icon: Icon(Icons.add, color: scheme.primary),
           label: Text('Add custom event', style: TextStyle(color: scheme.primary)),
           style: OutlinedButton.styleFrom(
-            side: BorderSide(color: scheme.primary.withValues(alpha: 0.55), width: 1.2),
+            side: BorderSide(
+              color: scheme.primary.withValues(alpha: AppTheme.opacityBorderEmphasis),
+              width: AppTheme.chipOutlineWidth,
+            ),
           ),
         ),
       ],
@@ -558,14 +572,14 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     }
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppTheme.space2),
       children: rows
           .map(
             (e) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppTheme.space3),
               child: OutlinedSurfaceCard(
                 borderColor: scheme.outlineVariant,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppTheme.buttonPadV),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -581,17 +595,20 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(e.name, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: AppTheme.space1),
                               Text(
                                 e.description,
-                                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
+                                style: text.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  height: AppTheme.bodyLineHeightTight,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppTheme.space2),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -602,7 +619,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                           icon: const Icon(Icons.remove),
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
                           child: Text(
                             e.points >= 0 ? '+${e.points}' : '${e.points}',
                             style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -638,38 +655,38 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
           'Almost there',
           style: text.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppTheme.space4),
         OutlinedSurfaceCard(
-          borderColor: scheme.primary.withValues(alpha: 0.35),
+          borderColor: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Players', style: text.labelLarge?.copyWith(color: scheme.primary)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.space2),
               Text(
                 _players.map((p) => p.isYou ? '${p.name} (you)' : p.name).join(', '),
                 style: text.bodyLarge,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.space4),
               Text('Course', style: text.labelLarge?.copyWith(color: scheme.primary)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.space2),
               Text(course?.name ?? '—', style: text.bodyLarge),
               if (setup != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: AppTheme.spaceHalf),
                 Text(
                   '${setup.holes} holes · ${setup.frontNineFirst ? 'Front' : 'Back'} 9 · ${setup.teeLabel} tees',
                   style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: AppTheme.space4),
               Text('Active events', style: text.labelLarge?.copyWith(color: scheme.primary)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.space2),
               if (enabledEvents.isEmpty)
                 Text('None', style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant))
               else
                 ...enabledEvents.map(
                   (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.only(bottom: AppTheme.space1),
                     child: Text('• ${e.name} (${e.points >= 0 ? '+' : ''}${e.points})', style: text.bodyMedium),
                   ),
                 ),
