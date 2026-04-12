@@ -23,12 +23,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Node 20 on Actions is deprecated; official actions below use Node 24.
+    # This also opts third-party actions (e.g. flutter-action) into Node 24 until they update.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Flutter SDK
         uses: subosito/flutter-action@v2
@@ -51,10 +55,10 @@ jobs:
         run: flutter build web --release --base-href "$BASE_HREF"
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: golf_bits/build/web
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
