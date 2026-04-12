@@ -32,7 +32,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
 
       - name: Flutter SDK
         uses: subosito/flutter-action@v2
@@ -55,10 +55,11 @@ jobs:
         run: flutter build web --release --base-href "$BASE_HREF"
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
+        # Pin full semver: @v5 is not always published as a moving tag for this action.
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: golf_bits/build/web
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v5.0.0
