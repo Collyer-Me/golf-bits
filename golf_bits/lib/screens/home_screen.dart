@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/auth_root.dart';
+import '../config/supabase_env.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'component_gallery_screen.dart';
@@ -473,16 +476,69 @@ class _PeopleTab extends StatelessWidget {
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab();
 
+  static bool _isAnonymousUser(User? user) {
+    if (user == null) return false;
+    final provider = user.appMetadata['provider'];
+    return provider == 'anonymous';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final session = SupabaseEnv.isConfigured ? Supabase.instance.client.auth.currentSession : null;
+    final user = session?.user;
+    final anon = user != null && _isAnonymousUser(user);
+    final email = user?.email;
+    final String title;
+    if (!SupabaseEnv.isConfigured) {
+      title = 'Playing on this device';
+    } else if (anon) {
+      title = 'Guest';
+    } else if (email != null && email.isNotEmpty) {
+      title = email;
+    } else {
+      title = 'Signed in';
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      body: Center(
-        child: Text(
-          'Account and preferences — coming soon',
-          style: text.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
+      body: ListView(
+        padding: AppTheme.screenPadding,
+        children: [
+          OutlinedSurfaceCard(
+            borderColor: scheme.outlineVariant,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                SizedBox(height: AppTheme.space3),
+                Text(
+                  title,
+                  style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+                if (anon) ...[
+                  SizedBox(height: AppTheme.space2),
+                  Text(
+                    'Create an account any time to sync rounds across devices.',
+                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SizedBox(height: AppTheme.space6),
+          FilledButton.tonal(
+            onPressed: () async {
+              if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {
+                await Supabase.instance.client.auth.signOut();
+              } else {
+                AuthRoot.maybeOf(context)?.exitApp();
+              }
+            },
+            child: const Text('Sign out'),
+          ),
+        ],
       ),
     );
   }

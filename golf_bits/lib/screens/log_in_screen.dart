@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/auth_error_message.dart';
+import '../auth/auth_redirect.dart';
+import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_wordmark.dart';
 import 'guest_play_sheet.dart';
 import 'sign_up_screen.dart';
 
-/// Log in — mirrors sign-up structure; guest sheet + home on success stub.
+/// Log in — email/password, password reset, and guest (anonymous when enabled in the Supabase project).
 class LogInScreen extends StatefulWidget {
   const LogInScreen({super.key});
 
@@ -19,6 +23,7 @@ class _LogInScreenState extends State<LogInScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -39,18 +44,90 @@ class _LogInScreenState extends State<LogInScreen> {
     );
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    // TODO: supabase.auth.signInWithPassword
-    openAppHome(context);
+    if (!SupabaseEnv.isConfigured) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Supabase is not configured. For GitHub Pages, add repository secrets '
+            'SUPABASE_URL and SUPABASE_ANON_KEY, then redeploy.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: _email.text.trim(),
+        password: _password.text.trim(),
+      );
+      if (!mounted) return;
+      openAppHome(context);
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(e))));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(e))));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sendPasswordReset() async {
+    final email = _email.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your email address above first.')),
+      );
+      return;
+    }
+    if (!SupabaseEnv.isConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Supabase is not configured.')),
+      );
+      return;
+    }
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: supabaseAuthRedirectUrl(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Check your email for a password reset link.')),
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(e))));
+    }
   }
 
   void _openGuestSheet() {
     GuestPlaySheet.show(
       context,
-      onContinueGuest: () {
+      onContinueGuest: () async {
         Navigator.of(context).pop();
-        openAppHome(context);
+        if (SupabaseEnv.isConfigured) {
+          try {
+            await Supabase.instance.client.auth.signInAnonymously();
+          } on AuthException {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Anonymous sign-in is disabled in the project. You can still play on this device.',
+                  ),
+                ),
+              );
+            }
+          }
+        }
+        if (mounted) openAppHome(context);
       },
       onCreateAccountInstead: () {
         Navigator.of(context).pop();
@@ -130,60 +207,11 @@ class _LogInScreenState extends State<LogInScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password reset coming soon')),
-                      );
-                    },
+                    onPressed: _sendPasswordReset,
                     child: const Text('Forgot password?'),
                   ),
                 ),
-                SizedBox(height: AppTheme.space2),
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: scheme.outlineVariant)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
-                      child: Text(
-                        'OR CONTINUE WITH',
-                        style: text.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: scheme.outlineVariant)),
-                  ],
-                ),
-                SizedBox(height: AppTheme.space4),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Apple sign-in coming soon')),
-                          );
-                        },
-                        icon: const Icon(Icons.apple, size: AppTheme.iconInline),
-                        label: const Text('Apple'),
-                      ),
-                    ),
-                    SizedBox(width: AppTheme.space3),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Google sign-in coming soon')),
-                          );
-                        },
-                        icon: Icon(Icons.g_mobiledata, size: AppTheme.iconOAuthGlyph, color: scheme.onSurface),
-                        label: const Text('Google'),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: AppTheme.space3),
+                SizedBox(height: AppTheme.space6),
                 Center(
                   child: TextButton(
                     onPressed: _openGuestSheet,
@@ -210,15 +238,24 @@ class _LogInScreenState extends State<LogInScreen> {
                 ),
                 SizedBox(height: AppTheme.space6),
                 FilledButton(
-                  onPressed: _submit,
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Log In'),
-                      SizedBox(width: AppTheme.space2),
-                      Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
-                    ],
-                  ),
+                  onPressed: _loading ? null : _submit,
+                  child: _loading
+                      ? SizedBox(
+                          height: AppTheme.iconInline,
+                          width: AppTheme.iconInline,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Log In'),
+                            SizedBox(width: AppTheme.space2),
+                            Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
+                          ],
+                        ),
                 ),
               ],
             ),

@@ -45,6 +45,22 @@ The workflow uses `--base-href "/golf-bits/"` (from the GitHub repository name) 
 - First load after deploy can take a minute for DNS/cache.
 - This is a **web** build (Chrome/Safari); it is not a substitute for testing **iOS/Android** shells, but it is ideal for sharing UI progress.
 
+### Supabase auth on Pages
+
+1. In GitHub: **Settings → Secrets and variables → Actions** (same tab works for public repos). Add:
+   - **`SUPABASE_URL`** — Project URL from Supabase **Settings → API**.
+   - **`SUPABASE_ANON_KEY`** — **anon public** key (never the `service_role` key).
+2. Push to **`main`** (or re-run the workflow). The build passes these as `--dart-define` values baked into the web bundle.
+3. In the **Supabase dashboard** (Authentication → URL configuration):
+   - **Site URL**: your Pages URL, e.g. `https://<user>.github.io/<repo>/` (trailing slash is fine).
+   - **Redirect URLs**: add the same URL, plus `http://localhost:*` if you run Flutter web locally with `--dart-define`.
+4. **Authentication → Providers**: ensure **Email** is enabled (only email auth is wired in the app). For **Continue as guest**, enable **Anonymous** sign-ins (optional; if disabled, the app still opens home and shows a short message).
+5. **Password recovery** uses `detectSessionInUri` on web; after the user follows the email link, they get a **Set new password** screen, then the shell. Ensure redirect URLs still match your Pages URL.
+
+### Database (profiles + round history)
+
+SQL lives in [`supabase/migrations/`](../supabase/migrations/). Run the latest file in the Supabase **SQL Editor** (or use the Supabase CLI) so `public.profiles`, `public.rounds`, triggers, and RLS exist. Without this, **History** shows an error/retry state when the app is configured against your project.
+
 ## First-time setup
 
 From this directory (`golf_bits`):
@@ -69,7 +85,13 @@ From this directory (`golf_bits`):
    flutter run
    ```
 
-4. **Supabase** — initialise `Supabase.initialize()` with your URL and anon key (see `lib/main.dart` when you add config). Use `--dart-define=SUPABASE_URL=...` / `SUPABASE_ANON_KEY=...` or a secrets approach your team prefers.
+4. **Supabase** — `main.dart` calls `Supabase.initialize()` when `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set at compile time (see `lib/config/supabase_env.dart`). Local example:
+
+   ```bash
+   flutter run -d chrome \
+     --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co \
+     --dart-define=SUPABASE_ANON_KEY=your_anon_key
+   ```
 
 ## Tests
 

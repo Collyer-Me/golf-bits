@@ -17,6 +17,24 @@ class HistoryStanding {
   /// e.g. "Winner", "−5 vs leader"
   final String subtitle;
   final bool isWinnerRow;
+
+  Map<String, dynamic> toJson() => {
+        'rank': rank,
+        'name': name,
+        'bits': bits,
+        'subtitle': subtitle,
+        'is_winner_row': isWinnerRow,
+      };
+
+  static HistoryStanding fromJson(Map<String, dynamic> m) {
+    return HistoryStanding(
+      rank: (m['rank'] as num).toInt(),
+      name: m['name'] as String,
+      bits: (m['bits'] as num).toInt(),
+      subtitle: m['subtitle'] as String? ?? '',
+      isWinnerRow: m['is_winner_row'] as bool? ?? false,
+    );
+  }
 }
 
 /// Player who left before the round finished (detail screen).
@@ -31,6 +49,20 @@ class HistoryLeftEarly {
   final String name;
   final int leftHole;
   final String bitsLabel;
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'left_hole': leftHole,
+        'bits_label': bitsLabel,
+      };
+
+  static HistoryLeftEarly fromJson(Map<String, dynamic> m) {
+    return HistoryLeftEarly(
+      name: m['name'] as String,
+      leftHole: (m['left_hole'] as num).toInt(),
+      bitsLabel: m['bits_label'] as String? ?? '',
+    );
+  }
 }
 
 /// Summary of a past round for list + detail navigation.
@@ -69,7 +101,56 @@ class HistoryRound {
 
   String get holesLine => '$holeCount holes · $whenRelative';
 
-  /// Demo rounds for History list / detail (replace with Supabase later).
+  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  static String dateHeaderFromUtc(DateTime endedAtUtc) {
+    final local = endedAtUtc.toLocal();
+    return '${_months[local.month - 1]} ${local.day}, ${local.year}';
+  }
+
+  static String whenRelativeFromUtc(DateTime endedAtUtc, DateTime nowLocal) {
+    final ended = endedAtUtc.toLocal();
+    final days = DateTime(ended.year, ended.month, ended.day)
+        .difference(DateTime(nowLocal.year, nowLocal.month, nowLocal.day))
+        .inDays;
+    if (days == 0) return 'Today';
+    if (days == -1) return 'Yesterday';
+    if (days > 0) return 'In $days days';
+    final ago = -days;
+    if (ago < 7) return ago == 1 ? '1 day ago' : '$ago days ago';
+    if (ago < 14) return '1 week ago';
+    if (ago < 30) return '${ago ~/ 7} weeks ago';
+    if (ago < 365) return '${ago ~/ 30} months ago';
+    return '${ago ~/ 365} years ago';
+  }
+
+  factory HistoryRound.fromSupabase(Map<String, dynamic> row) {
+    final id = row['id'] as String;
+    final endedAt = DateTime.parse(row['ended_at'] as String);
+    final now = DateTime.now();
+    final players = (row['players'] as List<dynamic>).map((e) => e as String).toList();
+    final standingsJson = row['standings'] as List<dynamic>? ?? const [];
+    final standings = standingsJson.map((e) => HistoryStanding.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    final leftJson = row['left_early'] as List<dynamic>? ?? const [];
+    final leftEarly = leftJson.map((e) => HistoryLeftEarly.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+
+    return HistoryRound(
+      id: id,
+      courseName: row['course_name'] as String,
+      courseShortTitle: row['course_short_title'] as String,
+      holeCount: (row['hole_count'] as num).toInt(),
+      whenRelative: whenRelativeFromUtc(endedAt, now),
+      dateHeader: dateHeaderFromUtc(endedAt),
+      players: players,
+      winnerName: row['winner_name'] as String,
+      winnerBits: (row['winner_bits'] as num).toInt(),
+      completed: row['completed'] as bool? ?? true,
+      standings: standings,
+      leftEarly: leftEarly,
+    );
+  }
+
+  /// Demo rounds when Supabase is off or for layout previews.
   static const List<HistoryRound> demoRounds = [
     HistoryRound(
       id: 'r1',

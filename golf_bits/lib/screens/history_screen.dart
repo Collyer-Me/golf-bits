@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/supabase_env.dart';
+import '../data/history_repository.dart';
 import '../models/history_round.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'history_detail_screen.dart';
 import 'round_setup_screen.dart';
 
-/// Past rounds list + empty state (demo data from [HistoryRound.demoRounds]).
+/// Past rounds list + empty state (Supabase `rounds` when configured, else demo data).
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -15,16 +18,42 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  /// Flip with the app-bar action to preview the empty layout.
-  bool _demoEmpty = false;
+  late Future<List<HistoryRound>> _future;
+  String? _loadError;
 
-  List<HistoryRound> get _rounds => _demoEmpty ? <HistoryRound>[] : HistoryRound.demoRounds;
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadRounds();
+  }
+
+  Future<List<HistoryRound>> _loadRounds() async {
+    _loadError = null;
+    if (!SupabaseEnv.isConfigured) {
+      return List<HistoryRound>.from(HistoryRound.demoRounds);
+    }
+    if (Supabase.instance.client.auth.currentSession == null) {
+      return [];
+    }
+    try {
+      return await HistoryRepository.fetchMyRounds();
+    } catch (e) {
+      _loadError = e.toString();
+      return [];
+    }
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _future = _loadRounds();
+    });
+    await _future;
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final rounds = _rounds;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,9 +67,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
         title: const Text('History'),
         actions: [
           IconButton(
-            tooltip: 'Toggle empty list (demo)',
-            onPressed: () => setState(() => _demoEmpty = !_demoEmpty),
-            icon: Icon(_demoEmpty ? Icons.list : Icons.inbox_outlined),
+            tooltip: 'Refresh',
+            onPressed: () async {
+              await _refresh();
+              if (mounted) setState(() {});
+            },
+            icon: const Icon(Icons.refresh),
           ),
           IconButton(
             onPressed: () {
@@ -52,15 +84,65 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
-      body: rounds.isEmpty
-          ? _HistoryEmpty(onStartRound: () {
+      body: FutureBuilder<List<HistoryRound>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final rounds = snapshot.data ?? [];
+          if (_loadError != null && rounds.isEmpty && SupabaseEnv.isConfigured) {
+            return Center(
+              child: Padding(
+                padding: AppTheme.screenPadding,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Could not load history',
+                      style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: AppTheme.space3),
+                    Text(
+                      _loadError!,
+                      textAlign: TextAlign.center,
+                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    SizedBox(height: AppTheme.space6),
+                    Text(
+                      'If this is the first setup, run the SQL migration in `supabase/migrations/` '
+                      'in the Supabase SQL editor, then refresh.',
+                      textAlign: TextAlign.center,
+                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    SizedBox(height: AppTheme.space6),
+                    FilledButton(onPressed: () => setState(() => _future = _loadRounds()), child: const Text('Retry')),
+                  ],
+                ),
+              ),
+            );
+          }
+          if (rounds.isEmpty) {
+            return _HistoryEmpty(onStartRound: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const RoundSetupScreen()),
               );
-            })
-          : ListView(
+            });
+          }
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
               padding: AppTheme.screenPadding,
+              physics: const AlwaysScrollableScrollPhysics(),
               children: [
+                if (!SupabaseEnv.isConfigured)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppTheme.space4),
+                    child: Text(
+                      'Demo data (add Supabase secrets to load your rounds).',
+                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
                 Row(
                   children: [
                     Text(
@@ -108,6 +190,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 SizedBox(height: AppTheme.space8),
               ],
             ),
+          );
+        },
+      ),
     );
   }
 }

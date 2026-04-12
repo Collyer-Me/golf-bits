@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'hole_scoring_screen.dart';
@@ -218,9 +219,26 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     });
   }
 
+  String _shortCourseTitle(_Course c) {
+    return switch (c.id) {
+      'rm' => 'Royal Melbourne',
+      'rs' => 'Royal Sydney',
+      'rq' => 'Royal Queensland',
+      _ => c.name.split(',').first.trim(),
+    };
+  }
+
   void _goHoleScoring() {
+    final course = _selectedCourse!;
+    final setup = _courseSetup!;
+    final args = RoundSessionArgs(
+      courseName: course.name,
+      courseShortTitle: _shortCourseTitle(course),
+      holeCount: setup.holes,
+      playerNames: _players.map((p) => p.name).toList(),
+    );
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const HoleScoringScreen()),
+      MaterialPageRoute<void>(builder: (_) => HoleScoringScreen(session: args)),
     );
   }
 

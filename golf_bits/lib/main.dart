@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'screens/welcome_screen.dart';
+import 'auth/auth_root.dart';
+import 'config/supabase_env.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (SupabaseEnv.isConfigured) {
+    await Supabase.initialize(
+      url: SupabaseEnv.url,
+      anonKey: SupabaseEnv.anonKey,
+      authOptions: const FlutterAuthClientOptions(
+        detectSessionInUri: true,
+      ),
+    );
+  }
+
   runApp(const GolfBitsApp());
 }
 
@@ -18,7 +31,7 @@ class GolfBitsApp extends StatelessWidget {
       title: 'Golf Bits',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
-      home: const WelcomeScreen(),
+      home: const AuthRoot(),
     );
   }
 }

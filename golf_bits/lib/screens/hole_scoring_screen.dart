@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/round_result.dart';
+import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'round_summary_screen.dart';
@@ -22,7 +24,10 @@ class _HolePlayer {
 
 /// In-round: hole header, player rows, event award bottom sheet.
 class HoleScoringScreen extends StatefulWidget {
-  const HoleScoringScreen({super.key});
+  const HoleScoringScreen({super.key, this.session});
+
+  /// When set (from [RoundSetupScreen]), end-of-round summary is saved to Supabase.
+  final RoundSessionArgs? session;
 
   @override
   State<HoleScoringScreen> createState() => _HoleScoringScreenState();
@@ -30,11 +35,31 @@ class HoleScoringScreen extends StatefulWidget {
 
 class _HoleScoringScreenState extends State<HoleScoringScreen> {
   int _hole = 7;
-  final List<_HolePlayer> _players = [
-    _HolePlayer(id: '1', name: 'Alex', holeScore: 3, totalScore: 12, isActive: true),
-    _HolePlayer(id: '2', name: 'Jamie', holeScore: -1, totalScore: 4),
-    _HolePlayer(id: '3', name: 'Chris', holeScore: 0, totalScore: 7),
-  ];
+  late final List<_HolePlayer> _players;
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.session;
+    if (s != null && s.playerNames.isNotEmpty) {
+      _players = [
+        for (var i = 0; i < s.playerNames.length; i++)
+          _HolePlayer(
+            id: 'p$i',
+            name: s.playerNames[i],
+            holeScore: 0,
+            totalScore: 0,
+            isActive: i == 0,
+          ),
+      ];
+    } else {
+      _players = [
+        _HolePlayer(id: '1', name: 'Alex', holeScore: 3, totalScore: 12, isActive: true),
+        _HolePlayer(id: '2', name: 'Jamie', holeScore: -1, totalScore: 4),
+        _HolePlayer(id: '3', name: 'Chris', holeScore: 0, totalScore: 7),
+      ];
+    }
+  }
 
   ({int par, int yards}) get _holeMeta {
     return switch (_hole) {
@@ -75,9 +100,18 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   }
 
   void _endRound() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const RoundSummaryScreen()),
-    );
+    final session = widget.session;
+    if (session != null && _players.isNotEmpty) {
+      final scored = _players.map((p) => (name: p.name, bits: p.totalScore)).toList();
+      final result = RoundResult.fromSessionScores(session: session, scoredPlayers: scored);
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => RoundSummaryScreen(result: result)),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const RoundSummaryScreen()),
+      );
+    }
   }
 
   @override

@@ -1,53 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/supabase_env.dart';
+import '../data/history_repository.dart';
+import '../models/round_result.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'player_breakdown_screen.dart';
 
-class _Standing {
-  const _Standing({
-    required this.rank,
-    required this.name,
-    required this.bits,
-    required this.vsLeader,
-  });
-
-  final int rank;
-  final String name;
-  final int bits;
-  final String vsLeader;
-}
-
-class _Retired {
-  const _Retired({required this.name, required this.leftHole, required this.bits});
-
-  final String name;
-  final int leftHole;
-  final int bits;
-}
-
 /// End of round: winner spotlight, standings, retired list, actions.
-class RoundSummaryScreen extends StatelessWidget {
-  const RoundSummaryScreen({super.key});
+class RoundSummaryScreen extends StatefulWidget {
+  const RoundSummaryScreen({super.key, this.result});
 
-  static const _winnerName = 'Alex';
-  static const _winnerBits = 7;
-  static const _roundId = 42;
+  /// When null, shows [RoundResult.previewDemo] (resume / preview entry points).
+  final RoundResult? result;
 
-  static const _standings = [
-    _Standing(rank: 1, name: 'Alex', bits: 7, vsLeader: '—'),
-    _Standing(rank: 2, name: 'Jamie', bits: 2, vsLeader: '−5 vs leader'),
-    _Standing(rank: 3, name: 'Chris', bits: 0, vsLeader: '−7 vs leader'),
-  ];
+  @override
+  State<RoundSummaryScreen> createState() => _RoundSummaryScreenState();
+}
 
-  static const _retired = [
-    _Retired(name: 'Taylor', leftHole: 6, bits: -2),
-  ];
+class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
+  bool _saving = false;
+
+  RoundResult get _r => widget.result ?? RoundResult.previewDemo();
+
+  Future<void> _backToHome() async {
+    final live = widget.result;
+    if (live != null &&
+        SupabaseEnv.isConfigured &&
+        Supabase.instance.client.auth.currentSession != null) {
+      setState(() => _saving = true);
+      try {
+        await HistoryRepository.saveCompletedRound(live.toInsertRow());
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Round saved to your history.')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not save round: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _saving = false);
+      }
+    }
+    if (mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final r = _r;
 
     return Scaffold(
       body: SafeArea(
@@ -58,7 +67,7 @@ class RoundSummaryScreen extends StatelessWidget {
             Icon(Icons.emoji_events_outlined, size: AppTheme.iconLarge, color: scheme.secondary),
             SizedBox(height: AppTheme.space3),
             Text(
-              _winnerName,
+              r.winnerName,
               textAlign: TextAlign.center,
               style: text.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w900,
@@ -66,7 +75,7 @@ class RoundSummaryScreen extends StatelessWidget {
               ),
             ),
             Text(
-              '+$_winnerBits BITS',
+              '+${r.winnerBits} BITS',
               textAlign: TextAlign.center,
               style: text.displaySmall?.copyWith(
                 color: scheme.onPrimaryContainer,
@@ -87,7 +96,7 @@ class RoundSummaryScreen extends StatelessWidget {
                     vertical: AppTheme.space2,
                   ),
                   child: Text(
-                    'WINNER · ROUND #$_roundId',
+                    r.completed ? 'ROUND COMPLETE' : 'ROUND IN PROGRESS',
                     style: text.labelSmall?.copyWith(
                       color: scheme.onPrimaryContainer,
                       fontWeight: FontWeight.w800,
@@ -107,7 +116,7 @@ class RoundSummaryScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: AppTheme.space3),
-            ..._standings.map((s) => Padding(
+            ...r.standings.map((s) => Padding(
                   padding: const EdgeInsets.only(bottom: AppTheme.space2),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(AppTheme.cardRadius),
@@ -141,7 +150,7 @@ class RoundSummaryScreen extends StatelessWidget {
                               children: [
                                 Text(s.name, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                                 Text(
-                                  s.vsLeader,
+                                  s.subtitle,
                                   style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                                 ),
                               ],
@@ -159,48 +168,50 @@ class RoundSummaryScreen extends StatelessWidget {
                     ),
                   ),
                 )),
-            SizedBox(height: AppTheme.space6),
-            Text(
-              'RETIRED EARLY',
-              style: text.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-                letterSpacing: AppTheme.letterStepCaps,
+            if (r.leftEarly.isNotEmpty) ...[
+              SizedBox(height: AppTheme.space6),
+              Text(
+                'RETIRED EARLY',
+                style: text.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: AppTheme.letterStepCaps,
+                ),
               ),
-            ),
-            SizedBox(height: AppTheme.space3),
-            ..._retired.map(
-              (r) => Padding(
-                padding: const EdgeInsets.only(bottom: AppTheme.space2),
-                child: OutlinedSurfaceCard(
-                  borderColor: scheme.outlineVariant,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space4,
-                    vertical: AppTheme.space3,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(r.name, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                            Text(
-                              'Left hole ${r.leftHole}',
-                              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                            ),
-                          ],
+              SizedBox(height: AppTheme.space3),
+              ...r.leftEarly.map(
+                (e) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.space2),
+                  child: OutlinedSurfaceCard(
+                    borderColor: scheme.outlineVariant,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.space4,
+                      vertical: AppTheme.space3,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(e.name, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                              Text(
+                                'Left hole ${e.leftHole}',
+                                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${r.bits}',
-                        style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ],
+                        Text(
+                          e.bitsLabel,
+                          style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
             SizedBox(height: AppTheme.space8),
             FilledButton.icon(
               onPressed: () {
@@ -213,8 +224,17 @@ class RoundSummaryScreen extends StatelessWidget {
             ),
             SizedBox(height: AppTheme.space3),
             OutlinedButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-              child: const Text('Back to Home'),
+              onPressed: _saving ? null : _backToHome,
+              child: _saving
+                  ? SizedBox(
+                      height: AppTheme.iconInline,
+                      width: AppTheme.iconInline,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: scheme.primary,
+                      ),
+                    )
+                  : const Text('Back to Home'),
             ),
           ],
         ),
