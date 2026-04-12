@@ -13,8 +13,10 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Cursor (optional — remove if you want to commit Cursor config)
-.cursor/
+# Cursor — ignore local agent state; commit shared [rules](.cursor/rules/) for the team
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 
 # Flutter / Dart (repo root — most artifacts live under golf_bits/)
 .dart_tool/

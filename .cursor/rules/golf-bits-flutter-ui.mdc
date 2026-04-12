@@ -1,0 +1,16 @@
+---
+description: Golf Bits Flutter — theme tokens, no raw colours in screens, Material-first UI
+globs: golf_bits/lib/**/*.dart
+alwaysApply: false
+---
+
+# Golf Bits UI consistency
+
+- **Hex / brand palette:** only in `golf_bits/lib/theme/app_colors.dart`. Do not add `Color(0x…)` or `Colors.*` for product UI in `lib/`.
+- **Runtime colours:** `Theme.of(context).colorScheme` (and `AppColors.accentLime` only where `ColorScheme` has no equivalent).
+- **Spacing, radii, opacity, icon sizes, letter-spacing, line height:** `AppTheme` in `lib/theme/app_theme.dart` — use named constants instead of magic numbers in `SizedBox` / `EdgeInsets` / `BorderRadius`.
+- **Text fields:** rely on `ThemeData.inputDecorationTheme` from `AppTheme.dark()`; pass `hintText` / `labelText` / `prefixIcon` / `suffixIcon` only — do not re-specify fills and borders per screen.
+- **Widgets:** prefer Material primitives as themed. Only custom widget without prior agreement: `OutlinedSurfaceCard`. Propose new shared widgets in README before adding.
+- **Typography:** `Theme.of(context).textTheme` + Lexend via theme; avoid ad-hoc `fontSize` unless tied to an existing token pattern.
+
+See `golf_bits/README.md` (Design system) and `golf_bits/AGENTS.md` for full detail.

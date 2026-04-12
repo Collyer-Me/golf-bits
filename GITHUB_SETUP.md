@@ -92,3 +92,10 @@ git push -u origin main
 ```
 
 This repo’s first commit uses branch **`main`**.
+
+---
+
+## Related docs
+
+- **Flutter app & design system:** [golf_bits/README.md](golf_bits/README.md) — tokens, GitHub Pages preview, forms.
+- **Contributor / AI UI rules:** [golf_bits/AGENTS.md](golf_bits/AGENTS.md) and [`.cursor/rules/golf-bits-flutter-ui.mdc`](.cursor/rules/golf-bits-flutter-ui.mdc).

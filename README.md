@@ -13,7 +13,9 @@ flutter pub get
 flutter run
 ```
 
-See [golf_bits/README.md](golf_bits/README.md) for details.
+See [golf_bits/README.md](golf_bits/README.md) for setup, **GitHub Pages**, and the **design system** (tokens, forms, custom-widget policy).
+
+**UI / agent consistency:** [golf_bits/AGENTS.md](golf_bits/AGENTS.md) and [`.cursor/rules/golf-bits-flutter-ui.mdc`](.cursor/rules/golf-bits-flutter-ui.mdc) (applies when editing `golf_bits/lib/**/*.dart` in Cursor).
 
 ## Online preview (GitHub Pages)
 
