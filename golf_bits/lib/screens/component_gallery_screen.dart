@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 
@@ -41,7 +40,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
                   _swatch(context, 'Secondary', scheme.secondary),
                   _swatch(context, 'Tertiary', scheme.tertiary),
                   _swatch(context, 'Surface', scheme.surface),
-                  _swatch(context, 'Accent (token)', AppColors.accentLime),
+                  _swatch(context, 'onPrimaryContainer', scheme.onPrimaryContainer),
                 ],
               ),
             ),

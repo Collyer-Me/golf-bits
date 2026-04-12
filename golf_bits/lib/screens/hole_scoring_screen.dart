@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'round_summary_screen.dart';
@@ -132,7 +131,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
                       'Hole $_hole',
                       textAlign: TextAlign.center,
                       style: text.headlineMedium?.copyWith(
-                        color: AppColors.accentLime,
+                        color: scheme.onPrimaryContainer,
                         fontWeight: FontWeight.w900,
                         fontStyle: FontStyle.italic,
                       ),
@@ -221,7 +220,7 @@ class _PlayerRowCard extends StatelessWidget {
                           TextSpan(
                             text: holeStr,
                             style: text.headlineSmall?.copyWith(
-                              color: AppColors.accentLime,
+                              color: scheme.onPrimaryContainer,
                               fontWeight: FontWeight.w900,
                             ),
                           ),

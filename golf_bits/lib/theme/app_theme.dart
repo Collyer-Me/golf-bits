@@ -65,6 +65,10 @@ abstract final class AppTheme {
   /// Small trailing / chip icons.
   static const double iconDense = 18;
   static const double iconArrow = 20;
+  /// OAuth / large provider marks (e.g. Google “G”).
+  static const double iconOAuthGlyph = 28;
+  /// [NavigationBar] icon size (matches M3 default, tokenised for consistency).
+  static const double iconNavigation = 24;
   static const double chipOutlineWidth = 1.2;
 
   /// Marketing / hero illustration sizes.
@@ -203,7 +207,7 @@ abstract final class AppTheme {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
             color: selected ? scheme.onPrimary : scheme.onSurfaceVariant,
-            size: 24,
+            size: iconNavigation,
           );
         }),
       ),

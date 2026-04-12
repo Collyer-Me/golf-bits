@@ -169,7 +169,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             const SnackBar(content: Text('Apple sign-in coming soon')),
                           );
                         },
-                        icon: const Icon(Icons.apple, size: 22),
+                        icon: const Icon(Icons.apple, size: AppTheme.iconInline),
                         label: const Text('Apple'),
                       ),
                     ),
@@ -181,7 +181,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             const SnackBar(content: Text('Google sign-in coming soon')),
                           );
                         },
-                        icon: Icon(Icons.g_mobiledata, size: 28, color: scheme.onSurface),
+                        icon: Icon(Icons.g_mobiledata, size: AppTheme.iconOAuthGlyph, color: scheme.onSurface),
                         label: const Text('Google'),
                       ),
                     ),
@@ -219,7 +219,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     children: [
                       Text('Create Account'),
                       SizedBox(width: AppTheme.space2),
-                      Icon(Icons.arrow_forward, size: 20),
+                      Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
                     ],
                   ),
                 ),

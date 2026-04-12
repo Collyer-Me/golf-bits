@@ -17,7 +17,8 @@ abstract final class AppColors {
   static const Color secondaryContainer = Color(0xFF292A28);
   static const Color onSecondaryContainer = Color(0xFFE8EAE8);
 
-  /// Brighter accent used in product mocks (hole UI, highlights). Not a ColorScheme role — use sparingly.
+  /// Brighter accent (hole UI, positive bits). In widgets prefer [ColorScheme.onPrimaryContainer],
+  /// which [AppTheme.dark] maps to this value.
   static const Color accentLime = Color(0xFFA5FF9B);
 
   static const Color onSecondaryDark = Color(0xFF0D0D0D);

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/history_round.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'player_breakdown_screen.dart';
@@ -80,7 +79,7 @@ class HistoryDetailScreen extends StatelessWidget {
                 Text(
                   '+${round.winnerBits} BITS',
                   style: text.headlineMedium?.copyWith(
-                    color: AppColors.accentLime,
+                    color: scheme.onPrimaryContainer,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -143,7 +142,7 @@ class _StandingTile extends StatelessWidget {
     final win = standing.isWinnerRow;
     final bitsColor = standing.bits < 0
         ? scheme.error
-        : (win ? AppColors.accentLime : scheme.onSurface);
+        : (win ? scheme.onPrimaryContainer : scheme.onSurface);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space2),

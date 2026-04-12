@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/history_round.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'history_detail_screen.dart';
@@ -199,7 +198,7 @@ class _HistoryRoundCard extends StatelessWidget {
                   Text(
                     '+${round.winnerBits} Bits',
                     style: text.titleSmall?.copyWith(
-                      color: AppColors.accentLime,
+                      color: scheme.onPrimaryContainer,
                       fontWeight: FontWeight.w800,
                     ),
                   ),

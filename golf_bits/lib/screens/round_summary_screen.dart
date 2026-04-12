@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'player_breakdown_screen.dart';
@@ -70,7 +69,7 @@ class RoundSummaryScreen extends StatelessWidget {
               '+$_winnerBits BITS',
               textAlign: TextAlign.center,
               style: text.displaySmall?.copyWith(
-                color: AppColors.accentLime,
+                color: scheme.onPrimaryContainer,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -151,7 +150,7 @@ class RoundSummaryScreen extends StatelessWidget {
                           Text(
                             s.bits >= 0 ? '+${s.bits}' : '${s.bits}',
                             style: text.titleLarge?.copyWith(
-                              color: AppColors.accentLime,
+                              color: scheme.onPrimaryContainer,
                               fontWeight: FontWeight.w800,
                             ),
                           ),

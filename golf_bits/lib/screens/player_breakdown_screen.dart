@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 
@@ -122,7 +121,7 @@ class PlayerBreakdownScreen extends StatelessWidget {
                 Text(
                   '${total >= 0 ? '+' : ''}$total BITS',
                   style: text.headlineSmall?.copyWith(
-                    color: AppColors.accentLime,
+                    color: scheme.onPrimaryContainer,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -166,7 +165,7 @@ class PlayerBreakdownScreen extends StatelessWidget {
                 Text(
                   '${total >= 0 ? '+' : ''}$total BITS',
                   style: text.headlineSmall?.copyWith(
-                    color: AppColors.accentLime,
+                    color: scheme.onPrimaryContainer,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -262,7 +261,7 @@ class _HoleTimelineBlock extends StatelessWidget {
                         '${e.bits >= 0 ? '+' : ''}${e.bits}',
                         style: text.titleSmall?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: e.negative ? scheme.error : AppColors.accentLime,
+                          color: e.negative ? scheme.error : scheme.onPrimaryContainer,
                         ),
                       ),
                     ],

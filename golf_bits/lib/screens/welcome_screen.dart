@@ -129,7 +129,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   children: [
                     Text('Get Started'),
                     SizedBox(width: AppTheme.space2),
-                    Icon(Icons.arrow_forward, size: 20),
+                    Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
                   ],
                 ),
               ),
