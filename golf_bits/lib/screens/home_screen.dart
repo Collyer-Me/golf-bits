@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'component_gallery_screen.dart';
+import 'hole_scoring_screen.dart';
 import 'round_setup_screen.dart';
 
 /// Home entry — link to the living style / component preview.
@@ -88,6 +89,15 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
                 child: const Text('Style guide & components'),
+              ),
+              SizedBox(height: AppTheme.space4),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const HoleScoringScreen()),
+                  );
+                },
+                child: const Text('Preview in-round UI (skip setup)'),
               ),
             ],
           ),

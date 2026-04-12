@@ -36,6 +36,9 @@ Flutter app under this folder. Use this file plus [`README.md`](README.md) to st
 | Living UI reference | `lib/screens/component_gallery_screen.dart` |
 | Accent card | `lib/widgets/outlined_surface_card.dart` |
 | Wordmark | `lib/widgets/brand_wordmark.dart` |
+| In-round hole + event sheet | `lib/screens/hole_scoring_screen.dart` |
+| End-of-round summary | `lib/screens/round_summary_screen.dart` |
+| Player timeline | `lib/screens/player_breakdown_screen.dart` |
 
 ## Cursor
 

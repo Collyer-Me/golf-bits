@@ -139,4 +139,4 @@ When you add **new token categories** (e.g. animation durations) or **approved c
 
 ### Main flows (for orientation)
 
-Welcome / auth → **Home** → **Start new round** (four steps + sheets) → **Hole scoring** (placeholder) / **Round summary** (placeholder). Full screen list is easier to track in [`AGENTS.md`](AGENTS.md) if we add it there later.
+Welcome / auth → **Home** → **Start new round** (four steps + sheets) → **Hole scoring** (hole nav, player cards, event bottom sheet) → **⋯ End round** → **Round summary** (winner, standings, retired) → tap a player → **Player breakdown** (timeline; demo data for **Alex**). From Home you can also **Preview in-round UI** without running setup.
