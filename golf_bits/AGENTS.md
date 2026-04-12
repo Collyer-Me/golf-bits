@@ -39,6 +39,9 @@ Flutter app under this folder. Use this file plus [`README.md`](README.md) to st
 | In-round hole + event sheet | `lib/screens/hole_scoring_screen.dart` |
 | End-of-round summary | `lib/screens/round_summary_screen.dart` |
 | Player timeline | `lib/screens/player_breakdown_screen.dart` |
+| History list + empty | `lib/screens/history_screen.dart` |
+| History round detail | `lib/screens/history_detail_screen.dart` |
+| Past-round DTOs (demo) | `lib/models/history_round.dart` |
 
 ## Cursor
 

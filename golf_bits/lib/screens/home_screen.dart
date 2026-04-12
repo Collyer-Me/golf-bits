@@ -2,12 +2,65 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'component_gallery_screen.dart';
+import 'history_screen.dart';
 import 'hole_scoring_screen.dart';
 import 'round_setup_screen.dart';
 
-/// Home entry — link to the living style / component preview.
-class HomeScreen extends StatelessWidget {
+/// Main shell: home dashboard + bottom nav (History, People, Profile).
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _navIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _navIndex,
+        children: const [
+          _HomeDashboard(),
+          HistoryScreen(),
+          _PeopleTab(),
+          _ProfileTab(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _navIndex,
+        onDestinationSelected: (i) => setState(() => _navIndex = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history),
+            label: 'History',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.group_outlined),
+            selectedIcon: Icon(Icons.group),
+            label: 'People',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outlined),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeDashboard extends StatelessWidget {
+  const _HomeDashboard();
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +108,7 @@ class HomeScreen extends StatelessWidget {
               ),
               SizedBox(height: AppTheme.space2),
               Text(
-                'Open the gallery to preview colours, type, buttons, chips, navigation, and sheets.',
+                'Open the gallery to preview colours, type, buttons, navigation, and sheets.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -75,7 +128,7 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.add_circle_outline, size: AppTheme.iconInline),
                     SizedBox(width: AppTheme.space25),
-                    Text('Start new round'),
+                    const Text('Start new round'),
                   ],
                 ),
               ),
@@ -101,6 +154,42 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PeopleTab extends StatelessWidget {
+  const _PeopleTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('People')),
+      body: Center(
+        child: Text(
+          'Friend groups and invites — coming soon',
+          style: text.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileTab extends StatelessWidget {
+  const _ProfileTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+      body: Center(
+        child: Text(
+          'Account and preferences — coming soon',
+          style: text.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
     );

@@ -139,4 +139,4 @@ When you add **new token categories** (e.g. animation durations) or **approved c
 
 ### Main flows (for orientation)
 
-Welcome / auth → **Home** → **Start new round** (four steps + sheets) → **Hole scoring** (hole nav, player cards, event bottom sheet) → **⋯ End round** → **Round summary** (winner, standings, retired) → tap a player → **Player breakdown** (timeline; demo data for **Alex**). From Home you can also **Preview in-round UI** without running setup.
+Welcome / auth → **Home** (bottom nav: **Home · History · People · Profile**) → **Start new round** (four steps + sheets) → **Hole scoring** (hole nav, player cards, event bottom sheet) → **⋯ End round** → **Round summary** (winner, standings, retired) → tap a player → **Player breakdown** (timeline; demo data for **Alex**). **History** lists past rounds (demo data); tap a card → **History detail** (winner hero, standings, left early). Empty history shows **Start a Round**; the inbox icon on History toggles empty vs populated (demo). From the Home tab you can also **Preview in-round UI** without running setup.
