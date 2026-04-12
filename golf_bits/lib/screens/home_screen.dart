@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'component_gallery_screen.dart';
+import 'round_setup_screen.dart';
 
 /// Home entry — link to the living style / component preview.
 class HomeScreen extends StatelessWidget {
@@ -58,8 +59,26 @@ class HomeScreen extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               FilledButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const RoundSetupScreen(),
+                    ),
+                  );
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_circle_outline, size: 22),
+                    SizedBox(width: 10),
+                    Text('Start new round'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
