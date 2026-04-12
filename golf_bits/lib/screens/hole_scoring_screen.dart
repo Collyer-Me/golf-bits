@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/round_bit_event_draft.dart';
 import '../models/round_result.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
@@ -36,6 +37,7 @@ class HoleScoringScreen extends StatefulWidget {
 class _HoleScoringScreenState extends State<HoleScoringScreen> {
   int _hole = 7;
   late final List<_HolePlayer> _players;
+  final List<RoundBitEventDraft> _bitLog = [];
 
   @override
   void initState() {
@@ -83,15 +85,26 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       isScrollControlled: true,
       builder: (ctx) => _EventAwardSheet(
         playerName: player.name,
-        onAward: (delta) {
+        onAward: (label, delta, iconKey) {
           Navigator.of(ctx).pop();
           setState(() {
             player.holeScore += delta;
             player.totalScore += delta;
+            if (widget.session != null) {
+              _bitLog.add(
+                RoundBitEventDraft(
+                  playerName: player.name,
+                  hole: _hole,
+                  eventLabel: label,
+                  delta: delta,
+                  iconKey: iconKey,
+                ),
+              );
+            }
           });
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${player.name}: ${delta >= 0 ? '+' : ''}$delta bits (stub)')),
+              SnackBar(content: Text('${player.name}: ${delta >= 0 ? '+' : ''}$delta bits · $label')),
             );
           }
         },
@@ -103,7 +116,11 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     final session = widget.session;
     if (session != null && _players.isNotEmpty) {
       final scored = _players.map((p) => (name: p.name, bits: p.totalScore)).toList();
-      final result = RoundResult.fromSessionScores(session: session, scoredPlayers: scored);
+      final result = RoundResult.fromSessionScores(
+        session: session,
+        scoredPlayers: scored,
+        bitEvents: List<RoundBitEventDraft>.from(_bitLog),
+      );
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => RoundSummaryScreen(result: result)),
       );
@@ -301,7 +318,7 @@ class _PlayerRowCard extends StatelessWidget {
   }
 }
 
-typedef _AwardCallback = void Function(int delta);
+typedef _AwardCallback = void Function(String label, int delta, String iconKey);
 
 class _EventAwardSheet extends StatelessWidget {
   const _EventAwardSheet({
@@ -313,15 +330,15 @@ class _EventAwardSheet extends StatelessWidget {
   final _AwardCallback onAward;
 
   static const _positive = [
-    _EventDef('Birdie', '+1 BIT', 1),
-    _EventDef('Eagle', '+2 BITS', 2),
-    _EventDef('Chip-in', '+1 BIT', 1),
-    _EventDef('One-Putt', '+1 BIT', 1),
+    _EventDef('Birdie', '+1 BIT', 1, 'sports_golf'),
+    _EventDef('Eagle', '+2 BITS', 2, 'trending_up'),
+    _EventDef('Chip-in', '+1 BIT', 1, 'flag_outlined'),
+    _EventDef('One-Putt', '+1 BIT', 1, 'radio_button_checked_outlined'),
   ];
 
   static const _negative = [
-    _EventDef('Three-Putt', '−1 BIT', -1),
-    _EventDef('Water Hazard', '−1 BIT', -1),
+    _EventDef('Three-Putt', '−1 BIT', -1, 'remove_circle_outline'),
+    _EventDef('Water Hazard', '−1 BIT', -1, 'waves_outlined'),
   ];
 
   @override
@@ -399,7 +416,7 @@ class _EventAwardSheet extends StatelessWidget {
       children: items.map((e) {
         if (negative) {
           return OutlinedButton(
-            onPressed: () => onAward(e.delta),
+            onPressed: () => onAward(e.label, e.delta, e.iconKey),
             style: OutlinedButton.styleFrom(
               foregroundColor: scheme.error,
               side: BorderSide(color: scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis)),
@@ -412,7 +429,7 @@ class _EventAwardSheet extends StatelessWidget {
           );
         }
         return FilledButton(
-          onPressed: () => onAward(e.delta),
+          onPressed: () => onAward(e.label, e.delta, e.iconKey),
           style: FilledButton.styleFrom(
             backgroundColor: scheme.primary,
             foregroundColor: scheme.onPrimary,
@@ -429,8 +446,9 @@ class _EventAwardSheet extends StatelessWidget {
 }
 
 class _EventDef {
-  const _EventDef(this.label, this.sublabel, this.delta);
+  const _EventDef(this.label, this.sublabel, this.delta, this.iconKey);
   final String label;
   final String sublabel;
   final int delta;
+  final String iconKey;
 }

@@ -59,7 +59,7 @@ The workflow uses `--base-href "/golf-bits/"` (from the GitHub repository name) 
 
 ### Database (profiles + round history)
 
-SQL lives in [`supabase/migrations/`](../supabase/migrations/). Run the latest file in the Supabase **SQL Editor** (or use the Supabase CLI) so `public.profiles`, `public.rounds`, triggers, and RLS exist. Without this, **History** shows an error/retry state when the app is configured against your project.
+SQL lives in [`supabase/migrations/`](../supabase/migrations/). Run each file **in order** in the Supabase **SQL Editor** (or use the Supabase CLI): first `20260412130000_profiles_and_rounds.sql`, then `20260412150000_round_bit_events.sql` for per-event timelines. Without these, **History** may error, and **player breakdown** from a saved round will stay empty.
 
 ## First-time setup
 

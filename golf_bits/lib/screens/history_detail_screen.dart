@@ -110,7 +110,14 @@ class HistoryDetailScreen extends StatelessWidget {
             ],
           ),
           SizedBox(height: AppTheme.space3),
-          ...round.standings.map((s) => _StandingTile(standing: s)),
+          ...round.standings.map(
+            (s) => _StandingTile(
+              roundId: round.id,
+              courseShortTitle: round.courseShortTitle,
+              dateHeader: round.dateHeader,
+              standing: s,
+            ),
+          ),
           if (round.leftEarly.isNotEmpty) ...[
             SizedBox(height: AppTheme.space6),
             Text(
@@ -131,8 +138,16 @@ class HistoryDetailScreen extends StatelessWidget {
 }
 
 class _StandingTile extends StatelessWidget {
-  const _StandingTile({required this.standing});
+  const _StandingTile({
+    required this.roundId,
+    required this.courseShortTitle,
+    required this.dateHeader,
+    required this.standing,
+  });
 
+  final String roundId;
+  final String courseShortTitle;
+  final String dateHeader;
   final HistoryStanding standing;
 
   @override
@@ -151,7 +166,12 @@ class _StandingTile extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
-              builder: (_) => PlayerBreakdownScreen(playerName: standing.name),
+              builder: (_) => PlayerBreakdownScreen(
+                roundId: roundId,
+                playerName: standing.name,
+                courseShortTitle: courseShortTitle,
+                dateHeader: dateHeader,
+              ),
             ),
           );
         },

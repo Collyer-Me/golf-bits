@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'history_round.dart';
+import 'round_bit_event_draft.dart';
 import 'round_session_args.dart';
 
 /// Final round payload for [RoundSummaryScreen] and Supabase `rounds` insert.
@@ -16,6 +17,7 @@ class RoundResult {
     required this.completed,
     required this.standings,
     required this.leftEarly,
+    this.bitEvents = const [],
   });
 
   final String courseName;
@@ -27,11 +29,13 @@ class RoundResult {
   final bool completed;
   final List<HistoryStanding> standings;
   final List<HistoryLeftEarly> leftEarly;
+  final List<RoundBitEventDraft> bitEvents;
 
   /// Builds standings from per-player bit totals at end of round.
   factory RoundResult.fromSessionScores({
     required RoundSessionArgs session,
     required List<({String name, int bits})> scoredPlayers,
+    List<RoundBitEventDraft> bitEvents = const [],
   }) {
     if (scoredPlayers.isEmpty) {
       throw ArgumentError('scoredPlayers must not be empty');
@@ -65,6 +69,7 @@ class RoundResult {
       completed: true,
       standings: standings,
       leftEarly: const [],
+      bitEvents: bitEvents,
     );
   }
 
@@ -101,6 +106,7 @@ class RoundResult {
       leftEarly: const [
         HistoryLeftEarly(name: 'Taylor', leftHole: 6, bitsLabel: '-2 bits'),
       ],
+      bitEvents: const [],
     );
   }
 }
