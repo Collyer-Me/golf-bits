@@ -80,4 +80,11 @@ flutter test
 ## Stack
 
 - UI: Flutter **Material 3** (`ThemeData`, `ColorScheme.fromSeed`, standard `Material` widgets)
+- Typography: **Lexend** via `google_fonts`
+- Design tokens: `lib/theme/app_colors.dart`, `lib/theme/app_theme.dart`
+- **Style guide / component gallery**: run the app → **Style guide & components** (preview for web via GitHub Pages too)
 - Backend: **Supabase** (schema already applied in your Supabase project; regenerate or maintain Dart models as you prefer)
+
+### Custom widgets policy
+
+Prefer **Material** primitives themed in `AppTheme`. The only extra widget shipped so far is **`OutlinedSurfaceCard`** (`lib/widgets/outlined_surface_card.dart`) for bordered surface cards. Add new shared widgets only after the base set is agreed.
