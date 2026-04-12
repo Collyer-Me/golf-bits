@@ -1,0 +1,60 @@
+# Build Flutter Web on GitHub-hosted runners and publish to GitHub Pages.
+# No local Flutter install required — push to main to update the preview URL.
+
+name: Flutter Web → GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'golf_bits/**'
+      - '.github/workflows/flutter-web-gh-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Add web platform files (if missing)
+        working-directory: golf_bits
+        run: flutter create . --project-name golf_bits --org com.golfbits --platforms=web
+
+      - name: Dependencies
+        working-directory: golf_bits
+        run: flutter pub get
+
+      - name: Build web
+        working-directory: golf_bits
+        env:
+          BASE_HREF: /${{ github.event.repository.name }}/
+        run: flutter build web --release --base-href "$BASE_HREF"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: golf_bits/build/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
