@@ -16,9 +16,13 @@ abstract final class ProfileBootstrap {
         ? fullName
         : ((fallbackName != null && fallbackName.isNotEmpty) ? fallbackName : 'Player');
 
-    await Supabase.instance.client.from('profiles').upsert({
-      'id': user.id,
-      'display_name': displayName,
-    });
+    try {
+      await Supabase.instance.client.from('profiles').upsert({
+        'id': user.id,
+        'display_name': displayName,
+      });
+    } on PostgrestException catch (_) {
+      // Profile sync should not block successful auth.
+    }
   }
 }

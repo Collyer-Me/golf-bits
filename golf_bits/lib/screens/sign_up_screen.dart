@@ -45,6 +45,33 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Future<void> _showCheckEmailDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm your email'),
+        content: const Text(
+          'Your account was created. Check your email for the confirmation link, then log in.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute<void>(builder: (_) => const LogInScreen()),
+              );
+            },
+            child: const Text('Go to Log in'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (!SupabaseEnv.isConfigured) {
@@ -75,11 +102,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           MaterialPageRoute<void>(builder: (_) => const LocationPermissionScreen()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Check your email to confirm your account, then sign in.'),
-          ),
-        );
+        await _showCheckEmailDialog();
       }
     } on AuthException catch (e) {
       if (!mounted) return;

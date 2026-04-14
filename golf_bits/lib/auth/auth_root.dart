@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -66,11 +67,14 @@ class AuthRootState extends State<AuthRoot> {
       _ready = true;
       _inApp = Supabase.instance.client.auth.currentSession != null;
     });
+    if (_isRecoveryLink()) {
+      _openRecoveryScreen();
+    }
   }
 
   void _onAuthState(AuthState data) {
     if (!mounted) return;
-    if (data.event == AuthChangeEvent.passwordRecovery) {
+    if (data.event == AuthChangeEvent.passwordRecovery || _isRecoveryLink()) {
       _openRecoveryScreen();
       return;
     }
@@ -84,6 +88,13 @@ class AuthRootState extends State<AuthRoot> {
       unawaited(ProfileBootstrap.ensureCurrentUserProfile());
       enterApp();
     }
+  }
+
+  bool _isRecoveryLink() {
+    if (!kIsWeb) return false;
+    final uri = Uri.base;
+    if (uri.queryParameters['type'] == 'recovery') return true;
+    return uri.fragment.contains('type=recovery');
   }
 
   void _openRecoveryScreen() {
