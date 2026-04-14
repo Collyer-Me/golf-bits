@@ -11,14 +11,12 @@ class _HolePlayer {
   _HolePlayer({
     required this.id,
     required this.name,
-    required this.holeScore,
     required this.totalScore,
     this.isActive = false,
   });
 
   final String id;
   final String name;
-  int holeScore;
   int totalScore;
   bool isActive;
 }
@@ -35,31 +33,46 @@ class HoleScoringScreen extends StatefulWidget {
 }
 
 class _HoleScoringScreenState extends State<HoleScoringScreen> {
-  int _hole = 7;
+  late final List<int> _holeOrder;
+  int _holeIndex = 0;
   late final List<_HolePlayer> _players;
   final List<RoundBitEventDraft> _bitLog = [];
+  final Map<String, Map<int, int>> _holeScores = {};
+
+  int get _hole => _holeOrder[_holeIndex];
 
   @override
   void initState() {
     super.initState();
     final s = widget.session;
+    if (s != null) {
+      if (s.holeCount == 9) {
+        _holeOrder = List<int>.generate(9, (i) => s.startHole + i);
+      } else {
+        _holeOrder = List<int>.generate(18, (i) => i + 1);
+      }
+    } else {
+      _holeOrder = List<int>.generate(18, (i) => i + 1);
+    }
     if (s != null && s.playerNames.isNotEmpty) {
       _players = [
         for (var i = 0; i < s.playerNames.length; i++)
           _HolePlayer(
             id: 'p$i',
             name: s.playerNames[i],
-            holeScore: 0,
             totalScore: 0,
             isActive: i == 0,
           ),
       ];
     } else {
       _players = [
-        _HolePlayer(id: '1', name: 'Alex', holeScore: 3, totalScore: 12, isActive: true),
-        _HolePlayer(id: '2', name: 'Jamie', holeScore: -1, totalScore: 4),
-        _HolePlayer(id: '3', name: 'Chris', holeScore: 0, totalScore: 7),
+        _HolePlayer(id: '1', name: 'Alex', totalScore: 0, isActive: true),
+        _HolePlayer(id: '2', name: 'Jamie', totalScore: 0),
+        _HolePlayer(id: '3', name: 'Chris', totalScore: 0),
       ];
+    }
+    for (final p in _players) {
+      _holeScores[p.id] = <int, int>{};
     }
   }
 
@@ -71,12 +84,37 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   }
 
   void _prevHole() {
-    setState(() => _hole = _hole <= 1 ? 18 : _hole - 1);
+    if (_holeIndex == 0) return;
+    setState(() => _holeIndex -= 1);
   }
 
-  void _nextHole() {
-    setState(() => _hole = _hole >= 18 ? 1 : _hole + 1);
+  Future<void> _nextHole() async {
+    final isLastHole = _holeIndex >= _holeOrder.length - 1;
+    if (isLastHole) {
+      final shouldEnd = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('End round?'),
+          content: const Text('You are on the final hole. End the round and view summary?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep editing'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('End round'),
+            ),
+          ],
+        ),
+      );
+      if (shouldEnd == true) _endRound();
+      return;
+    }
+    setState(() => _holeIndex += 1);
   }
+
+  int _holeScoreFor(_HolePlayer player) => _holeScores[player.id]?[_hole] ?? 0;
 
   void _openEventSheet(_HolePlayer player) {
     showModalBottomSheet<void>(
@@ -88,7 +126,8 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         onAward: (label, delta, iconKey) {
           Navigator.of(ctx).pop();
           setState(() {
-            player.holeScore += delta;
+            final byHole = _holeScores[player.id]!;
+            byHole[_hole] = (byHole[_hole] ?? 0) + delta;
             player.totalScore += delta;
             if (widget.session != null) {
               _bitLog.add(
@@ -172,7 +211,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           Row(
             children: [
               IconButton.filledTonal(
-                onPressed: _prevHole,
+                onPressed: _holeIndex > 0 ? _prevHole : null,
                 icon: const Icon(Icons.chevron_left),
               ),
               Expanded(
@@ -204,6 +243,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           SizedBox(height: AppTheme.space6),
           ..._players.map((p) => _PlayerRowCard(
                 player: p,
+                holeScore: _holeScoreFor(p),
                 scheme: scheme,
                 text: text,
                 onAward: () => _openEventSheet(p),
@@ -217,12 +257,14 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
 class _PlayerRowCard extends StatelessWidget {
   const _PlayerRowCard({
     required this.player,
+    required this.holeScore,
     required this.scheme,
     required this.text,
     required this.onAward,
   });
 
   final _HolePlayer player;
+  final int holeScore;
   final ColorScheme scheme;
   final TextTheme text;
   final VoidCallback onAward;
@@ -230,7 +272,7 @@ class _PlayerRowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = player.isActive;
-    final holeStr = player.holeScore >= 0 ? '+${player.holeScore}' : '${player.holeScore}';
+    final holeStr = holeScore >= 0 ? '+$holeScore' : '$holeScore';
     final totalStr = player.totalScore >= 0 ? '+${player.totalScore}' : '${player.totalScore}';
 
     return Padding(

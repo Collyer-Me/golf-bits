@@ -231,10 +231,12 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
   void _goHoleScoring() {
     final course = _selectedCourse!;
     final setup = _courseSetup!;
+    final startHole = setup.holes == 9 ? (setup.frontNineFirst ? 1 : 10) : 1;
     final args = RoundSessionArgs(
       courseName: course.name,
       courseShortTitle: _shortCourseTitle(course),
       holeCount: setup.holes,
+      startHole: startHole,
       playerNames: _players.map((p) => p.name).toList(),
     );
     Navigator.of(context).pushReplacement(
