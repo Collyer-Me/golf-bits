@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_error_message.dart';
 import '../auth/auth_redirect.dart';
+import '../auth/profile_bootstrap.dart';
 import '../config/supabase_env.dart';
 import '../theme/app_theme.dart';
 import 'location_permission_screen.dart';
@@ -69,6 +70,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
       if (!mounted) return;
       if (response.session != null) {
+        await ProfileBootstrap.ensureCurrentUserProfile();
         await Navigator.of(context).push<void>(
           MaterialPageRoute<void>(builder: (_) => const LocationPermissionScreen()),
         );

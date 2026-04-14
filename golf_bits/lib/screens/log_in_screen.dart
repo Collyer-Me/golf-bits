@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_error_message.dart';
+import '../auth/profile_bootstrap.dart';
 import '../auth/auth_redirect.dart';
 import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
@@ -65,8 +66,8 @@ class _LogInScreenState extends State<LogInScreen> {
         email: _email.text.trim(),
         password: _password.text.trim(),
       );
-      if (!mounted) return;
-      openAppHome(context);
+      await ProfileBootstrap.ensureCurrentUserProfile();
+      if (mounted) openAppHome(context);
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(e))));

@@ -90,6 +90,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   static const _prevWinner = 'Alex';
   static const _prevWinnerBits = 12;
 
+  Future<void> _signOut(BuildContext context) async {
+    if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {
+      await Supabase.instance.client.auth.signOut();
+      return;
+    }
+    AuthRoot.maybeOf(context)?.exitApp();
+  }
+
   String _initials(String name) {
     final t = name.trim();
     if (t.length >= 2) return t.substring(0, 2).toUpperCase();
@@ -120,7 +128,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         ),
         actions: [
           PopupMenuButton<String>(
-            onSelected: (v) {
+            onSelected: (v) async {
               switch (v) {
                 case 'gallery':
                   Navigator.of(context).push(
@@ -132,6 +140,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   );
                 case 'toggle':
                   setState(() => _roundInProgress = !_roundInProgress);
+                case 'logout':
+                  try {
+                    await _signOut(context);
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not log out: $e')),
+                    );
+                  }
               }
             },
             itemBuilder: (ctx) => [
@@ -141,6 +158,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 value: 'toggle',
                 child: Text(_roundInProgress ? 'Demo: show idle home' : 'Demo: show active round'),
               ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'logout', child: Text('Log out')),
             ],
             icon: const Icon(Icons.settings_outlined),
           ),

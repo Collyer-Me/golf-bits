@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
+import 'profile_bootstrap.dart';
 import '../screens/home_screen.dart';
 import '../screens/update_password_screen.dart';
 import '../screens/welcome_screen.dart';
@@ -58,7 +59,8 @@ class AuthRootState extends State<AuthRoot> {
       if (mounted) setState(() => _ready = true);
       return;
     }
-    await Supabase.instance.client.auth.getSession();
+    // currentSession is hydrated from storage by supabase_flutter on startup.
+    await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
     setState(() {
       _ready = true;
@@ -72,8 +74,15 @@ class AuthRootState extends State<AuthRoot> {
       _openRecoveryScreen();
       return;
     }
-    if (data.event == AuthChangeEvent.signedOut) {
+    if (data.event == AuthChangeEvent.signedOut && _inApp) {
       exitApp();
+      return;
+    }
+
+    final hasSession = Supabase.instance.client.auth.currentSession != null;
+    if (hasSession && !_inApp) {
+      unawaited(ProfileBootstrap.ensureCurrentUserProfile());
+      enterApp();
     }
   }
 
