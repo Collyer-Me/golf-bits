@@ -24,6 +24,44 @@ class HistoryRepository {
         .toList();
   }
 
+  /// Latest completed round for the signed-in user (e.g. home “previous session”), or null.
+  static Future<HistoryRound?> fetchLatestCompletedRound() async {
+    if (!SupabaseEnv.isConfigured) return null;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return null;
+
+    final rows = await Supabase.instance.client
+        .from('rounds')
+        .select()
+        .eq('created_by', uid)
+        .eq('completed', true)
+        .order('ended_at', ascending: false)
+        .limit(1);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return null;
+    return HistoryRound.fromSupabase(Map<String, dynamic>.from(list.first as Map));
+  }
+
+  /// Latest in-progress round (`completed = false`), or null.
+  static Future<HistoryRound?> fetchLatestIncompleteRound() async {
+    if (!SupabaseEnv.isConfigured) return null;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return null;
+
+    final rows = await Supabase.instance.client
+        .from('rounds')
+        .select()
+        .eq('created_by', uid)
+        .eq('completed', false)
+        .order('created_at', ascending: false)
+        .limit(1);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return null;
+    return HistoryRound.fromSupabase(Map<String, dynamic>.from(list.first as Map));
+  }
+
   /// Persists a completed round row; returns new row `id` for bit-event inserts.
   static Future<String> saveCompletedRound(Map<String, dynamic> row) async {
     if (!SupabaseEnv.isConfigured) {

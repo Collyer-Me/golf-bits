@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_root.dart';
 import '../config/supabase_env.dart';
+import '../data/history_repository.dart';
+import '../models/history_round.dart';
+import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'component_gallery_screen.dart';
+import 'history_detail_screen.dart';
 import 'history_screen.dart';
 import 'hole_scoring_screen.dart';
 import 'round_setup_screen.dart';
@@ -20,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _navIndex = 0;
+  final GlobalKey<_HomeDashboardState> _homeDashboardKey = GlobalKey<_HomeDashboardState>();
 
   void _openHistoryTab() => setState(() => _navIndex = 1);
 
@@ -29,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _navIndex,
         children: [
-          _HomeDashboard(onOpenHistoryTab: _openHistoryTab),
+          _HomeDashboard(key: _homeDashboardKey, onOpenHistoryTab: _openHistoryTab),
           const HistoryScreen(),
           const _PeopleTab(),
           const _ProfileTab(),
@@ -37,7 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _navIndex,
-        onDestinationSelected: (i) => setState(() => _navIndex = i),
+        onDestinationSelected: (i) {
+          final prev = _navIndex;
+          setState(() => _navIndex = i);
+          if (i == 0 && prev != 0) {
+            _homeDashboardKey.currentState?.reloadFromParent();
+          }
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -75,20 +88,66 @@ class _HomeDashboard extends StatefulWidget {
 }
 
 class _HomeDashboardState extends State<_HomeDashboard> {
-  /// Demo: switch between idle and in-progress home (replace with session store later).
-  bool _roundInProgress = false;
+  /// Called when the user switches back to the Home tab so rounds stay fresh.
+  void reloadFromParent() => unawaited(_loadDashboard());
+
+  bool _loading = true;
+  String? _loadError;
+  HistoryRound? _activeRound;
+  HistoryRound? _previousRound;
   bool _showSyncBanner = true;
 
-  static const _activeCourse = 'Royal Melbourne';
-  static const _activeCourseDetail = 'WEST COURSE · CHAMPIONSHIP TEES';
-  static const _activeHole = 7;
-  static const _activePlayers = ['Alex', 'Jamie', 'Chris', 'Sam'];
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadDashboard());
+  }
 
-  static const _prevCourse = 'Royal Melbourne';
-  static const _prevDate = 'Oct 12, 2023';
-  static const _prevPlayers = ['Alex', 'Jamie', 'Chris', 'Sam'];
-  static const _prevWinner = 'Alex';
-  static const _prevWinnerBits = 12;
+  Future<void> _loadDashboard() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      if (!SupabaseEnv.isConfigured || Supabase.instance.client.auth.currentUser == null) {
+        if (mounted) {
+          setState(() {
+            _activeRound = null;
+            _previousRound = null;
+            _loading = false;
+          });
+        }
+        return;
+      }
+      final results = await Future.wait<Object?>([
+        HistoryRepository.fetchLatestIncompleteRound(),
+        HistoryRepository.fetchLatestCompletedRound(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _activeRound = results[0] as HistoryRound?;
+        _previousRound = results[1] as HistoryRound?;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _activeRound = null;
+        _previousRound = null;
+        _loading = false;
+      });
+    }
+  }
+
+  static bool _isGuestUser() {
+    if (!SupabaseEnv.isConfigured) return false;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return false;
+    final provider = user.appMetadata['provider'];
+    return provider == 'anonymous';
+  }
 
   Future<void> _signOut(BuildContext context) async {
     if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {
@@ -134,12 +193,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const ComponentGalleryScreen()),
                   );
+                  return;
                 case 'preview':
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const HoleScoringScreen()),
                   );
-                case 'toggle':
-                  setState(() => _roundInProgress = !_roundInProgress);
+                  return;
                 case 'logout':
                   try {
                     await _signOut(context);
@@ -149,15 +208,14 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                       SnackBar(content: Text('Could not log out: $e')),
                     );
                   }
+                  return;
+                default:
+                  return;
               }
             },
             itemBuilder: (ctx) => [
               const PopupMenuItem(value: 'gallery', child: Text('Style guide & components')),
               const PopupMenuItem(value: 'preview', child: Text('Preview in-round UI')),
-              PopupMenuItem(
-                value: 'toggle',
-                child: Text(_roundInProgress ? 'Demo: show idle home' : 'Demo: show active round'),
-              ),
               const PopupMenuDivider(),
               const PopupMenuItem(value: 'logout', child: Text('Log out')),
             ],
@@ -165,21 +223,46 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           ),
         ],
       ),
-      body: ListView(
-        padding: AppTheme.screenPadding,
-        children: [
-          if (_roundInProgress) ..._buildActiveRound(context) else ..._buildIdle(context),
-          if (_showSyncBanner) ...[
-            SizedBox(height: AppTheme.space4),
-            _SyncBanner(onDismiss: () => setState(() => _showSyncBanner = false)),
-          ],
-          SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
-        ],
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadDashboard,
+              child: ListView(
+                padding: AppTheme.screenPadding,
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  if (_loadError != null) ...[
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.errorContainer,
+                        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppTheme.space4),
+                        child: Text(
+                          'Could not load dashboard: $_loadError',
+                          style: text.bodySmall?.copyWith(color: scheme.onErrorContainer),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: AppTheme.space4),
+                  ],
+                  if (_activeRound != null) ..._buildActiveRound(context, _activeRound!) else ..._buildNoActiveRoundCard(context),
+                  ..._buildPreviousSessionSection(context),
+                  if (_isGuestUser() && _showSyncBanner) ...[
+                    SizedBox(height: AppTheme.space4),
+                    _SyncBanner(onDismiss: () => setState(() => _showSyncBanner = false)),
+                  ],
+                  SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
+                ],
+              ),
+            ),
     );
   }
 
-  List<Widget> _buildIdle(BuildContext context) {
+  /// Shown when there is no in-progress row in Supabase (`completed = false`).
+  List<Widget> _buildNoActiveRoundCard(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
@@ -204,10 +287,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
             ),
             SizedBox(height: AppTheme.space6),
             FilledButton(
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                await Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(builder: (_) => const RoundSetupScreen()),
                 );
+                if (mounted) await _loadDashboard();
               },
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -221,6 +305,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           ],
         ),
       ),
+    ];
+  }
+
+  List<Widget> _buildPreviousSessionSection(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final prev = _previousRound;
+
+    return [
       SizedBox(height: AppTheme.space8),
       Row(
         children: [
@@ -246,67 +339,98 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         ],
       ),
       SizedBox(height: AppTheme.space3),
-      OutlinedSurfaceCard(
-        borderColor: scheme.outlineVariant,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_prevCourse, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            Text(
-              _prevDate,
-              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-            SizedBox(height: AppTheme.space4),
-            Wrap(
-              spacing: AppTheme.space2,
-              runSpacing: AppTheme.space2,
-              children: _prevPlayers
-                  .map(
-                    (p) => Chip(
-                      avatar: Icon(Icons.person_outline, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
-                      label: Text(_initials(p)),
-                      labelStyle: text.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-                      side: BorderSide(color: scheme.outlineVariant),
-                      backgroundColor: scheme.surfaceContainerHigh,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  )
-                  .toList(),
-            ),
-            SizedBox(height: AppTheme.space4),
-            Align(
-              alignment: Alignment.centerRight,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-                  border: Border.all(color: scheme.outlineVariant),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space2),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.emoji_events_outlined, size: AppTheme.iconDense, color: scheme.secondary),
-                      SizedBox(width: AppTheme.space2),
-                      Text(
-                        '$_prevWinner (+$_prevWinnerBits)',
-                        style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ],
+      if (prev == null)
+        OutlinedSurfaceCard(
+          borderColor: scheme.outlineVariant,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'No completed rounds yet',
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: AppTheme.space2),
+              Text(
+                'Finish a round and it will show up here, or open History for the full list.',
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        )
+      else
+        Material(
+          color: scheme.surface.withValues(alpha: 0),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+            onTap: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(builder: (_) => HistoryDetailScreen(round: prev)),
+              );
+            },
+            child: OutlinedSurfaceCard(
+              borderColor: scheme.outlineVariant,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(prev.courseName, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    prev.dateHeader,
+                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                   ),
-                ),
+                  SizedBox(height: AppTheme.space4),
+                  Wrap(
+                    spacing: AppTheme.space2,
+                    runSpacing: AppTheme.space2,
+                    children: prev.players
+                        .map(
+                          (p) => Chip(
+                            avatar: Icon(Icons.person_outline, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
+                            label: Text(_initials(p)),
+                            labelStyle: text.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+                            side: BorderSide(color: scheme.outlineVariant),
+                            backgroundColor: scheme.surfaceContainerHigh,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  SizedBox(height: AppTheme.space4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.emoji_events_outlined, size: AppTheme.iconDense, color: scheme.secondary),
+                            SizedBox(width: AppTheme.space2),
+                            Text(
+                              '${prev.winnerName} (+${prev.winnerBits})',
+                              style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
     ];
   }
 
-  List<Widget> _buildActiveRound(BuildContext context) {
+  List<Widget> _buildActiveRound(BuildContext context, HistoryRound round) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final detailLine = '${round.holeCount} holes · ${round.whenRelative}';
 
     return [
       Row(
@@ -344,12 +468,12 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _activeCourse,
+              round.courseName,
               style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
             ),
             SizedBox(height: AppTheme.space1),
             Text(
-              _activeCourseDetail,
+              detailLine,
               style: text.labelSmall?.copyWith(
                 color: scheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -368,7 +492,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space2),
                   child: Text(
-                    'CURRENT HOLE $_activeHole',
+                    'IN PROGRESS',
                     style: text.labelSmall?.copyWith(
                       color: scheme.onPrimaryContainer,
                       fontWeight: FontWeight.w800,
@@ -382,7 +506,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
             Wrap(
               spacing: AppTheme.space2,
               runSpacing: AppTheme.space2,
-              children: _activePlayers
+              children: round.players
                   .map(
                     (p) => Chip(
                       avatar: Icon(Icons.person_outline, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
@@ -395,10 +519,13 @@ class _HomeDashboardState extends State<_HomeDashboard> {
             ),
             SizedBox(height: AppTheme.space6),
             FilledButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const HoleScoringScreen()),
+              onPressed: () async {
+                await Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => HoleScoringScreen(session: RoundSessionArgs.fromHistoryRound(round)),
+                  ),
                 );
+                if (mounted) await _loadDashboard();
               },
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -415,10 +542,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       SizedBox(height: AppTheme.space4),
       Center(
         child: TextButton(
-          onPressed: () {
-            Navigator.of(context).push(
+          onPressed: () async {
+            await Navigator.of(context).push<void>(
               MaterialPageRoute<void>(builder: (_) => const RoundSetupScreen()),
             );
+            if (mounted) await _loadDashboard();
           },
           child: Text(
             '+ START NEW ROUND',
