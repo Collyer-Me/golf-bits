@@ -21,3 +21,7 @@ Thumbs.db
 # Flutter / Dart (repo root — most artifacts live under golf_bits/)
 .dart_tool/
 .packages
+
+# Local Supabase inspection/migration artifacts
+supabaseSchema
+supabase/migrations/*.sql

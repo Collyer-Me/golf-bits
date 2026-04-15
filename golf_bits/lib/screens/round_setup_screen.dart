@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
+import '../data/schema_compatibility_service.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
@@ -213,11 +214,20 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
 
     String displayName = '';
     try {
-      final rows = await client
-          .from('profiles')
-          .select('display_name')
-          .eq('id', user.id)
-          .limit(1);
+      dynamic rows;
+      try {
+        rows = await client
+            .from('profiles')
+            .select('display_name')
+            .eq('id', user.id)
+            .limit(1);
+      } catch (_) {
+        rows = await client
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', user.id)
+            .limit(1);
+      }
       final list = rows as List<dynamic>;
       if (list.isNotEmpty) {
         displayName = ((list.first as Map)['display_name'] as String?)?.trim() ?? '';
@@ -359,6 +369,13 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentUser != null) {
       setState(() => _startingRound = true);
       try {
+        final compatibility = await SchemaCompatibilityService.checkRoundSyncSchema();
+        if (!compatibility.ok) {
+          throw StateError(
+            'Database schema is not compatible for round sync. '
+            'Run pending migrations.\n${compatibility.errors.join('\n')}',
+          );
+        }
         roundId = await HistoryRepository.createInProgressRound(
           courseName: course.name,
           courseShortTitle: _shortCourseTitle(course),

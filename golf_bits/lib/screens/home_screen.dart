@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_root.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
+import '../data/schema_compatibility_service.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
@@ -679,6 +680,48 @@ class _ProfileTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: AppTheme.space6),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final result = await SchemaCompatibilityService.checkRoundSyncSchema(forceRefresh: true);
+              if (!context.mounted) return;
+              await showDialog<void>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(result.ok ? 'Sync diagnostics: OK' : 'Sync diagnostics: issues found'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (result.errors.isEmpty)
+                          const Text('No required schema issues detected.')
+                        else ...[
+                          const Text('Errors:'),
+                          const SizedBox(height: AppTheme.space2),
+                          Text(result.errors.join('\n')),
+                        ],
+                        if (result.warnings.isNotEmpty) ...[
+                          const SizedBox(height: AppTheme.space4),
+                          const Text('Warnings:'),
+                          const SizedBox(height: AppTheme.space2),
+                          Text(result.warnings.join('\n')),
+                        ],
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            icon: const Icon(Icons.health_and_safety_outlined),
+            label: const Text('Run Sync Diagnostics'),
+          ),
+          SizedBox(height: AppTheme.space3),
           FilledButton.tonal(
             onPressed: () async {
               if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {

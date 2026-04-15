@@ -188,17 +188,41 @@ class HistoryRound {
     } else {
       scores = const {};
     }
+    final int holeCountResolved = ((row['hole_count'] as num?)?.toInt()) ??
+        ((row['holes'] as num?)?.toInt()) ??
+        18;
+    final String courseShortResolved =
+        (row['course_short_title'] as String?)?.trim().isNotEmpty == true
+            ? (row['course_short_title'] as String)
+            : ((row['course_name'] as String?)?.split(',').first.trim() ?? 'Course');
+    final String winnerNameResolved;
+    final int winnerBitsResolved;
+    final sortedStandings = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
+    if ((row['winner_name'] as String?)?.isNotEmpty == true) {
+      winnerNameResolved = row['winner_name'] as String;
+    } else if (sortedStandings.isNotEmpty) {
+      winnerNameResolved = sortedStandings.first.name;
+    } else {
+      winnerNameResolved = resolvedPlayers.isNotEmpty ? resolvedPlayers.first : 'TBD';
+    }
+    if (row['winner_bits'] is num) {
+      winnerBitsResolved = (row['winner_bits'] as num).toInt();
+    } else if (sortedStandings.isNotEmpty) {
+      winnerBitsResolved = sortedStandings.first.bits;
+    } else {
+      winnerBitsResolved = 0;
+    }
 
     return HistoryRound(
       id: id,
-      courseName: row['course_name'] as String,
-      courseShortTitle: row['course_short_title'] as String,
-      holeCount: (row['hole_count'] as num).toInt(),
+      courseName: (row['course_name'] as String?) ?? 'Course',
+      courseShortTitle: courseShortResolved,
+      holeCount: holeCountResolved,
       whenRelative: whenRelativeFromUtc(endedAt, now),
       dateHeader: dateHeaderFromUtc(endedAt),
       players: resolvedPlayers,
-      winnerName: row['winner_name'] as String,
-      winnerBits: (row['winner_bits'] as num).toInt(),
+      winnerName: winnerNameResolved,
+      winnerBits: winnerBitsResolved,
       completed: completedFromRow(row),
       standings: standings,
       leftEarly: leftEarly,

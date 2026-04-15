@@ -88,6 +88,7 @@ class RoundResult {
     return {
       'course_name': courseName,
       'course_short_title': courseShortTitle,
+      'holes': holeCount,
       'hole_count': holeCount,
       'status': completed ? 'completed' : 'in_progress',
       'completed': completed,
