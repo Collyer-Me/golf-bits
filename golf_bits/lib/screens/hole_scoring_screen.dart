@@ -15,13 +15,11 @@ class _HolePlayer {
     required this.id,
     required this.name,
     required this.totalScore,
-    this.isActive = false,
   });
 
   final String id;
   final String name;
   int totalScore;
-  bool isActive;
 }
 
 /// In-round: hole header, player rows, event award bottom sheet.
@@ -64,12 +62,11 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
             id: 'p$i',
             name: s.playerNames[i],
             totalScore: s.initialScoreByPlayer[s.playerNames[i]] ?? 0,
-            isActive: i == 0,
           ),
       ];
     } else {
       _players = [
-        _HolePlayer(id: '1', name: 'Alex', totalScore: 0, isActive: true),
+        _HolePlayer(id: '1', name: 'Alex', totalScore: 0),
         _HolePlayer(id: '2', name: 'Jamie', totalScore: 0),
         _HolePlayer(id: '3', name: 'Chris', totalScore: 0),
       ];

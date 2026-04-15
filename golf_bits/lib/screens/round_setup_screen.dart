@@ -330,10 +330,14 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
           currentHole: startHole,
         );
       } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not start synced round: $e')),
-        );
+        // Do not block gameplay; fallback to local round if sync bootstrap fails.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sync unavailable right now. Starting local round on this device.'),
+            ),
+          );
+        }
       } finally {
         if (mounted) setState(() => _startingRound = false);
       }
@@ -375,7 +379,13 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (_step > 0) {
+              setState(() => _step -= 1);
+              return;
+            }
+            Navigator.of(context).pop();
+          },
         ),
         title: const Text('New Round'),
         actions: [
@@ -444,49 +454,63 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
           ),
           Padding(
             padding: AppTheme.screenPadding,
-            child: switch (_step) {
-              0 => FilledButton(
-                  onPressed: _loadingPlayers || _players.isEmpty
-                      ? null
-                      : () => setState(() => _step = 1),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Next'),
-                      SizedBox(width: AppTheme.space2),
-                      Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
-                    ],
+            child: Row(
+              children: [
+                if (_step > 0)
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _step -= 1),
+                      child: const Text('Back'),
+                    ),
                   ),
+                if (_step > 0) const SizedBox(width: AppTheme.space3),
+                Expanded(
+                  child: switch (_step) {
+                    0 => FilledButton(
+                        onPressed: _loadingPlayers || _players.isEmpty
+                            ? null
+                            : () => setState(() => _step = 1),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Next'),
+                            SizedBox(width: AppTheme.space2),
+                            Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
+                          ],
+                        ),
+                      ),
+                    1 => FilledButton(
+                        onPressed: _nextFromCourseStep,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Next'),
+                            SizedBox(width: AppTheme.space2),
+                            Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
+                          ],
+                        ),
+                      ),
+                    2 => FilledButton(
+                        onPressed: () => setState(() => _step = 3),
+                        child: const Text('Next'),
+                      ),
+                    _ => FilledButton(
+                        onPressed: _startingRound ? null : _goHoleScoring,
+                        child: _startingRound
+                            ? SizedBox(
+                                height: AppTheme.iconInline,
+                                width: AppTheme.iconInline,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Theme.of(context).colorScheme.onPrimary,
+                                ),
+                              )
+                            : const Text('Start round'),
+                      ),
+                  },
                 ),
-              1 => FilledButton(
-                  onPressed: _nextFromCourseStep,
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Next'),
-                      SizedBox(width: AppTheme.space2),
-                      Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
-                    ],
-                  ),
-                ),
-              2 => FilledButton(
-                  onPressed: () => setState(() => _step = 3),
-                  child: const Text('Next'),
-                ),
-              _ => FilledButton(
-                  onPressed: _startingRound ? null : _goHoleScoring,
-                  child: _startingRound
-                      ? SizedBox(
-                          height: AppTheme.iconInline,
-                          width: AppTheme.iconInline,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                          ),
-                        )
-                      : const Text('Start round'),
-                ),
-            },
+              ],
+            ),
           ),
         ],
       ),
