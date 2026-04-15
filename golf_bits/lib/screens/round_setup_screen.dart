@@ -61,9 +61,10 @@ class RoundSetupScreen extends StatefulWidget {
 class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerProviderStateMixin {
   int _step = 0;
   bool _startingRound = false;
+  bool _loadingPlayers = true;
 
-  late final List<_Player> _players;
-  late final List<_Recent> _recent;
+  final List<_Player> _players = <_Player>[];
+  final List<_Recent> _recent = <_Recent>[];
 
   final _searchController = TextEditingController();
   String? _selectedCourseId;
@@ -81,17 +82,6 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _players = [
-      _Player(id: 'p1', name: 'Alex', isYou: true),
-      _Player(id: 'p2', name: 'Jamie'),
-      _Player(id: 'p3', name: 'Chris'),
-    ];
-    _recent = [
-      _Recent(id: 'r1', name: 'Sam', rounds: 14),
-      _Recent(id: 'r2', name: 'Taylor', rounds: 9),
-      _Recent(id: 'r3', name: 'Jordan', rounds: 22),
-      _Recent(id: 'r4', name: 'Riley', rounds: 6),
-    ];
     _eventTabController = TabController(length: 2, vsync: this);
     _events = [
       _EventRow(
@@ -128,6 +118,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     for (final e in _events) {
       e.resetPoints();
     }
+    unawaited(_loadPlayersFromSupabase());
   }
 
   @override
@@ -175,6 +166,83 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
         });
       },
     );
+  }
+
+  Future<void> _loadPlayersFromSupabase() async {
+    if (!SupabaseEnv.isConfigured) {
+      if (!mounted) return;
+      setState(() => _loadingPlayers = false);
+      return;
+    }
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      setState(() => _loadingPlayers = false);
+      return;
+    }
+
+    String displayName = '';
+    try {
+      final rows = await client
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .limit(1);
+      final list = rows as List<dynamic>;
+      if (list.isNotEmpty) {
+        displayName = ((list.first as Map)['display_name'] as String?)?.trim() ?? '';
+      }
+    } catch (_) {
+      // Non-fatal: fallback below.
+    }
+    if (displayName.isEmpty) {
+      final metaName = (user.userMetadata?['full_name'] as String?)?.trim();
+      final emailName = user.email?.split('@').first.trim();
+      displayName = (metaName != null && metaName.isNotEmpty)
+          ? metaName
+          : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
+    }
+
+    final counts = <String, int>{};
+    try {
+      final rows = await client
+          .from('rounds')
+          .select('players')
+          .eq('created_by', user.id)
+          .limit(200);
+      for (final row in rows as List<dynamic>) {
+        final players = (row as Map)['players'] as List<dynamic>? ?? const [];
+        for (final p in players) {
+          final name = (p as String).trim();
+          if (name.isEmpty) continue;
+          if (name.toLowerCase() == displayName.toLowerCase()) continue;
+          counts[name] = (counts[name] ?? 0) + 1;
+        }
+      }
+    } catch (_) {
+      // Keep Recent players empty if rounds query fails.
+    }
+
+    final recents = counts.entries.toList()
+      ..sort((a, b) {
+        final byCount = b.value.compareTo(a.value);
+        if (byCount != 0) return byCount;
+        return a.key.toLowerCase().compareTo(b.key.toLowerCase());
+      });
+
+    if (!mounted) return;
+    setState(() {
+      _players
+        ..clear()
+        ..add(_Player(id: 'you_${user.id}', name: displayName, isYou: true));
+      _recent
+        ..clear()
+        ..addAll([
+          for (final e in recents) _Recent(id: 'recent_${e.key}', name: e.key, rounds: e.value),
+        ]);
+      _loadingPlayers = false;
+    });
   }
 
   void _removePlayer(_Player p) {
@@ -353,7 +421,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
             padding: AppTheme.screenPadding,
             child: switch (_step) {
               0 => FilledButton(
-                  onPressed: _players.isEmpty
+                  onPressed: _loadingPlayers || _players.isEmpty
                       ? null
                       : () => setState(() => _step = 1),
                   child: const Row(
@@ -403,6 +471,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
   Widget _buildPlayersStep(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+
+    if (_loadingPlayers) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return ListView(
       children: [
@@ -459,6 +531,14 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
           style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppTheme.space3),
+        if (_recent.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppTheme.space4),
+            child: Text(
+              'No recent players yet. Add people with the button above.',
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
         ..._recent.map((r) {
           final already = _players.any((p) => p.name == r.name);
           return Padding(
