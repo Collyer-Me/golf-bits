@@ -172,6 +172,7 @@ class HistoryRepository {
 
     final res = await _insertRoundWithFallback({
       ...row,
+      'status': 'completed',
       'created_by': uid,
       // Legacy schema compatibility: some projects still require these owner columns.
       'user_id': uid,
@@ -205,6 +206,7 @@ class HistoryRepository {
       'course_name': courseName,
       'course_short_title': courseShortTitle,
       'hole_count': holeCount,
+      'status': 'in_progress',
       'completed': false,
       'completed_at': null,
       'winner_name': 'TBD',
@@ -229,6 +231,7 @@ class HistoryRepository {
     await _updateRoundWithFallback(
       roundId: roundId,
       payload: {
+        'status': 'in_progress',
         'current_hole': currentHole,
         'score_by_player': scoreByPlayer,
         'ended_at': DateTime.now().toUtc().toIso8601String(),
