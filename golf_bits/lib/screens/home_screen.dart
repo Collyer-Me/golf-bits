@@ -10,6 +10,7 @@ import '../data/schema_compatibility_service.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
+import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'component_gallery_screen.dart';
 import 'history_detail_screen.dart';
@@ -160,12 +161,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
       return;
     }
     AuthRoot.maybeOf(context)?.exitApp();
-  }
-
-  String _initials(String name) {
-    final t = name.trim();
-    if (t.length >= 2) return t.substring(0, 2).toUpperCase();
-    return t.isEmpty ? '?' : t.toUpperCase();
   }
 
   @override
@@ -363,71 +358,13 @@ class _HomeDashboardState extends State<_HomeDashboard> {
           ),
         )
       else
-        Material(
-          color: scheme.surface.withValues(alpha: 0),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-            onTap: () {
-              Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(builder: (_) => HistoryDetailScreen(round: prev)),
-              );
-            },
-            child: OutlinedSurfaceCard(
-              borderColor: scheme.outlineVariant,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(prev.courseName, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-                  Text(
-                    prev.dateHeader,
-                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                  SizedBox(height: AppTheme.space4),
-                  Wrap(
-                    spacing: AppTheme.space2,
-                    runSpacing: AppTheme.space2,
-                    children: prev.players
-                        .map(
-                          (p) => Chip(
-                            avatar: Icon(Icons.person_outline, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
-                            label: Text(_initials(p)),
-                            labelStyle: text.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-                            side: BorderSide(color: scheme.outlineVariant),
-                            backgroundColor: scheme.surfaceContainerHigh,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  SizedBox(height: AppTheme.space4),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-                        border: Border.all(color: scheme.outlineVariant),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space2),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.emoji_events_outlined, size: AppTheme.iconDense, color: scheme.secondary),
-                            SizedBox(width: AppTheme.space2),
-                            Text(
-                              '${prev.winnerName} (+${prev.winnerBits})',
-                              style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        HistoryRoundCard(
+          round: prev,
+          onTap: () {
+            Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(builder: (_) => HistoryDetailScreen(round: prev)),
+            );
+          },
         ),
     ];
   }

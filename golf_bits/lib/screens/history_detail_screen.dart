@@ -86,14 +86,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                     )
                   : const Icon(Icons.refresh),
             ),
-          IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Share round — coming soon')),
-              );
-            },
-            icon: const Icon(Icons.share_outlined),
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -102,63 +94,57 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
           padding: AppTheme.screenPadding,
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            OutlinedSurfaceCard(
-              borderColor: scheme.secondary.withValues(alpha: AppTheme.opacityBorderEmphasis),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: AppTheme.space5,
-                    backgroundColor: scheme.secondaryContainer,
-                    child: Icon(Icons.emoji_events, color: scheme.secondary, size: AppTheme.iconLarge),
-                  ),
-                  SizedBox(height: AppTheme.space3),
-                  Text(
-                    'ROUND WINNER',
-                    style: text.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: AppTheme.letterStepCaps,
-                    ),
-                  ),
-                  Text(
-                    _round.winnerName.toUpperCase(),
-                    style: text.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  Text(
-                    '+${_round.winnerBits} BITS',
-                    style: text.headlineMedium?.copyWith(
-                      color: scheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
+            SizedBox(height: AppTheme.space4),
+            Icon(Icons.emoji_events_outlined, size: AppTheme.iconLarge, color: scheme.secondary),
+            SizedBox(height: AppTheme.space3),
+            Text(
+              _round.winnerName,
+              textAlign: TextAlign.center,
+              style: text.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
               ),
             ),
-            SizedBox(height: AppTheme.space6),
-            Row(
-              children: [
-                Expanded(
+            Text(
+              '+${_round.winnerBits} BITS',
+              textAlign: TextAlign.center,
+              style: text.displaySmall?.copyWith(
+                color: scheme.onPrimaryContainer,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(height: AppTheme.space3),
+            Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
+                  border: Border.all(color: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space4,
+                    vertical: AppTheme.space2,
+                  ),
                   child: Text(
-                    'FINAL STANDINGS',
+                    _round.completed ? 'ROUND COMPLETE' : 'ROUND IN PROGRESS',
                     style: text.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                      color: scheme.onPrimaryContainer,
                       fontWeight: FontWeight.w800,
                       letterSpacing: AppTheme.letterStepCaps,
                     ),
                   ),
                 ),
-                Text(
-                  'TOTAL BITS',
-                  style: text.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: AppTheme.letterStepCaps,
-                  ),
-                ),
-              ],
+              ),
+            ),
+            SizedBox(height: AppTheme.space8),
+            Text(
+              'FINAL STANDINGS',
+              style: text.labelSmall?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: AppTheme.letterStepCaps,
+              ),
             ),
             SizedBox(height: AppTheme.space3),
             ..._round.standings.map(
@@ -173,7 +159,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             if (_round.leftEarly.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               Text(
-                'LEFT EARLY',
+                'RETIRED EARLY',
                 style: text.labelSmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w800,
@@ -183,6 +169,16 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
               SizedBox(height: AppTheme.space3),
               ..._round.leftEarly.map((r) => _LeftEarlyTile(row: r)),
             ],
+            SizedBox(height: AppTheme.space6),
+            FilledButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Share round — coming soon')),
+                );
+              },
+              icon: const Icon(Icons.share_outlined),
+              label: const Text('Share Results'),
+            ),
             SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
           ],
         ),
