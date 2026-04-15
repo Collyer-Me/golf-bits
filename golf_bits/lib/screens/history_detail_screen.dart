@@ -225,6 +225,7 @@ class _StandingTile extends StatelessWidget {
               builder: (_) => PlayerBreakdownScreen(
                 roundId: roundId,
                 playerName: standing.name,
+                participantKey: standing.participantKey,
                 courseShortTitle: courseShortTitle,
                 dateHeader: dateHeader,
               ),

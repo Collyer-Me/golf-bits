@@ -12,9 +12,17 @@ import 'hole_scoring_screen.dart';
 import 'round_setup_sheets.dart';
 
 class _Player {
-  _Player({required this.id, required this.name, this.isYou = false});
+  _Player({
+    required this.id,
+    required this.name,
+    this.email,
+    this.userId,
+    this.isYou = false,
+  });
   final String id;
   final String name;
+  final String? email;
+  final String? userId;
   final bool isYou;
 }
 
@@ -158,13 +166,32 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
   Future<void> _openAddPlayer() async {
     await showAddPlayerSheet(
       context,
-      onAdd: (name, email) {
+      onAdd: (name, email) async {
+        String finalName = name;
+        String? matchedUserId;
+        String? finalEmail = email;
+        if (email != null && email.trim().isNotEmpty && SupabaseEnv.isConfigured) {
+          try {
+            final matched = await HistoryRepository.lookupPlayerByEmail(email);
+            if (matched != null) {
+              finalName = matched.displayName;
+              matchedUserId = matched.userId;
+              finalEmail = matched.email;
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Matched account: ${matched.displayName}')),
+                );
+              }
+            }
+          } catch (_) {
+            // Keep local add flow if lookup fails.
+          }
+        }
         setState(() {
           final id = 'p_${DateTime.now().millisecondsSinceEpoch}';
-          _players.add(_Player(id: id, name: name));
-          if (email != null && email.isNotEmpty) {
-            // Stub: would sync to Supabase
-          }
+          _players.add(
+            _Player(id: id, name: finalName, email: finalEmail, userId: matchedUserId),
+          );
         });
       },
     );
@@ -237,7 +264,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     setState(() {
       _players
         ..clear()
-        ..add(_Player(id: 'you_${user.id}', name: displayName, isYou: true));
+        ..add(_Player(id: 'you_${user.id}', name: displayName, email: user.email, userId: user.id, isYou: true));
       _recent
         ..clear()
         ..addAll([
@@ -318,6 +345,16 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     final course = _selectedCourse!;
     final setup = _courseSetup!;
     final startHole = setup.holes == 9 ? (setup.frontNineFirst ? 1 : 10) : 1;
+    final participants = [
+      for (final p in _players)
+        RoundParticipant(
+          key: (p.userId != null && p.userId!.isNotEmpty) ? 'u_${p.userId}' : p.id,
+          displayName: p.name,
+          email: p.email,
+          userId: p.userId,
+          isYou: p.isYou,
+        ),
+    ];
     String? roundId;
     if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentUser != null) {
       setState(() => _startingRound = true);
@@ -327,6 +364,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
           courseShortTitle: _shortCourseTitle(course),
           holeCount: setup.holes,
           players: _players.map((p) => p.name).toList(),
+          participants: participants,
           currentHole: startHole,
         );
       } catch (e) {
@@ -361,8 +399,9 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
       playerNames: _players.map((p) => p.name).toList(),
       roundId: roundId,
       currentHole: startHole,
-      initialScoreByPlayer: {for (final p in _players) p.name: 0},
+      initialScoreByPlayer: {for (final p in participants) p.key: 0},
       eventRules: enabledRules,
+      participants: participants,
     );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_env.dart';
 import '../models/history_round.dart';
 import '../models/round_bit_event_draft.dart';
+import '../models/round_session_args.dart';
 
 class HistoryRepository {
   HistoryRepository._();
@@ -186,6 +187,7 @@ class HistoryRepository {
     required String courseShortTitle,
     required int holeCount,
     required List<String> players,
+    required List<RoundParticipant> participants,
     required int currentHole,
   }) async {
     if (!SupabaseEnv.isConfigured) {
@@ -208,10 +210,11 @@ class HistoryRepository {
       'winner_name': 'TBD',
       'winner_bits': 0,
       'players': players,
+      'participants': participants.map((p) => p.toJson()).toList(),
       'standings': const <Map<String, dynamic>>[],
       'left_early': const <Map<String, dynamic>>[],
       'current_hole': currentHole,
-      'score_by_player': <String, int>{for (final p in players) p: 0},
+      'score_by_player': <String, int>{for (final p in participants) p.key: 0},
     });
     return res['id'] as String;
   }
@@ -254,14 +257,34 @@ class HistoryRepository {
   static Future<List<Map<String, dynamic>>> fetchBitEventsForPlayer({
     required String roundId,
     required String playerName,
+    String? participantKey,
   }) async {
     if (!SupabaseEnv.isConfigured) return [];
 
-    final rows = await Supabase.instance.client
-        .from('round_bit_events')
-        .select()
-        .eq('round_id', roundId)
-        .eq('player_name', playerName);
+    dynamic rows;
+    try {
+      if (participantKey != null && participantKey.isNotEmpty) {
+        rows = await Supabase.instance.client
+            .from('round_bit_events')
+            .select()
+            .eq('round_id', roundId)
+            .eq('participant_key', participantKey);
+      } else {
+        rows = await Supabase.instance.client
+            .from('round_bit_events')
+            .select()
+            .eq('round_id', roundId)
+            .eq('player_name', playerName);
+      }
+    } catch (e) {
+      final missing = _missingColumn(e);
+      if (missing != 'participant_key') rethrow;
+      rows = await Supabase.instance.client
+          .from('round_bit_events')
+          .select()
+          .eq('round_id', roundId)
+          .eq('player_name', playerName);
+    }
 
     final list = (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList()
       ..sort((a, b) {
@@ -271,5 +294,25 @@ class HistoryRepository {
         return (a['created_at'] as String).compareTo(b['created_at'] as String);
       });
     return list;
+  }
+
+  /// Match a player by email to an existing account/profile.
+  static Future<RoundParticipant?> lookupPlayerByEmail(String email) async {
+    if (!SupabaseEnv.isConfigured) return null;
+    final e = email.trim().toLowerCase();
+    if (e.isEmpty) return null;
+    final rows = await _client.rpc('lookup_player_by_email', params: {'input_email': e}) as List<dynamic>;
+    if (rows.isEmpty) return null;
+    final row = Map<String, dynamic>.from(rows.first as Map);
+    final userId = row['user_id'] as String?;
+    final displayName = (row['display_name'] as String?)?.trim();
+    final resolvedEmail = (row['email'] as String?)?.trim();
+    if (userId == null || displayName == null || displayName.isEmpty) return null;
+    return RoundParticipant(
+      key: 'u_$userId',
+      displayName: displayName,
+      email: resolvedEmail ?? e,
+      userId: userId,
+    );
   }
 }

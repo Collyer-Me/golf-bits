@@ -14,11 +14,13 @@ class _HolePlayer {
   _HolePlayer({
     required this.id,
     required this.name,
+    this.userId,
     required this.totalScore,
   });
 
   final String id;
   final String name;
+  final String? userId;
   int totalScore;
 }
 
@@ -55,13 +57,23 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     } else {
       _holeOrder = List<int>.generate(18, (i) => i + 1);
     }
-    if (s != null && s.playerNames.isNotEmpty) {
+    if (s != null && s.participants.isNotEmpty) {
+      _players = [
+        for (final p in s.participants)
+          _HolePlayer(
+            id: p.key,
+            name: p.displayName,
+            userId: p.userId,
+            totalScore: s.initialScoreByPlayer[p.key] ?? 0,
+          ),
+      ];
+    } else if (s != null && s.playerNames.isNotEmpty) {
       _players = [
         for (var i = 0; i < s.playerNames.length; i++)
           _HolePlayer(
             id: 'p$i',
             name: s.playerNames[i],
-            totalScore: s.initialScoreByPlayer[s.playerNames[i]] ?? 0,
+            totalScore: s.initialScoreByPlayer['p$i'] ?? 0,
           ),
       ];
     } else {
@@ -136,6 +148,8 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           Navigator.of(ctx).pop();
           final draft = RoundBitEventDraft(
             playerName: player.name,
+            participantKey: player.id,
+            participantUserId: player.userId,
             hole: _hole,
             eventLabel: label,
             delta: delta,
@@ -164,7 +178,9 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   void _endRound() {
     final session = widget.session;
     if (session != null && _players.isNotEmpty) {
-      final scored = _players.map((p) => (name: p.name, bits: p.totalScore)).toList();
+      final scored = _players
+          .map((p) => (key: p.id, name: p.name, bits: p.totalScore))
+          .toList();
       final result = RoundResult.fromSessionScores(
         session: session,
         scoredPlayers: scored,
@@ -181,7 +197,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   }
 
   Map<String, int> _scoreByPlayer() {
-    return {for (final p in _players) p.name: p.totalScore};
+    return {for (final p in _players) p.id: p.totalScore};
   }
 
   Future<void> _persistProgress() async {

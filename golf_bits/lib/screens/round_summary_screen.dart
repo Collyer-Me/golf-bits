@@ -136,7 +136,10 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => PlayerBreakdownScreen(playerName: s.name),
+                          builder: (_) => PlayerBreakdownScreen(
+                            playerName: s.name,
+                            participantKey: s.participantKey,
+                          ),
                         ),
                       );
                     },

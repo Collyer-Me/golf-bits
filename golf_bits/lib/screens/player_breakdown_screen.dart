@@ -53,12 +53,14 @@ class PlayerBreakdownScreen extends StatefulWidget {
     super.key,
     this.roundId = '',
     required this.playerName,
+    this.participantKey,
     this.courseShortTitle,
     this.dateHeader,
   });
 
   final String roundId;
   final String playerName;
+  final String? participantKey;
   final String? courseShortTitle;
   final String? dateHeader;
 
@@ -82,6 +84,7 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
     final rows = await HistoryRepository.fetchBitEventsForPlayer(
       roundId: widget.roundId,
       playerName: widget.playerName,
+      participantKey: widget.participantKey,
     );
     if (rows.isEmpty) return [];
 

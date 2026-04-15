@@ -15,6 +15,41 @@ class RoundEventRule {
   final String iconKey;
 }
 
+@immutable
+class RoundParticipant {
+  const RoundParticipant({
+    required this.key,
+    required this.displayName,
+    this.email,
+    this.userId,
+    this.isYou = false,
+  });
+
+  final String key;
+  final String displayName;
+  final String? email;
+  final String? userId;
+  final bool isYou;
+
+  Map<String, dynamic> toJson() => {
+        'key': key,
+        'display_name': displayName,
+        'email': email,
+        'user_id': userId,
+        'is_you': isYou,
+      };
+
+  factory RoundParticipant.fromJson(Map<String, dynamic> m) {
+    return RoundParticipant(
+      key: (m['key'] as String?) ?? '',
+      displayName: (m['display_name'] as String?) ?? '',
+      email: m['email'] as String?,
+      userId: m['user_id'] as String?,
+      isYou: m['is_you'] as bool? ?? false,
+    );
+  }
+}
+
 /// Carries course + players from [RoundSetupScreen] into [HoleScoringScreen].
 @immutable
 class RoundSessionArgs {
@@ -28,6 +63,7 @@ class RoundSessionArgs {
     this.currentHole = 1,
     this.initialScoreByPlayer = const {},
     this.eventRules = const [],
+    this.participants = const [],
   });
 
   final String courseName;
@@ -39,6 +75,7 @@ class RoundSessionArgs {
   final int currentHole;
   final Map<String, int> initialScoreByPlayer;
   final List<RoundEventRule> eventRules;
+  final List<RoundParticipant> participants;
 
   /// Resume UI from a saved in-progress row (start hole defaults to 1).
   factory RoundSessionArgs.fromHistoryRound(HistoryRound round) {
@@ -52,6 +89,7 @@ class RoundSessionArgs {
       currentHole: round.currentHole ?? 1,
       initialScoreByPlayer: round.scoreByPlayer,
       eventRules: const [],
+      participants: round.participants,
     );
   }
 }

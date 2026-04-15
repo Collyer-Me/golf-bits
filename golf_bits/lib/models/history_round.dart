@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'round_session_args.dart';
 
 /// One row on the history detail standings table.
 @immutable
@@ -9,6 +10,7 @@ class HistoryStanding {
     required this.bits,
     required this.subtitle,
     this.isWinnerRow = false,
+    this.participantKey,
   });
 
   final int rank;
@@ -17,6 +19,7 @@ class HistoryStanding {
   /// e.g. "Winner", "−5 vs leader"
   final String subtitle;
   final bool isWinnerRow;
+  final String? participantKey;
 
   Map<String, dynamic> toJson() => {
         'rank': rank,
@@ -24,6 +27,7 @@ class HistoryStanding {
         'bits': bits,
         'subtitle': subtitle,
         'is_winner_row': isWinnerRow,
+        'participant_key': participantKey,
       };
 
   static HistoryStanding fromJson(Map<String, dynamic> m) {
@@ -33,6 +37,7 @@ class HistoryStanding {
       bits: (m['bits'] as num).toInt(),
       subtitle: m['subtitle'] as String? ?? '',
       isWinnerRow: m['is_winner_row'] as bool? ?? false,
+      participantKey: m['participant_key'] as String?,
     );
   }
 }
@@ -83,6 +88,7 @@ class HistoryRound {
     required this.leftEarly,
     this.currentHole,
     this.scoreByPlayer = const {},
+    this.participants = const [],
   });
 
   final String id;
@@ -102,6 +108,7 @@ class HistoryRound {
   final List<HistoryLeftEarly> leftEarly;
   final int? currentHole;
   final Map<String, int> scoreByPlayer;
+  final List<RoundParticipant> participants;
 
   String get holesLine => '$holeCount holes · $whenRelative';
 
@@ -158,11 +165,20 @@ class HistoryRound {
     final id = row['id'] as String;
     final endedAt = timestampUtcFromRow(row);
     final now = DateTime.now();
-    final players = (row['players'] as List<dynamic>).map((e) => e as String).toList();
+    final rawPlayers = row['players'] as List<dynamic>? ?? const [];
+    final players = rawPlayers.map((e) => e as String).toList();
     final standingsJson = row['standings'] as List<dynamic>? ?? const [];
     final standings = standingsJson.map((e) => HistoryStanding.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     final leftJson = row['left_early'] as List<dynamic>? ?? const [];
     final leftEarly = leftJson.map((e) => HistoryLeftEarly.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    final participantsJson = row['participants'] as List<dynamic>? ?? const [];
+    final participants = participantsJson
+        .map((e) => RoundParticipant.fromJson(Map<String, dynamic>.from(e as Map)))
+        .where((p) => p.key.isNotEmpty && p.displayName.isNotEmpty)
+        .toList();
+    final resolvedPlayers = participants.isNotEmpty
+        ? participants.map((p) => p.displayName).toList()
+        : players;
     final rawScores = row['score_by_player'];
     final Map<String, int> scores;
     if (rawScores is Map) {
@@ -180,7 +196,7 @@ class HistoryRound {
       holeCount: (row['hole_count'] as num).toInt(),
       whenRelative: whenRelativeFromUtc(endedAt, now),
       dateHeader: dateHeaderFromUtc(endedAt),
-      players: players,
+      players: resolvedPlayers,
       winnerName: row['winner_name'] as String,
       winnerBits: (row['winner_bits'] as num).toInt(),
       completed: completedFromRow(row),
@@ -188,6 +204,7 @@ class HistoryRound {
       leftEarly: leftEarly,
       currentHole: (row['current_hole'] as num?)?.toInt(),
       scoreByPlayer: scores,
+      participants: participants,
     );
   }
 
