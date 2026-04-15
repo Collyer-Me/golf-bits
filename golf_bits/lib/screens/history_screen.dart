@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,10 +16,10 @@ class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  State<HistoryScreen> createState() => HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class HistoryScreenState extends State<HistoryScreen> {
   late Future<List<HistoryRound>> _future;
   String? _loadError;
 
@@ -25,6 +27,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _future = _loadRounds();
+  }
+
+  /// Called when switching to the History tab or opening History from Home.
+  void reloadFromParent() {
+    setState(() {
+      _future = _loadRounds();
+    });
+    unawaited(_future);
   }
 
   Future<List<HistoryRound>> _loadRounds() async {
@@ -123,6 +133,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
             );
           }
           if (rounds.isEmpty) {
+            final signedOut = SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession == null;
+            if (signedOut) {
+              return _HistoryNeedSignIn(
+                onOpenProfile: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Use the Profile tab to sign in.')),
+                  );
+                },
+              );
+            }
             return _HistoryEmpty(onStartRound: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const RoundSetupScreen()),
@@ -178,12 +198,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       padding: const EdgeInsets.only(bottom: AppTheme.space3),
                       child: _HistoryRoundCard(
                         round: r,
-                        onTap: () {
-                          Navigator.of(context).push(
+                        onTap: () async {
+                          await Navigator.of(context).push<void>(
                             MaterialPageRoute<void>(
                               builder: (_) => HistoryDetailScreen(round: r),
                             ),
                           );
+                          if (context.mounted) await _refresh();
                         },
                       ),
                     )),
@@ -227,25 +248,26 @@ class _HistoryRoundCard extends StatelessWidget {
                       style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
-                  if (round.completed)
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: scheme.tertiaryContainer.withValues(alpha: AppTheme.opacitySecondaryFill),
-                        borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-                        border: Border.all(color: scheme.outlineVariant),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space2, vertical: AppTheme.space1),
-                        child: Text(
-                          'COMPLETED',
-                          style: text.labelSmall?.copyWith(
-                            color: scheme.onTertiaryContainer,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: AppTheme.letterBadge,
-                          ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: round.completed
+                          ? scheme.tertiaryContainer.withValues(alpha: AppTheme.opacitySecondaryFill)
+                          : scheme.primaryContainer.withValues(alpha: AppTheme.opacitySecondaryFill),
+                      borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space2, vertical: AppTheme.space1),
+                      child: Text(
+                        round.completed ? 'COMPLETED' : 'IN PROGRESS',
+                        style: text.labelSmall?.copyWith(
+                          color: round.completed ? scheme.onTertiaryContainer : scheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: AppTheme.letterBadge,
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
               SizedBox(height: AppTheme.space1),
@@ -292,6 +314,45 @@ class _HistoryRoundCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HistoryNeedSignIn extends StatelessWidget {
+  const _HistoryNeedSignIn({required this.onOpenProfile});
+
+  final VoidCallback onOpenProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: AppTheme.screenPadding,
+      child: Column(
+        children: [
+          const Spacer(flex: 2),
+          Icon(Icons.lock_outline, size: AppTheme.iconLarge, color: scheme.onSurfaceVariant),
+          SizedBox(height: AppTheme.space6),
+          Text(
+            'Sign in to see history',
+            style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          SizedBox(height: AppTheme.space2),
+          Text(
+            'Your finished rounds are saved to your account. Open Profile to sign in or create an account.',
+            textAlign: TextAlign.center,
+            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const Spacer(flex: 3),
+          OutlinedButton(
+            onPressed: onOpenProfile,
+            child: const Text('How to sign in'),
+          ),
+          SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
+        ],
       ),
     );
   }

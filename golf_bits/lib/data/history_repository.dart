@@ -7,6 +7,24 @@ import '../models/round_bit_event_draft.dart';
 class HistoryRepository {
   HistoryRepository._();
 
+  /// One round row by id (must belong to current user). Null if missing or RLS denies.
+  static Future<HistoryRound?> fetchRoundById(String id) async {
+    if (!SupabaseEnv.isConfigured) return null;
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null) return null;
+
+    final rows = await Supabase.instance.client
+        .from('rounds')
+        .select()
+        .eq('id', id)
+        .eq('created_by', uid)
+        .limit(1);
+
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return null;
+    return HistoryRound.fromSupabase(Map<String, dynamic>.from(list.first as Map));
+  }
+
   /// Past rounds created by the signed-in user (newest first).
   static Future<List<HistoryRound>> fetchMyRounds() async {
     if (!SupabaseEnv.isConfigured) return [];

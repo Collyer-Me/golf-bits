@@ -26,9 +26,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _navIndex = 0;
+  final GlobalKey<HistoryScreenState> _historyKey = GlobalKey<HistoryScreenState>();
   final GlobalKey<_HomeDashboardState> _homeDashboardKey = GlobalKey<_HomeDashboardState>();
 
-  void _openHistoryTab() => setState(() => _navIndex = 1);
+  void _openHistoryTab() {
+    setState(() => _navIndex = 1);
+    _historyKey.currentState?.reloadFromParent();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _navIndex,
         children: [
           _HomeDashboard(key: _homeDashboardKey, onOpenHistoryTab: _openHistoryTab),
-          const HistoryScreen(),
+          HistoryScreen(key: _historyKey),
           const _PeopleTab(),
           const _ProfileTab(),
         ],
@@ -47,6 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onDestinationSelected: (i) {
           final prev = _navIndex;
           setState(() => _navIndex = i);
+          if (i == 1 && prev != 1) {
+            _historyKey.currentState?.reloadFromParent();
+          }
           if (i == 0 && prev != 0) {
             _homeDashboardKey.currentState?.reloadFromParent();
           }

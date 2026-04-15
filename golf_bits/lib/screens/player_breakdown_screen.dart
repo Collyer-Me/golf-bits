@@ -69,39 +69,6 @@ class PlayerBreakdownScreen extends StatefulWidget {
 class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
   late final Future<List<_TimelineHole>> _holesFuture;
 
-  static const _alexHoles = <_TimelineHole>[
-    _TimelineHole(
-      hole: 1,
-      par: 4,
-      events: [
-        _TimelineEvent(label: 'Birdie', bits: 1, icon: Icons.sports_golf),
-        _TimelineEvent(label: 'One-Putt', bits: 1, icon: Icons.radio_button_checked_outlined),
-      ],
-    ),
-    _TimelineHole(
-      hole: 3,
-      par: 5,
-      events: [
-        _TimelineEvent(label: 'Sandy', bits: 1, icon: Icons.waves_outlined),
-      ],
-    ),
-    _TimelineHole(
-      hole: 7,
-      par: 4,
-      events: [
-        _TimelineEvent(label: 'Chip-in', bits: 2, icon: Icons.flag_outlined),
-        _TimelineEvent(label: 'Eagle', bits: 2, icon: Icons.trending_up),
-      ],
-    ),
-    _TimelineHole(
-      hole: 9,
-      par: 3,
-      events: [
-        _TimelineEvent(label: 'Three-Putt', bits: -1, icon: Icons.remove_circle_outline, negative: true),
-      ],
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -110,7 +77,6 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
 
   Future<List<_TimelineHole>> _loadHoles() async {
     if (!_shouldLoadFromSupabase(widget.roundId)) {
-      if (widget.playerName == 'Alex') return List<_TimelineHole>.of(_alexHoles);
       return [];
     }
     final rows = await HistoryRepository.fetchBitEventsForPlayer(
@@ -147,8 +113,8 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final course = widget.courseShortTitle ?? 'Royal Melbourne';
-    final date = widget.dateHeader ?? 'Round';
+    final course = widget.courseShortTitle ?? 'Round';
+    final date = widget.dateHeader ?? '';
 
     return Scaffold(
       appBar: AppBar(
@@ -193,10 +159,11 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
                       course,
                       style: text.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
                     ),
-                    Text(
-                      date,
-                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
+                    if (date.isNotEmpty)
+                      Text(
+                        date,
+                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
                     SizedBox(height: AppTheme.space2),
                     Text(
                       '${total >= 0 ? '+' : ''}$total BITS',
@@ -210,7 +177,7 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
                       Text(
                         _shouldLoadFromSupabase(widget.roundId)
                             ? 'No bit events recorded for this player in this round.'
-                            : 'No preview data for this player.',
+                            : 'Open this screen from a saved round in History to see bit-by-bit events.',
                         style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                       )
                     else

@@ -1,15 +1,48 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../config/supabase_env.dart';
+import '../data/history_repository.dart';
 import '../models/history_round.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'player_breakdown_screen.dart';
 
-/// Deep dive for one past round (standings + left early).
-class HistoryDetailScreen extends StatelessWidget {
+/// Deep dive for one past round (standings + left early). Refetches from Supabase when configured.
+class HistoryDetailScreen extends StatefulWidget {
   const HistoryDetailScreen({super.key, required this.round});
 
   final HistoryRound round;
+
+  @override
+  State<HistoryDetailScreen> createState() => _HistoryDetailScreenState();
+}
+
+class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
+  late HistoryRound _round;
+  bool _refreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _round = widget.round;
+    unawaited(_refetchRound()); // fire-and-forget; completes in background
+  }
+
+  Future<void> _refetchRound() async {
+    if (!SupabaseEnv.isConfigured) return;
+    if (!mounted) return;
+    setState(() => _refreshing = true);
+    try {
+      final fresh = await HistoryRepository.fetchRoundById(_round.id);
+      if (mounted && fresh != null) setState(() => _round = fresh);
+    } catch (_) {
+      // Keep showing the list payload if refresh fails (offline / RLS).
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,18 +59,33 @@ class HistoryDetailScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              round.courseShortTitle,
+              _round.courseShortTitle,
               overflow: TextOverflow.ellipsis,
               style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             Text(
-              round.dateHeader,
+              _round.dateHeader,
               style: text.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
         centerTitle: true,
         actions: [
+          if (SupabaseEnv.isConfigured)
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: _refreshing ? null : () => unawaited(_refetchRound()),
+              icon: _refreshing
+                  ? SizedBox(
+                      width: AppTheme.iconDense,
+                      height: AppTheme.iconDense,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: scheme.onSurface,
+                      ),
+                    )
+                  : const Icon(Icons.refresh),
+            ),
           IconButton(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -48,90 +96,96 @@ class HistoryDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: AppTheme.screenPadding,
-        children: [
-          OutlinedSurfaceCard(
-            borderColor: scheme.secondary.withValues(alpha: AppTheme.opacityBorderEmphasis),
-            child: Column(
+      body: RefreshIndicator(
+        onRefresh: _refetchRound,
+        child: ListView(
+          padding: AppTheme.screenPadding,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            OutlinedSurfaceCard(
+              borderColor: scheme.secondary.withValues(alpha: AppTheme.opacityBorderEmphasis),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: AppTheme.space5,
+                    backgroundColor: scheme.secondaryContainer,
+                    child: Icon(Icons.emoji_events, color: scheme.secondary, size: AppTheme.iconLarge),
+                  ),
+                  SizedBox(height: AppTheme.space3),
+                  Text(
+                    'ROUND WINNER',
+                    style: text.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: AppTheme.letterStepCaps,
+                    ),
+                  ),
+                  Text(
+                    _round.winnerName.toUpperCase(),
+                    style: text.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  Text(
+                    '+${_round.winnerBits} BITS',
+                    style: text.headlineMedium?.copyWith(
+                      color: scheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: AppTheme.space6),
+            Row(
               children: [
-                CircleAvatar(
-                  radius: AppTheme.space5,
-                  backgroundColor: scheme.secondaryContainer,
-                  child: Icon(Icons.emoji_events, color: scheme.secondary, size: AppTheme.iconLarge),
+                Expanded(
+                  child: Text(
+                    'FINAL STANDINGS',
+                    style: text.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: AppTheme.letterStepCaps,
+                    ),
+                  ),
                 ),
-                SizedBox(height: AppTheme.space3),
                 Text(
-                  'ROUND WINNER',
+                  'TOTAL BITS',
                   style: text.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w800,
                     letterSpacing: AppTheme.letterStepCaps,
-                  ),
-                ),
-                Text(
-                  round.winnerName.toUpperCase(),
-                  style: text.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                Text(
-                  '+${round.winnerBits} BITS',
-                  style: text.headlineMedium?.copyWith(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
-          ),
-          SizedBox(height: AppTheme.space6),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'FINAL STANDINGS',
-                  style: text.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: AppTheme.letterStepCaps,
-                  ),
-                ),
+            SizedBox(height: AppTheme.space3),
+            ..._round.standings.map(
+              (s) => _StandingTile(
+                roundId: _round.id,
+                courseShortTitle: _round.courseShortTitle,
+                dateHeader: _round.dateHeader,
+                standing: s,
+                onReturnFromPlayer: () => unawaited(_refetchRound()),
               ),
+            ),
+            if (_round.leftEarly.isNotEmpty) ...[
+              SizedBox(height: AppTheme.space6),
               Text(
-                'TOTAL BITS',
+                'LEFT EARLY',
                 style: text.labelSmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w800,
                   letterSpacing: AppTheme.letterStepCaps,
                 ),
               ),
+              SizedBox(height: AppTheme.space3),
+              ..._round.leftEarly.map((r) => _LeftEarlyTile(row: r)),
             ],
-          ),
-          SizedBox(height: AppTheme.space3),
-          ...round.standings.map(
-            (s) => _StandingTile(
-              roundId: round.id,
-              courseShortTitle: round.courseShortTitle,
-              dateHeader: round.dateHeader,
-              standing: s,
-            ),
-          ),
-          if (round.leftEarly.isNotEmpty) ...[
-            SizedBox(height: AppTheme.space6),
-            Text(
-              'LEFT EARLY',
-              style: text.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-                letterSpacing: AppTheme.letterStepCaps,
-              ),
-            ),
-            SizedBox(height: AppTheme.space3),
-            ...round.leftEarly.map((r) => _LeftEarlyTile(row: r)),
+            SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -143,12 +197,14 @@ class _StandingTile extends StatelessWidget {
     required this.courseShortTitle,
     required this.dateHeader,
     required this.standing,
+    this.onReturnFromPlayer,
   });
 
   final String roundId;
   final String courseShortTitle;
   final String dateHeader;
   final HistoryStanding standing;
+  final VoidCallback? onReturnFromPlayer;
 
   @override
   Widget build(BuildContext context) {
@@ -163,8 +219,8 @@ class _StandingTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppTheme.space2),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        onTap: () {
-          Navigator.of(context).push(
+        onTap: () async {
+          await Navigator.of(context).push<void>(
             MaterialPageRoute<void>(
               builder: (_) => PlayerBreakdownScreen(
                 roundId: roundId,
@@ -174,6 +230,7 @@ class _StandingTile extends StatelessWidget {
               ),
             ),
           );
+          onReturnFromPlayer?.call();
         },
         child: OutlinedSurfaceCard(
           borderColor: win ? scheme.primary : scheme.outlineVariant,
