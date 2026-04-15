@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
+import 'pending_auth_link.dart';
 import 'profile_bootstrap.dart';
 import '../screens/home_screen.dart';
+import '../screens/log_in_screen.dart';
 import '../screens/update_password_screen.dart';
 import '../screens/welcome_screen.dart';
 
@@ -63,12 +65,21 @@ class AuthRootState extends State<AuthRoot> {
     // currentSession is hydrated from storage by supabase_flutter on startup.
     await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
+
+    final pendingRecovery = PendingAuthLink.takePasswordRecovery();
+    final pendingEmailSignup = PendingAuthLink.takeEmailSignupConfirmed();
+
     setState(() {
       _ready = true;
       _inApp = Supabase.instance.client.auth.currentSession != null;
     });
-    if (_isRecoveryLink()) {
+
+    if (pendingRecovery || _isRecoveryLink()) {
       _openRecoveryScreen();
+    }
+
+    if (pendingEmailSignup) {
+      _showEmailConfirmedDialog();
     }
   }
 
@@ -109,6 +120,44 @@ class AuthRootState extends State<AuthRoot> {
         ),
       );
       _recoveryRouteOpen = false;
+    });
+  }
+
+  void _showEmailConfirmedDialog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final hasSession = Supabase.instance.client.auth.currentSession != null;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          return AlertDialog(
+            title: const Text('Email confirmed'),
+            content: Text(
+              hasSession
+                  ? 'Your email is verified and you are signed in.'
+                  : 'Your email is verified. Sign in with your password to continue.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Close'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  if (!hasSession) {
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute<void>(builder: (_) => const LogInScreen()),
+                    );
+                  }
+                },
+                child: Text(hasSession ? 'Continue' : 'Log in'),
+              ),
+            ],
+          );
+        },
+      );
     });
   }
 
