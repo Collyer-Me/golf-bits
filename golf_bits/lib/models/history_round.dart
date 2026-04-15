@@ -124,6 +124,19 @@ class HistoryRound {
     return '${ago ~/ 365} years ago';
   }
 
+  /// Some Supabase projects use a boolean `completed`; others use `completed_at` (null = in progress).
+  static bool completedFromRow(Map<String, dynamic> row) {
+    final dynamic c = row['completed'];
+    if (c is bool) return c;
+    if (c is String) {
+      final s = c.toLowerCase();
+      if (s == 'true') return true;
+      if (s == 'false') return false;
+    }
+    if (row['completed_at'] != null) return true;
+    return false;
+  }
+
   factory HistoryRound.fromSupabase(Map<String, dynamic> row) {
     final id = row['id'] as String;
     final endedAt = DateTime.parse(row['ended_at'] as String);
@@ -144,7 +157,7 @@ class HistoryRound {
       players: players,
       winnerName: row['winner_name'] as String,
       winnerBits: (row['winner_bits'] as num).toInt(),
-      completed: row['completed'] as bool? ?? true,
+      completed: completedFromRow(row),
       standings: standings,
       leftEarly: leftEarly,
     );

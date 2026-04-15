@@ -120,14 +120,11 @@ class _HomeDashboardState extends State<_HomeDashboard> {
         }
         return;
       }
-      final results = await Future.wait<Object?>([
-        HistoryRepository.fetchLatestIncompleteRound(),
-        HistoryRepository.fetchLatestCompletedRound(),
-      ]);
+      final snapshot = await HistoryRepository.fetchHomeDashboardRounds();
       if (!mounted) return;
       setState(() {
-        _activeRound = results[0] as HistoryRound?;
-        _previousRound = results[1] as HistoryRound?;
+        _activeRound = snapshot.active;
+        _previousRound = snapshot.previous;
         _loading = false;
       });
     } catch (e) {

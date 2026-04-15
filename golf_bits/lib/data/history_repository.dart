@@ -24,42 +24,57 @@ class HistoryRepository {
         .toList();
   }
 
-  /// Latest completed round for the signed-in user (e.g. home “previous session”), or null.
-  static Future<HistoryRound?> fetchLatestCompletedRound() async {
-    if (!SupabaseEnv.isConfigured) return null;
-    final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (uid == null) return null;
-
-    final rows = await Supabase.instance.client
-        .from('rounds')
-        .select()
-        .eq('created_by', uid)
-        .eq('completed', true)
-        .order('ended_at', ascending: false)
-        .limit(1);
-
-    final list = rows as List<dynamic>;
-    if (list.isEmpty) return null;
-    return HistoryRound.fromSupabase(Map<String, dynamic>.from(list.first as Map));
+  static List<Map<String, dynamic>> _roundMaps(dynamic rows) {
+    return (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  /// Latest in-progress round (`completed = false`), or null.
-  static Future<HistoryRound?> fetchLatestIncompleteRound() async {
-    if (!SupabaseEnv.isConfigured) return null;
+  static void _sortByEndedAtDesc(List<Map<String, dynamic>> maps) {
+    maps.sort(
+      (a, b) => DateTime.parse(b['ended_at'] as String).compareTo(DateTime.parse(a['ended_at'] as String)),
+    );
+  }
+
+  /// Latest completed + latest in-progress for the home dashboard (single round-trip).
+  ///
+  /// Does not filter on `rounds.completed` in SQL — some databases only have `completed_at`.
+  static Future<({HistoryRound? active, HistoryRound? previous})> fetchHomeDashboardRounds() async {
+    if (!SupabaseEnv.isConfigured) {
+      return (active: null, previous: null);
+    }
     final uid = Supabase.instance.client.auth.currentUser?.id;
-    if (uid == null) return null;
+    if (uid == null) {
+      return (active: null, previous: null);
+    }
 
     final rows = await Supabase.instance.client
         .from('rounds')
         .select()
         .eq('created_by', uid)
-        .eq('completed', false)
-        .order('created_at', ascending: false)
-        .limit(1);
+        .order('ended_at', ascending: false)
+        .limit(80);
 
-    final list = rows as List<dynamic>;
-    if (list.isEmpty) return null;
-    return HistoryRound.fromSupabase(Map<String, dynamic>.from(list.first as Map));
+    final maps = _roundMaps(rows);
+    _sortByEndedAtDesc(maps);
+    HistoryRound? previous;
+    HistoryRound? active;
+    for (final map in maps) {
+      final r = HistoryRound.fromSupabase(map);
+      if (previous == null && r.completed) previous = r;
+      if (active == null && !r.completed) active = r;
+    }
+    return (active: active, previous: previous);
+  }
+
+  /// Latest completed round for the signed-in user (e.g. home “previous session”), or null.
+  static Future<HistoryRound?> fetchLatestCompletedRound() async {
+    final r = await fetchHomeDashboardRounds();
+    return r.previous;
+  }
+
+  /// Latest in-progress round, or null.
+  static Future<HistoryRound?> fetchLatestIncompleteRound() async {
+    final r = await fetchHomeDashboardRounds();
+    return r.active;
   }
 
   /// Persists a completed round row; returns new row `id` for bit-event inserts.
