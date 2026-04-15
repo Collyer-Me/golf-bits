@@ -124,6 +124,19 @@ class HistoryRound {
     return '${ago ~/ 365} years ago';
   }
 
+  /// Display/sort time: prefer `ended_at`, then `completed_at`, then `created_at`.
+  static DateTime timestampUtcFromRow(Map<String, dynamic> row) {
+    for (final key in ['ended_at', 'completed_at', 'created_at']) {
+      final dynamic v = row[key];
+      if (v == null) continue;
+      if (v is String && v.isNotEmpty) {
+        return DateTime.parse(v);
+      }
+      if (v is DateTime) return v.toUtc();
+    }
+    return DateTime.now().toUtc();
+  }
+
   /// Some Supabase projects use a boolean `completed`; others use `completed_at` (null = in progress).
   static bool completedFromRow(Map<String, dynamic> row) {
     final dynamic c = row['completed'];
@@ -139,7 +152,7 @@ class HistoryRound {
 
   factory HistoryRound.fromSupabase(Map<String, dynamic> row) {
     final id = row['id'] as String;
-    final endedAt = DateTime.parse(row['ended_at'] as String);
+    final endedAt = timestampUtcFromRow(row);
     final now = DateTime.now();
     final players = (row['players'] as List<dynamic>).map((e) => e as String).toList();
     final standingsJson = row['standings'] as List<dynamic>? ?? const [];

@@ -17,20 +17,20 @@ class HistoryRepository {
         .from('rounds')
         .select()
         .eq('created_by', uid)
-        .order('ended_at', ascending: false);
+        .limit(500);
 
-    return (rows as List<dynamic>)
-        .map((e) => HistoryRound.fromSupabase(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final maps = _roundMaps(rows);
+    _sortRoundMapsByTimestampDesc(maps);
+    return maps.map(HistoryRound.fromSupabase).toList();
   }
 
   static List<Map<String, dynamic>> _roundMaps(dynamic rows) {
     return (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  static void _sortByEndedAtDesc(List<Map<String, dynamic>> maps) {
+  static void _sortRoundMapsByTimestampDesc(List<Map<String, dynamic>> maps) {
     maps.sort(
-      (a, b) => DateTime.parse(b['ended_at'] as String).compareTo(DateTime.parse(a['ended_at'] as String)),
+      (a, b) => HistoryRound.timestampUtcFromRow(b).compareTo(HistoryRound.timestampUtcFromRow(a)),
     );
   }
 
@@ -50,11 +50,10 @@ class HistoryRepository {
         .from('rounds')
         .select()
         .eq('created_by', uid)
-        .order('ended_at', ascending: false)
         .limit(80);
 
     final maps = _roundMaps(rows);
-    _sortByEndedAtDesc(maps);
+    _sortRoundMapsByTimestampDesc(maps);
     HistoryRound? previous;
     HistoryRound? active;
     for (final map in maps) {
