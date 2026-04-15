@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeDashboard extends StatefulWidget {
-  const _HomeDashboard({required this.onOpenHistoryTab});
+  const _HomeDashboard({super.key, required this.onOpenHistoryTab});
 
   final VoidCallback onOpenHistoryTab;
 
