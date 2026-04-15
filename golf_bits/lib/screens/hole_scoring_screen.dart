@@ -127,12 +127,14 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   int _holeScoreFor(_HolePlayer player) => _holeScores[player.id]?[_hole] ?? 0;
 
   void _openEventSheet(_HolePlayer player) {
+    final rules = widget.session?.eventRules ?? const <RoundEventRule>[];
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (ctx) => _EventAwardSheet(
         playerName: player.name,
+        rules: rules,
         onAward: (label, delta, iconKey) {
           Navigator.of(ctx).pop();
           final draft = RoundBitEventDraft(
@@ -310,14 +312,13 @@ class _PlayerRowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = player.isActive;
     final holeStr = holeScore >= 0 ? '+$holeScore' : '$holeScore';
     final totalStr = player.totalScore >= 0 ? '+${player.totalScore}' : '${player.totalScore}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space3),
       child: OutlinedSurfaceCard(
-        borderColor: active ? scheme.primary : scheme.outlineVariant,
+        borderColor: scheme.outlineVariant,
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.space4,
           vertical: AppTheme.space3,
@@ -328,69 +329,38 @@ class _PlayerRowCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (active)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppTheme.space1),
-                      child: Text(
-                        'ACTIVE PLAYER',
-                        style: text.labelSmall?.copyWith(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: AppTheme.letterStepCaps,
-                        ),
-                      ),
-                    ),
                   Text(
                     player.name,
                     style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: AppTheme.space1),
-                  if (active)
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: holeStr,
-                            style: text.headlineSmall?.copyWith(
-                              color: scheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          TextSpan(
-                            text: '    $totalStr TOTAL',
-                            style: text.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ],
+                  Row(
+                    children: [
+                      Text(
+                        holeStr,
+                        style: text.titleMedium?.copyWith(
+                          color: scheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    )
-                  else
-                    Row(
-                      children: [
-                        Text(
-                          holeStr,
-                          style: text.titleMedium?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(width: AppTheme.space3),
-                        Text(
-                          '$totalStr total',
-                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
+                      SizedBox(width: AppTheme.space3),
+                      Text(
+                        '$totalStr total',
+                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
             FilledButton(
               onPressed: onAward,
               style: FilledButton.styleFrom(
-                minimumSize: Size(active ? 56 : 48, active ? 56 : 48),
+                minimumSize: const Size(48, 48),
                 padding: EdgeInsets.zero,
                 shape: const CircleBorder(),
               ),
-              child: Icon(Icons.add, size: active ? AppTheme.iconLarge : AppTheme.iconDense),
+              child: const Icon(Icons.add, size: AppTheme.iconDense),
             ),
           ],
         ),
@@ -404,28 +374,33 @@ typedef _AwardCallback = void Function(String label, int delta, String iconKey);
 class _EventAwardSheet extends StatelessWidget {
   const _EventAwardSheet({
     required this.playerName,
+    required this.rules,
     required this.onAward,
   });
 
   final String playerName;
+  final List<RoundEventRule> rules;
   final _AwardCallback onAward;
-
-  static const _positive = [
-    _EventDef('Birdie', '+1 BIT', 1, 'sports_golf'),
-    _EventDef('Eagle', '+2 BITS', 2, 'trending_up'),
-    _EventDef('Chip-in', '+1 BIT', 1, 'flag_outlined'),
-    _EventDef('One-Putt', '+1 BIT', 1, 'radio_button_checked_outlined'),
-  ];
-
-  static const _negative = [
-    _EventDef('Three-Putt', '−1 BIT', -1, 'remove_circle_outline'),
-    _EventDef('Water Hazard', '−1 BIT', -1, 'waves_outlined'),
-  ];
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+
+    final mapped = (rules.isEmpty
+            ? [
+                const RoundEventRule(label: 'Birdie', delta: 1, iconKey: 'sports_golf'),
+                const RoundEventRule(label: 'Eagle', delta: 2, iconKey: 'trending_up'),
+                const RoundEventRule(label: 'Chip-in', delta: 1, iconKey: 'flag_outlined'),
+                const RoundEventRule(label: 'One-Putt', delta: 1, iconKey: 'radio_button_checked_outlined'),
+                const RoundEventRule(label: 'Three-Putt', delta: -1, iconKey: 'remove_circle_outline'),
+                const RoundEventRule(label: 'Water Hazard', delta: -1, iconKey: 'waves_outlined'),
+              ]
+            : rules)
+        .map((r) => _EventDef(r.label, _bitText(r.delta), r.delta, r.iconKey))
+        .toList();
+    final positive = mapped.where((e) => e.delta >= 0).toList();
+    final negative = mapped.where((e) => e.delta < 0).toList();
 
     return Padding(
       padding: EdgeInsets.only(
@@ -475,12 +450,19 @@ class _EventAwardSheet extends StatelessWidget {
             ],
           ),
           SizedBox(height: AppTheme.space4),
-          _eventGrid(context, _positive, false),
+          _eventGrid(context, positive, false),
           SizedBox(height: AppTheme.space3),
-          _eventGrid(context, _negative, true),
+          if (negative.isNotEmpty) _eventGrid(context, negative, true),
         ],
       ),
     );
+  }
+
+  static String _bitText(int delta) {
+    final abs = delta.abs();
+    final noun = abs == 1 ? 'BIT' : 'BITS';
+    if (delta < 0) return '−$abs $noun';
+    return '+$abs $noun';
   }
 
   Widget _eventGrid(BuildContext context, List<_EventDef> items, bool negative) {

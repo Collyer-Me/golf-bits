@@ -2,6 +2,19 @@ import 'package:flutter/foundation.dart';
 
 import 'history_round.dart';
 
+@immutable
+class RoundEventRule {
+  const RoundEventRule({
+    required this.label,
+    required this.delta,
+    required this.iconKey,
+  });
+
+  final String label;
+  final int delta;
+  final String iconKey;
+}
+
 /// Carries course + players from [RoundSetupScreen] into [HoleScoringScreen].
 @immutable
 class RoundSessionArgs {
@@ -14,6 +27,7 @@ class RoundSessionArgs {
     this.roundId,
     this.currentHole = 1,
     this.initialScoreByPlayer = const {},
+    this.eventRules = const [],
   });
 
   final String courseName;
@@ -24,6 +38,7 @@ class RoundSessionArgs {
   final String? roundId;
   final int currentHole;
   final Map<String, int> initialScoreByPlayer;
+  final List<RoundEventRule> eventRules;
 
   /// Resume UI from a saved in-progress row (start hole defaults to 1).
   factory RoundSessionArgs.fromHistoryRound(HistoryRound round) {
@@ -36,6 +51,7 @@ class RoundSessionArgs {
       roundId: round.id,
       currentHole: round.currentHole ?? 1,
       initialScoreByPlayer: round.scoreByPlayer,
+      eventRules: const [],
     );
   }
 }

@@ -11,6 +11,53 @@ class HistoryRepository {
 
   static String? get _uid => _client.auth.currentUser?.id;
 
+  static String? _missingColumn(Object error) {
+    if (error is! PostgrestException) return null;
+    final m = error.message;
+    final pgrst = RegExp(r"Could not find the '([^']+)' column").firstMatch(m);
+    if (pgrst != null) return pgrst.group(1);
+    final pg = RegExp(r'column\s+rounds\.([a-zA-Z0-9_]+)\s+does not exist').firstMatch(m);
+    if (pg != null) return pg.group(1);
+    return null;
+  }
+
+  static Future<Map<String, dynamic>> _insertRoundWithFallback(
+    Map<String, dynamic> payload, {
+    String select = 'id',
+  }) async {
+    final working = Map<String, dynamic>.from(payload);
+    for (var i = 0; i < 12; i++) {
+      try {
+        final res = await _client.from('rounds').insert(working).select(select).single();
+        return Map<String, dynamic>.from(res as Map);
+      } catch (e) {
+        final col = _missingColumn(e);
+        if (col == null || !working.containsKey(col)) rethrow;
+        working.remove(col);
+      }
+    }
+    throw StateError('Could not insert round after schema fallback attempts');
+  }
+
+  static Future<void> _updateRoundWithFallback({
+    required String roundId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final working = Map<String, dynamic>.from(payload);
+    for (var i = 0; i < 12; i++) {
+      if (working.isEmpty) return;
+      try {
+        await _client.from('rounds').update(working).eq('id', roundId);
+        return;
+      } catch (e) {
+        final col = _missingColumn(e);
+        if (col == null || !working.containsKey(col)) rethrow;
+        working.remove(col);
+      }
+    }
+    throw StateError('Could not update round after schema fallback attempts');
+  }
+
   /// One round row by id (must belong to current user). Null if missing or RLS denies.
   static Future<HistoryRound?> fetchRoundById(String id) async {
     if (!SupabaseEnv.isConfigured) return null;
@@ -108,14 +155,10 @@ class HistoryRepository {
       throw StateError('Must be signed in to save a round');
     }
 
-    final res = await _client
-        .from('rounds')
-        .insert({
-          ...row,
-          'created_by': uid,
-        })
-        .select('id')
-        .single();
+    final res = await _insertRoundWithFallback({
+      ...row,
+      'created_by': uid,
+    });
 
     return res['id'] as String;
   }
@@ -135,25 +178,21 @@ class HistoryRepository {
     if (uid == null) {
       throw StateError('Must be signed in to start a synced round');
     }
-    final res = await _client
-        .from('rounds')
-        .insert({
-          'created_by': uid,
-          'course_name': courseName,
-          'course_short_title': courseShortTitle,
-          'hole_count': holeCount,
-          'completed': false,
-          'completed_at': null,
-          'winner_name': 'TBD',
-          'winner_bits': 0,
-          'players': players,
-          'standings': const <Map<String, dynamic>>[],
-          'left_early': const <Map<String, dynamic>>[],
-          'current_hole': currentHole,
-          'score_by_player': <String, int>{for (final p in players) p: 0},
-        })
-        .select('id')
-        .single();
+    final res = await _insertRoundWithFallback({
+      'created_by': uid,
+      'course_name': courseName,
+      'course_short_title': courseShortTitle,
+      'hole_count': holeCount,
+      'completed': false,
+      'completed_at': null,
+      'winner_name': 'TBD',
+      'winner_bits': 0,
+      'players': players,
+      'standings': const <Map<String, dynamic>>[],
+      'left_early': const <Map<String, dynamic>>[],
+      'current_hole': currentHole,
+      'score_by_player': <String, int>{for (final p in players) p: 0},
+    });
     return res['id'] as String;
   }
 
@@ -164,14 +203,14 @@ class HistoryRepository {
     required Map<String, int> scoreByPlayer,
   }) async {
     if (!SupabaseEnv.isConfigured) return;
-    await _client
-        .from('rounds')
-        .update({
-          'current_hole': currentHole,
-          'score_by_player': scoreByPlayer,
-          'ended_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', roundId);
+    await _updateRoundWithFallback(
+      roundId: roundId,
+      payload: {
+        'current_hole': currentHole,
+        'score_by_player': scoreByPlayer,
+        'ended_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
   }
 
   /// Marks an in-progress round as completed and writes final summary.
@@ -180,7 +219,7 @@ class HistoryRepository {
     required Map<String, dynamic> row,
   }) async {
     if (!SupabaseEnv.isConfigured) return;
-    await _client.from('rounds').update(row).eq('id', roundId);
+    await _updateRoundWithFallback(roundId: roundId, payload: row);
   }
 
   /// Inserts bit events after the parent round row exists.

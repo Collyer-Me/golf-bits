@@ -302,6 +302,17 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     };
   }
 
+  String _iconKeyForEventName(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('birdie')) return 'sports_golf';
+    if (n.contains('eagle')) return 'trending_up';
+    if (n.contains('chip')) return 'flag_outlined';
+    if (n.contains('putt')) return 'radio_button_checked_outlined';
+    if (n.contains('water')) return 'waves_outlined';
+    if (n.contains('three') || n.contains('hazard')) return 'remove_circle_outline';
+    return 'star_outline';
+  }
+
   Future<void> _goHoleScoring() async {
     if (_startingRound) return;
     final course = _selectedCourse!;
@@ -327,6 +338,17 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
         if (mounted) setState(() => _startingRound = false);
       }
     }
+    final enabledRules = _events
+        .where((e) => e.enabled)
+        .map(
+          (e) => RoundEventRule(
+            label: e.name,
+            delta: e.points,
+            iconKey: _iconKeyForEventName(e.name),
+          ),
+        )
+        .toList();
+
     final args = RoundSessionArgs(
       courseName: course.name,
       courseShortTitle: _shortCourseTitle(course),
@@ -336,6 +358,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
       roundId: roundId,
       currentHole: startHole,
       initialScoreByPlayer: {for (final p in _players) p.name: 0},
+      eventRules: enabledRules,
     );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
