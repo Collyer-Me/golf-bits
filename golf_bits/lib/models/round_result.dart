@@ -18,6 +18,8 @@ class RoundResult {
     required this.standings,
     required this.leftEarly,
     this.bitEvents = const [],
+    this.roundId,
+    this.scoreByPlayer = const {},
   });
 
   final String courseName;
@@ -30,6 +32,8 @@ class RoundResult {
   final List<HistoryStanding> standings;
   final List<HistoryLeftEarly> leftEarly;
   final List<RoundBitEventDraft> bitEvents;
+  final String? roundId;
+  final Map<String, int> scoreByPlayer;
 
   /// Builds standings from per-player bit totals at end of round.
   factory RoundResult.fromSessionScores({
@@ -70,21 +74,27 @@ class RoundResult {
       standings: standings,
       leftEarly: const [],
       bitEvents: bitEvents,
+      roundId: session.roundId,
+      scoreByPlayer: {for (final r in scoredPlayers) r.name: r.bits},
     );
   }
 
   Map<String, dynamic> toInsertRow() {
+    final now = DateTime.now().toUtc().toIso8601String();
     return {
       'course_name': courseName,
       'course_short_title': courseShortTitle,
       'hole_count': holeCount,
       'completed': completed,
-      'ended_at': DateTime.now().toUtc().toIso8601String(),
+      'completed_at': completed ? now : null,
+      'ended_at': now,
       'winner_name': winnerName,
       'winner_bits': winnerBits,
       'players': players,
       'standings': standings.map((s) => s.toJson()).toList(),
       'left_early': leftEarly.map((e) => e.toJson()).toList(),
+      'current_hole': holeCount,
+      'score_by_player': scoreByPlayer,
     };
   }
 

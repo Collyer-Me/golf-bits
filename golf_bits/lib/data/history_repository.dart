@@ -7,13 +7,17 @@ import '../models/round_bit_event_draft.dart';
 class HistoryRepository {
   HistoryRepository._();
 
+  static SupabaseClient get _client => Supabase.instance.client;
+
+  static String? get _uid => _client.auth.currentUser?.id;
+
   /// One round row by id (must belong to current user). Null if missing or RLS denies.
   static Future<HistoryRound?> fetchRoundById(String id) async {
     if (!SupabaseEnv.isConfigured) return null;
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = _uid;
     if (uid == null) return null;
 
-    final rows = await Supabase.instance.client
+    final rows = await _client
         .from('rounds')
         .select()
         .eq('id', id)
@@ -28,10 +32,10 @@ class HistoryRepository {
   /// Past rounds created by the signed-in user (newest first).
   static Future<List<HistoryRound>> fetchMyRounds() async {
     if (!SupabaseEnv.isConfigured) return [];
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = _uid;
     if (uid == null) return [];
 
-    final rows = await Supabase.instance.client
+    final rows = await _client
         .from('rounds')
         .select()
         .eq('created_by', uid)
@@ -59,12 +63,12 @@ class HistoryRepository {
     if (!SupabaseEnv.isConfigured) {
       return (active: null, previous: null);
     }
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = _uid;
     if (uid == null) {
       return (active: null, previous: null);
     }
 
-    final rows = await Supabase.instance.client
+    final rows = await _client
         .from('rounds')
         .select()
         .eq('created_by', uid)
@@ -99,12 +103,12 @@ class HistoryRepository {
     if (!SupabaseEnv.isConfigured) {
       throw StateError('Supabase is not configured');
     }
-    final uid = Supabase.instance.client.auth.currentUser?.id;
+    final uid = _uid;
     if (uid == null) {
       throw StateError('Must be signed in to save a round');
     }
 
-    final res = await Supabase.instance.client
+    final res = await _client
         .from('rounds')
         .insert({
           ...row,
@@ -114,6 +118,69 @@ class HistoryRepository {
         .single();
 
     return res['id'] as String;
+  }
+
+  /// Creates an in-progress round row and returns new `id`.
+  static Future<String> createInProgressRound({
+    required String courseName,
+    required String courseShortTitle,
+    required int holeCount,
+    required List<String> players,
+    required int currentHole,
+  }) async {
+    if (!SupabaseEnv.isConfigured) {
+      throw StateError('Supabase is not configured');
+    }
+    final uid = _uid;
+    if (uid == null) {
+      throw StateError('Must be signed in to start a synced round');
+    }
+    final res = await _client
+        .from('rounds')
+        .insert({
+          'created_by': uid,
+          'course_name': courseName,
+          'course_short_title': courseShortTitle,
+          'hole_count': holeCount,
+          'completed': false,
+          'completed_at': null,
+          'winner_name': 'TBD',
+          'winner_bits': 0,
+          'players': players,
+          'standings': const <Map<String, dynamic>>[],
+          'left_early': const <Map<String, dynamic>>[],
+          'current_hole': currentHole,
+          'score_by_player': <String, int>{for (final p in players) p: 0},
+        })
+        .select('id')
+        .single();
+    return res['id'] as String;
+  }
+
+  /// Persists current round progress for resume on next launch.
+  static Future<void> updateRoundProgress({
+    required String roundId,
+    required int currentHole,
+    required Map<String, int> scoreByPlayer,
+  }) async {
+    if (!SupabaseEnv.isConfigured) return;
+    await _client
+        .from('rounds')
+        .update({
+          'current_hole': currentHole,
+          'score_by_player': scoreByPlayer,
+          'ended_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', roundId);
+  }
+
+  /// Marks an in-progress round as completed and writes final summary.
+  static Future<void> completeRound({
+    required String roundId,
+    required Map<String, dynamic> row,
+  }) async {
+    if (!SupabaseEnv.isConfigured) return;
+    await _client.from('rounds').update(row).eq('id', roundId);
   }
 
   /// Inserts bit events after the parent round row exists.

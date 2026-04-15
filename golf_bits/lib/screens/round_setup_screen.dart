@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/supabase_env.dart';
+import '../data/history_repository.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
@@ -57,6 +60,7 @@ class RoundSetupScreen extends StatefulWidget {
 
 class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerProviderStateMixin {
   int _step = 0;
+  bool _startingRound = false;
 
   late final List<_Player> _players;
   late final List<_Recent> _recent;
@@ -228,17 +232,42 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     };
   }
 
-  void _goHoleScoring() {
+  Future<void> _goHoleScoring() async {
+    if (_startingRound) return;
     final course = _selectedCourse!;
     final setup = _courseSetup!;
     final startHole = setup.holes == 9 ? (setup.frontNineFirst ? 1 : 10) : 1;
+    String? roundId;
+    if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentUser != null) {
+      setState(() => _startingRound = true);
+      try {
+        roundId = await HistoryRepository.createInProgressRound(
+          courseName: course.name,
+          courseShortTitle: _shortCourseTitle(course),
+          holeCount: setup.holes,
+          players: _players.map((p) => p.name).toList(),
+          currentHole: startHole,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start synced round: $e')),
+        );
+      } finally {
+        if (mounted) setState(() => _startingRound = false);
+      }
+    }
     final args = RoundSessionArgs(
       courseName: course.name,
       courseShortTitle: _shortCourseTitle(course),
       holeCount: setup.holes,
       startHole: startHole,
       playerNames: _players.map((p) => p.name).toList(),
+      roundId: roundId,
+      currentHole: startHole,
+      initialScoreByPlayer: {for (final p in _players) p.name: 0},
     );
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => HoleScoringScreen(session: args)),
     );
@@ -352,8 +381,17 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                   child: const Text('Next'),
                 ),
               _ => FilledButton(
-                  onPressed: _goHoleScoring,
-                  child: const Text('Start round'),
+                  onPressed: _startingRound ? null : _goHoleScoring,
+                  child: _startingRound
+                      ? SizedBox(
+                          height: AppTheme.iconInline,
+                          width: AppTheme.iconInline,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        )
+                      : const Text('Start round'),
                 ),
             },
           ),

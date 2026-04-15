@@ -11,6 +11,9 @@ class RoundSessionArgs {
     required this.holeCount,
     required this.startHole,
     required this.playerNames,
+    this.roundId,
+    this.currentHole = 1,
+    this.initialScoreByPlayer = const {},
   });
 
   final String courseName;
@@ -18,6 +21,9 @@ class RoundSessionArgs {
   final int holeCount;
   final int startHole;
   final List<String> playerNames;
+  final String? roundId;
+  final int currentHole;
+  final Map<String, int> initialScoreByPlayer;
 
   /// Resume UI from a saved in-progress row (start hole defaults to 1).
   factory RoundSessionArgs.fromHistoryRound(HistoryRound round) {
@@ -27,6 +33,9 @@ class RoundSessionArgs {
       holeCount: round.holeCount,
       startHole: 1,
       playerNames: round.players,
+      roundId: round.id,
+      currentHole: round.currentHole ?? 1,
+      initialScoreByPlayer: round.scoreByPlayer,
     );
   }
 }

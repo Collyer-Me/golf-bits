@@ -81,6 +81,8 @@ class HistoryRound {
     required this.completed,
     required this.standings,
     required this.leftEarly,
+    this.currentHole,
+    this.scoreByPlayer = const {},
   });
 
   final String id;
@@ -98,6 +100,8 @@ class HistoryRound {
   final bool completed;
   final List<HistoryStanding> standings;
   final List<HistoryLeftEarly> leftEarly;
+  final int? currentHole;
+  final Map<String, int> scoreByPlayer;
 
   String get holesLine => '$holeCount holes · $whenRelative';
 
@@ -159,6 +163,15 @@ class HistoryRound {
     final standings = standingsJson.map((e) => HistoryStanding.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     final leftJson = row['left_early'] as List<dynamic>? ?? const [];
     final leftEarly = leftJson.map((e) => HistoryLeftEarly.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    final rawScores = row['score_by_player'];
+    final Map<String, int> scores;
+    if (rawScores is Map) {
+      scores = rawScores.map(
+        (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? int.tryParse('$v') ?? 0),
+      );
+    } else {
+      scores = const {};
+    }
 
     return HistoryRound(
       id: id,
@@ -173,6 +186,8 @@ class HistoryRound {
       completed: completedFromRow(row),
       standings: standings,
       leftEarly: leftEarly,
+      currentHole: (row['current_hole'] as num?)?.toInt(),
+      scoreByPlayer: scores,
     );
   }
 

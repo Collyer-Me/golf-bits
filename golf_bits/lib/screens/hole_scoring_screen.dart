@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../data/history_repository.dart';
 import '../models/round_bit_event_draft.dart';
 import '../models/round_result.dart';
 import '../models/round_session_args.dart';
@@ -60,7 +63,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           _HolePlayer(
             id: 'p$i',
             name: s.playerNames[i],
-            totalScore: 0,
+            totalScore: s.initialScoreByPlayer[s.playerNames[i]] ?? 0,
             isActive: i == 0,
           ),
       ];
@@ -74,6 +77,11 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     for (final p in _players) {
       _holeScores[p.id] = <int, int>{};
     }
+    if (s != null) {
+      final idx = _holeOrder.indexOf(s.currentHole);
+      if (idx >= 0) _holeIndex = idx;
+      unawaited(_persistProgress());
+    }
   }
 
   ({int par, int yards}) get _holeMeta {
@@ -86,6 +94,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   void _prevHole() {
     if (_holeIndex == 0) return;
     setState(() => _holeIndex -= 1);
+    unawaited(_persistProgress());
   }
 
   Future<void> _nextHole() async {
@@ -112,6 +121,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       return;
     }
     setState(() => _holeIndex += 1);
+    await _persistProgress();
   }
 
   int _holeScoreFor(_HolePlayer player) => _holeScores[player.id]?[_hole] ?? 0;
@@ -125,22 +135,23 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         playerName: player.name,
         onAward: (label, delta, iconKey) {
           Navigator.of(ctx).pop();
+          final draft = RoundBitEventDraft(
+            playerName: player.name,
+            hole: _hole,
+            eventLabel: label,
+            delta: delta,
+            iconKey: iconKey,
+          );
           setState(() {
             final byHole = _holeScores[player.id]!;
             byHole[_hole] = (byHole[_hole] ?? 0) + delta;
             player.totalScore += delta;
             if (widget.session != null) {
-              _bitLog.add(
-                RoundBitEventDraft(
-                  playerName: player.name,
-                  hole: _hole,
-                  eventLabel: label,
-                  delta: delta,
-                  iconKey: iconKey,
-                ),
-              );
+              _bitLog.add(draft);
             }
           });
+          unawaited(_persistAward(draft));
+          unawaited(_persistProgress());
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('${player.name}: ${delta >= 0 ? '+' : ''}$delta bits · $label')),
@@ -167,6 +178,34 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => const RoundSummaryScreen()),
       );
+    }
+  }
+
+  Map<String, int> _scoreByPlayer() {
+    return {for (final p in _players) p.name: p.totalScore};
+  }
+
+  Future<void> _persistProgress() async {
+    final roundId = widget.session?.roundId;
+    if (roundId == null || roundId.isEmpty) return;
+    try {
+      await HistoryRepository.updateRoundProgress(
+        roundId: roundId,
+        currentHole: _hole,
+        scoreByPlayer: _scoreByPlayer(),
+      );
+    } catch (_) {
+      // Keep gameplay responsive if sync fails; user can still finish and retry later.
+    }
+  }
+
+  Future<void> _persistAward(RoundBitEventDraft event) async {
+    final roundId = widget.session?.roundId;
+    if (roundId == null || roundId.isEmpty) return;
+    try {
+      await HistoryRepository.saveBitEventsForRound(roundId, [event]);
+    } catch (_) {
+      // Non-fatal; summary save still persists final state.
     }
   }
 

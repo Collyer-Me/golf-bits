@@ -31,10 +31,17 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
         Supabase.instance.client.auth.currentSession != null) {
       setState(() => _saving = true);
       try {
-        final roundId = await HistoryRepository.saveCompletedRound(live.toInsertRow());
+        final row = live.toInsertRow();
+        final roundId = live.roundId;
+        if (roundId != null && roundId.isNotEmpty) {
+          await HistoryRepository.completeRound(roundId: roundId, row: row);
+        }
+        final savedRoundId = roundId ?? await HistoryRepository.saveCompletedRound(row);
         var bitLine = '';
         try {
-          await HistoryRepository.saveBitEventsForRound(roundId, live.bitEvents);
+          if (roundId == null || roundId.isEmpty) {
+            await HistoryRepository.saveBitEventsForRound(savedRoundId, live.bitEvents);
+          }
         } catch (e) {
           bitLine = ' Bit timeline not stored: $e';
         }
