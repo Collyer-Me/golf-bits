@@ -21,6 +21,18 @@ class HistoryRepository {
     return null;
   }
 
+  static bool _isRlsViolation(Object error) {
+    if (error is! PostgrestException) return false;
+    if (error.code == '42501') return true;
+    return error.message.toLowerCase().contains('row-level security');
+  }
+
+  static StateError _rlsError() {
+    return StateError(
+      'Database policies are blocking round sync. Run the rounds RLS compatibility migration, then retry.',
+    );
+  }
+
   static Future<Map<String, dynamic>> _insertRoundWithFallback(
     Map<String, dynamic> payload, {
     String select = 'id',
@@ -31,6 +43,7 @@ class HistoryRepository {
         final res = await _client.from('rounds').insert(working).select(select).single();
         return Map<String, dynamic>.from(res as Map);
       } catch (e) {
+        if (_isRlsViolation(e)) throw _rlsError();
         final col = _missingColumn(e);
         if (col == null || !working.containsKey(col)) rethrow;
         working.remove(col);
@@ -50,6 +63,7 @@ class HistoryRepository {
         await _client.from('rounds').update(working).eq('id', roundId);
         return;
       } catch (e) {
+        if (_isRlsViolation(e)) throw _rlsError();
         final col = _missingColumn(e);
         if (col == null || !working.containsKey(col)) rethrow;
         working.remove(col);
