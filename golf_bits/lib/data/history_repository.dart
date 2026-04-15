@@ -172,6 +172,9 @@ class HistoryRepository {
     final res = await _insertRoundWithFallback({
       ...row,
       'created_by': uid,
+      // Legacy schema compatibility: some projects still require these owner columns.
+      'user_id': uid,
+      'owner_id': uid,
     });
 
     return res['id'] as String;
@@ -194,6 +197,9 @@ class HistoryRepository {
     }
     final res = await _insertRoundWithFallback({
       'created_by': uid,
+      // Legacy schema compatibility: some projects still require these owner columns.
+      'user_id': uid,
+      'owner_id': uid,
       'course_name': courseName,
       'course_short_title': courseShortTitle,
       'hole_count': holeCount,
