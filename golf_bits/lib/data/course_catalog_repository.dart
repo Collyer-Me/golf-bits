@@ -64,13 +64,9 @@ abstract final class CourseCatalogRepository {
 
   static Future<List<CourseSearchHit>> _searchDirect(String query) async {
     try {
-      var q = _client
-          .from('courses')
-          .select(
+      dynamic q = _client.from('courses').select(
             'id,name,subtitle,locality,region,country_code,coverage_level,latitude,longitude,street_line1',
-          )
-          .order('name')
-          .limit(25);
+          );
 
       final t = query.trim();
       if (t.isNotEmpty) {
@@ -78,6 +74,7 @@ abstract final class CourseCatalogRepository {
         final pat = '%$esc%';
         q = q.or('name.ilike.$pat,subtitle.ilike.$pat,locality.ilike.$pat');
       }
+      q = q.order('name').limit(25);
 
       final rows = await q;
       final list = (rows as List<dynamic>)

@@ -26,6 +26,23 @@
 
 Official reference: [Supabase CLI](https://supabase.com/docs/guides/cli).
 
+## Delivery workflow (required after updates)
+
+When an agent makes repo changes intended for testing/shared use, complete this sequence unless the user explicitly says not to:
+
+1. Run Supabase migration updates via CLI from repo root:
+   - `npx supabase db push`
+2. Commit relevant changes to git with a clear message.
+3. Push to GitHub remote (`origin`) so web deployment workflows can run.
+
+If any of these steps fail, report the exact failure and what remains unapplied.
+
+## Platform focus (current phase)
+
+- Current delivery target is **web-first**.
+- Implement and verify features primarily for web behavior right now.
+- Mobile-specific optimization/pass can be done in a later phase.
+
 ### Flutter app
 
 UI and design-system rules for the mobile app live in [`golf_bits/AGENTS.md`](golf_bits/AGENTS.md).

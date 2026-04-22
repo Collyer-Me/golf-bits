@@ -4,6 +4,10 @@ Flutter app under this folder. Use this file plus [`README.md`](README.md) to st
 
 **Supabase (DB, migrations, Edge Functions):** use the CLI from the repo root — see **[`../AGENTS.md`](../AGENTS.md)** (project-wide); do not rely on the Dashboard SQL editor as the main way to change schema.
 
+**Delivery flow:** after meaningful updates, agents should run Supabase CLI migration push (when migrations changed), then commit + push to GitHub unless the user explicitly says not to.
+
+**Current target:** web-first delivery for now; mobile-specific polish/validation is a later phase.
+
 ## Design system (non-negotiable)
 
 1. **Colours**

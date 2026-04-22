@@ -41,7 +41,7 @@ class FriendConnection {
 
   bool isIncomingFor(String uid) => status == 'pending' && addresseeUserId == uid;
   bool isOutgoingFor(String uid) => status == 'pending' && requesterUserId == uid;
-  bool isAccepted => status == 'accepted';
+  bool get isAccepted => status == 'accepted';
 
   factory FriendConnection.fromRpc(Map<String, dynamic> row) {
     return FriendConnection(

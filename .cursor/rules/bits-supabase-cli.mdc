@@ -3,7 +3,13 @@ description: Supabase — CLI from repo root; migrations in git; avoid Dashboard
 alwaysApply: true
 ---
 
-# Supabase workflow (project standard)
+# Supabase + delivery workflow (project standard)
 
 - **Backend / DB / Edge Functions:** work from the **repo root** with **`npx supabase`** (after **`npm install`**). Full workflow and rationale: **[`AGENTS.md`](../AGENTS.md)** — read the **Supabase** section before adding migrations or changing schema.
 - **Do not** treat the Supabase Dashboard SQL editor as the primary way to evolve schema; use **`supabase/migrations/`** and apply via the CLI (e.g. **`npx supabase db push`** to linked projects, or local **`npx supabase start` / migration commands** as documented upstream).
+- **After implementing updates meant for testing/sharing**, agents should also:
+  1) run **`npx supabase db push`**,
+  2) commit changes,
+  3) push to **GitHub `origin`**,
+  unless the user explicitly asks not to.
+- Current project delivery is **web-first**. Prioritize web readiness now; mobile-specific pass can happen later.
