@@ -6,6 +6,7 @@ class EventPreference {
   const EventPreference({
     required this.id,
     required this.name,
+    this.nickname,
     required this.description,
     required this.defaultPoints,
     required this.enabled,
@@ -15,15 +16,18 @@ class EventPreference {
 
   final String id;
   final String name;
+  final String? nickname;
   final String description;
   final int defaultPoints;
   final bool enabled;
   final int points;
   final bool isCustom;
+  String get displayLabel => (nickname != null && nickname!.trim().isNotEmpty) ? nickname!.trim() : name;
 
   EventPreference copyWith({
     String? id,
     String? name,
+    String? nickname,
     String? description,
     int? defaultPoints,
     bool? enabled,
@@ -33,6 +37,7 @@ class EventPreference {
     return EventPreference(
       id: id ?? this.id,
       name: name ?? this.name,
+      nickname: nickname ?? this.nickname,
       description: description ?? this.description,
       defaultPoints: defaultPoints ?? this.defaultPoints,
       enabled: enabled ?? this.enabled,
@@ -45,6 +50,7 @@ class EventPreference {
     return EventPreference(
       id: (json['id'] as String?)?.trim() ?? '',
       name: (json['name'] as String?)?.trim() ?? '',
+      nickname: (json['nickname'] as String?)?.trim(),
       description: (json['description'] as String?)?.trim() ?? '',
       defaultPoints: (json['defaultPoints'] as num?)?.toInt() ?? 0,
       enabled: json['enabled'] as bool? ?? true,
@@ -56,6 +62,7 @@ class EventPreference {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        'nickname': nickname,
         'description': description,
         'defaultPoints': defaultPoints,
         'enabled': enabled,
@@ -127,7 +134,7 @@ List<EventPreference> mergeWithDefaultBuiltIns(List<EventPreference> input) {
         builtIn.copyWith(
           enabled: saved.enabled,
           points: saved.points,
-          name: saved.name.isNotEmpty ? saved.name : builtIn.name,
+          nickname: saved.nickname,
         ),
       );
     }

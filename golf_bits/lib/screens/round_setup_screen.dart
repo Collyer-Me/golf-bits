@@ -464,9 +464,9 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         .where((e) => e.enabled)
         .map(
           (e) => RoundEventRule(
-            label: e.name,
+            label: e.displayLabel,
             delta: e.points,
-            iconKey: _iconKeyForEventName(e.name),
+            iconKey: _iconKeyForEventName(e.displayLabel),
           ),
         )
         .toList();
@@ -948,7 +948,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                 ...enabledEvents.map(
                   (e) => Padding(
                     padding: const EdgeInsets.only(bottom: AppTheme.space1),
-                    child: Text('• ${e.name} (${e.points >= 0 ? '+' : ''}${e.points})', style: text.bodyMedium),
+                    child: Text('• ${e.displayLabel} (${e.points >= 0 ? '+' : ''}${e.points})', style: text.bodyMedium),
                   ),
                 ),
             ],

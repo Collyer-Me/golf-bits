@@ -43,6 +43,43 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
     widget.onChanged(next);
   }
 
+  Future<void> _editNickname(EventPreference event) async {
+    final controller = TextEditingController(text: event.nickname ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Set nickname for ${event.name}'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              hintText: 'e.g. NTP, Bomb, Sandy',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(''),
+              child: const Text('Clear'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null) return;
+    _updateEvent(event.copyWith(nickname: result.isEmpty ? null : result));
+  }
+
   Future<void> _addCustomEvent() async {
     final draft = await showAddCustomEventSheet(context);
     if (!mounted || draft == null) return;
@@ -133,7 +170,17 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(event.name, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                              Text(
+                                event.displayLabel,
+                                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              if (event.nickname != null && event.nickname!.isNotEmpty) ...[
+                                const SizedBox(height: AppTheme.spaceHalf),
+                                Text(
+                                  'Original: ${event.name}',
+                                  style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                                ),
+                              ],
                               const SizedBox(height: AppTheme.space1),
                               Text(
                                 event.description,
@@ -148,6 +195,14 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
                       ],
                     ),
                     const SizedBox(height: AppTheme.space2),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => _editNickname(event),
+                        icon: const Icon(Icons.edit_outlined, size: AppTheme.iconDense),
+                        label: Text(event.nickname?.isNotEmpty == true ? 'Edit nickname' : 'Set nickname'),
+                      ),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
