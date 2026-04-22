@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/course_catalog_models.dart';
+import '../models/custom_event_draft.dart';
 import '../theme/app_theme.dart';
 
 /// Bottom sheet: quick-add a player (name + optional email).
@@ -101,30 +103,46 @@ class CourseSetupResult {
     required this.holes,
     required this.frontNineFirst,
     required this.teeLabel,
+    this.courseTeeId,
+    required this.coverageLevel,
   });
 
   final int holes;
   final bool frontNineFirst;
   final String teeLabel;
+  final String? courseTeeId;
+  final String coverageLevel;
 }
 
 /// Bottom sheet: round length, starting nine, tee box.
 Future<CourseSetupResult?> showCourseSetupSheet(
   BuildContext context, {
   required String courseName,
+  required String coverageLevel,
+  List<CourseTeeOption> teeOptions = const [],
 }) {
   return showModalBottomSheet<CourseSetupResult>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (ctx) => _CourseSetupSheet(courseName: courseName),
+    builder: (ctx) => _CourseSetupSheet(
+      courseName: courseName,
+      coverageLevel: coverageLevel,
+      teeOptions: teeOptions,
+    ),
   );
 }
 
 class _CourseSetupSheet extends StatefulWidget {
-  const _CourseSetupSheet({required this.courseName});
+  const _CourseSetupSheet({
+    required this.courseName,
+    required this.coverageLevel,
+    required this.teeOptions,
+  });
 
   final String courseName;
+  final String coverageLevel;
+  final List<CourseTeeOption> teeOptions;
 
   @override
   State<_CourseSetupSheet> createState() => _CourseSetupSheetState();
@@ -133,19 +151,43 @@ class _CourseSetupSheet extends StatefulWidget {
 class _CourseSetupSheetState extends State<_CourseSetupSheet> {
   int _holes = 9;
   bool _frontNine = true;
-  int _teeIndex = 1;
+  int _teeIndex = 0;
 
-  List<_TeeVisual> _tees(ColorScheme scheme) => [
-        _TeeVisual('CHAMP', scheme.surfaceContainerLowest),
-        _TeeVisual('WHITE', scheme.surfaceContainerHighest),
-        _TeeVisual('RED', scheme.tertiary),
+  List<_TeeVisual> _resolvedTees(ColorScheme scheme) {
+    if (widget.teeOptions.isEmpty) {
+      return [
+        _TeeVisual('CHAMP', null, scheme.surfaceContainerLowest),
+        _TeeVisual('WHITE', null, scheme.surfaceContainerHighest),
+        _TeeVisual('RED', null, scheme.tertiary),
       ];
+    }
+    return [
+      for (final o in widget.teeOptions)
+        _TeeVisual(
+          o.label,
+          o.id,
+          _teeColor(scheme, o.colorHint),
+        ),
+    ];
+  }
+
+  Color _teeColor(ColorScheme scheme, String? hint) {
+    final h = (hint ?? '').toLowerCase();
+    if (h.contains('black') || h.contains('champ')) return scheme.surfaceContainerLowest;
+    if (h.contains('white') || h.contains('blue')) return scheme.surfaceContainerHighest;
+    if (h.contains('red') || h.contains('gold')) return scheme.tertiary;
+    if (h.contains('green')) return scheme.secondary;
+    return scheme.primaryContainer;
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final tees = _tees(scheme);
+    final tees = _resolvedTees(scheme);
+    if (_teeIndex >= tees.length) {
+      _teeIndex = 0;
+    }
 
     return Padding(
       padding: EdgeInsets.only(
@@ -165,6 +207,16 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (widget.coverageLevel == CourseCoverageLevel.geoOnly ||
+                widget.coverageLevel == CourseCoverageLevel.manual) ...[
+              SizedBox(height: AppTheme.space3),
+              Text(
+                widget.coverageLevel == CourseCoverageLevel.manual
+                    ? 'Manual course — tee names are generic until you add scorecard data.'
+                    : 'Location only — tee boxes are generic until a scorecard is available.',
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
             SizedBox(height: AppTheme.space5),
             Text('Round length', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
             SizedBox(height: AppTheme.space2),
@@ -190,8 +242,10 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
             SizedBox(height: AppTheme.space5),
             Text('Select tee box', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
             SizedBox(height: AppTheme.space3),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Wrap(
+              alignment: WrapAlignment.spaceEvenly,
+              spacing: AppTheme.space4,
+              runSpacing: AppTheme.space4,
               children: List.generate(tees.length, (i) {
                 final t = tees[i];
                 final selected = i == _teeIndex;
@@ -239,11 +293,14 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
             SizedBox(height: AppTheme.space7),
             FilledButton(
               onPressed: () {
+                final picked = tees[_teeIndex];
                 Navigator.of(context).pop(
                   CourseSetupResult(
                     holes: _holes,
                     frontNineFirst: _frontNine,
-                    teeLabel: tees[_teeIndex].label,
+                    teeLabel: picked.label,
+                    courseTeeId: picked.courseTeeId,
+                    coverageLevel: widget.coverageLevel,
                   ),
                 );
               },
@@ -257,22 +314,101 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
 }
 
 class _TeeVisual {
-  const _TeeVisual(this.label, this.color);
+  const _TeeVisual(this.label, this.courseTeeId, this.color);
   final String label;
+  final String? courseTeeId;
   final Color color;
 }
 
-/// New custom game event from sheet.
-class CustomEventDraft {
-  const CustomEventDraft({
-    required this.name,
-    required this.description,
-    required this.points,
-  });
+/// Quick manual course: name (+ optional city/region line).
+Future<ManualCourseDraft?> showManualCourseEntrySheet(BuildContext context) {
+  return showModalBottomSheet<ManualCourseDraft>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (ctx) => const _ManualCourseSheet(),
+  );
+}
+
+class ManualCourseDraft {
+  const ManualCourseDraft({required this.name, this.subtitle});
 
   final String name;
-  final String description;
-  final int points;
+  final String? subtitle;
+}
+
+class _ManualCourseSheet extends StatefulWidget {
+  const _ManualCourseSheet();
+
+  @override
+  State<_ManualCourseSheet> createState() => _ManualCourseSheetState();
+}
+
+class _ManualCourseSheetState extends State<_ManualCourseSheet> {
+  final _name = TextEditingController();
+  final _subtitle = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _subtitle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppTheme.pageHorizontal,
+        right: AppTheme.pageHorizontal,
+        top: AppTheme.space2,
+        bottom: MediaQuery.paddingOf(context).bottom +
+            MediaQuery.viewInsetsOf(context).bottom +
+            AppTheme.space6,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Manual course',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            SizedBox(height: AppTheme.space4),
+            TextField(
+              controller: _name,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'COURSE NAME',
+                hintText: 'e.g. Springfield Public',
+              ),
+            ),
+            SizedBox(height: AppTheme.buttonPadV),
+            TextField(
+              controller: _subtitle,
+              decoration: const InputDecoration(
+                labelText: 'LOCATION (OPTIONAL)',
+                hintText: 'City, state / region',
+              ),
+            ),
+            SizedBox(height: AppTheme.space6),
+            FilledButton(
+              onPressed: () {
+                final n = _name.text.trim();
+                if (n.isEmpty) return;
+                final s = _subtitle.text.trim();
+                Navigator.of(context).pop(
+                  ManualCourseDraft(name: n, subtitle: s.isEmpty ? null : s),
+                );
+              },
+              child: const Text('Save & use this course'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 Future<CustomEventDraft?> showAddCustomEventSheet(BuildContext context) {

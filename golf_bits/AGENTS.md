@@ -2,6 +2,8 @@
 
 Flutter app under this folder. Use this file plus [`README.md`](README.md) to stay aligned with the design system.
 
+**Supabase (DB, migrations, Edge Functions):** use the CLI from the repo root — see **[`../AGENTS.md`](../AGENTS.md)** (project-wide); do not rely on the Dashboard SQL editor as the main way to change schema.
+
 ## Design system (non-negotiable)
 
 1. **Colours**

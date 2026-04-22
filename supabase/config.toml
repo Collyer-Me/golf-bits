@@ -1,0 +1,16 @@
+# Minimal Supabase CLI config — extend as needed for local development.
+
+[api]
+enabled = true
+
+[functions]
+# Edge Functions verify JWT by default in hosted Supabase; CLI respects per-function overrides.
+
+[functions.search-courses]
+verify_jwt = true
+
+[functions.get-course-detail]
+verify_jwt = true
+
+[functions.sync-course-by-name]
+verify_jwt = true

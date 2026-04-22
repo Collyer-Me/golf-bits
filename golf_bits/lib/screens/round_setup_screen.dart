@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
+import '../data/course_catalog_repository.dart';
 import '../data/history_repository.dart';
 import '../data/schema_compatibility_service.dart';
+import '../data/user_preferences_repository.dart';
+import '../models/course_catalog_models.dart';
+import '../models/event_preferences.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
+import '../widgets/event_preferences_editor.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'hole_scoring_screen.dart';
 import 'round_setup_sheets.dart';
@@ -34,33 +40,6 @@ class _Recent {
   final int rounds;
 }
 
-class _Course {
-  const _Course({required this.id, required this.name, required this.subtitle});
-  final String id;
-  final String name;
-  final String subtitle;
-}
-
-class _EventRow {
-  _EventRow({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.defaultPoints,
-    this.isCustom = false,
-  });
-
-  final String id;
-  final String name;
-  final String description;
-  final int defaultPoints;
-  final bool isCustom;
-  bool enabled = true;
-  int points = 0;
-
-  void resetPoints() => points = defaultPoints;
-}
-
 /// Four-step new round: players → course (+ setup sheet) → events → review → [HoleScoringScreen].
 class RoundSetupScreen extends StatefulWidget {
   const RoundSetupScreen({super.key});
@@ -69,7 +48,7 @@ class RoundSetupScreen extends StatefulWidget {
   State<RoundSetupScreen> createState() => _RoundSetupScreenState();
 }
 
-class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerProviderStateMixin {
+class _RoundSetupScreenState extends State<RoundSetupScreen> {
   int _step = 0;
   bool _startingRound = false;
   bool _loadingPlayers = true;
@@ -80,63 +59,85 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
   final _searchController = TextEditingController();
   String? _selectedCourseId;
   CourseSetupResult? _courseSetup;
+  List<CourseSearchHit> _searchHits = [];
+  bool _loadingCourseSearch = false;
+  CourseDetailView? _selectedDetail;
+  bool _loadingCourseDetail = false;
+  Timer? _searchDebounce;
+  /// When false, `hit.id` is not a row in `public.courses` (e.g. offline manual draft).
+  bool _roundShouldReferenceCatalog = true;
 
-  late final TabController _eventTabController;
-  late List<_EventRow> _events;
-
-  static const _courses = [
-    _Course(id: 'rm', name: 'Royal Melbourne Golf Club', subtitle: 'Black Rock, VIC'),
-    _Course(id: 'rs', name: 'Royal Sydney Golf Club', subtitle: 'Rose Bay, NSW'),
-    _Course(id: 'rq', name: 'Royal Queensland Golf Club', subtitle: 'Eagle Farm, QLD'),
-  ];
+  late List<EventPreference> _events;
 
   @override
   void initState() {
     super.initState();
-    _eventTabController = TabController(length: 2, vsync: this);
-    _events = [
-      _EventRow(
-        id: 'birdie',
-        name: 'Birdie',
-        description: 'Awarded for completing the hole in 1 under par.',
-        defaultPoints: 1,
-      ),
-      _EventRow(
-        id: 'eagle',
-        name: 'Eagle',
-        description: 'Awarded for completing the hole in 2 under par.',
-        defaultPoints: 2,
-      ),
-      _EventRow(
-        id: 'chip',
-        name: 'Chip-in',
-        description: 'Holed out from off the green.',
-        defaultPoints: 2,
-      ),
-      _EventRow(
-        id: 'greenie',
-        name: 'Greenie',
-        description: 'Hit the green in regulation and two-putt or better.',
-        defaultPoints: 1,
-      ),
-      _EventRow(
-        id: 'three',
-        name: 'Three-putt',
-        description: 'Three or more putts on the green.',
-        defaultPoints: -1,
-      ),
-    ];
-    for (final e in _events) {
-      e.resetPoints();
-    }
+    _events = defaultEventPreferences();
+    _searchController.addListener(_onSearchTextChanged);
     unawaited(_loadPlayersFromSupabase());
+    unawaited(_loadDefaultEvents());
+  }
+
+  void _onSearchTextChanged() {
+    if (_step != 1) return;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      unawaited(_runCourseSearch());
+    });
+    setState(() {});
+  }
+
+  Future<void> _runCourseSearch() async {
+    if (!mounted || _step != 1) return;
+    setState(() => _loadingCourseSearch = true);
+    final q = _searchController.text.trim();
+    final hits = await CourseCatalogRepository.searchCourses(
+      query: q,
+      includeRemote: q.length >= 3,
+    );
+    if (!mounted) return;
+    setState(() {
+      _searchHits = hits;
+      _loadingCourseSearch = false;
+    });
+  }
+
+  Future<void> _refreshCourseSearchForStep() async {
+    if (_step != 1) return;
+    await _runCourseSearch();
+  }
+
+  Future<void> _loadCourseDetail(String courseId) async {
+    setState(() {
+      _loadingCourseDetail = true;
+      _selectedDetail = null;
+    });
+    final d = await CourseCatalogRepository.getCourseDetail(courseId);
+    if (!mounted) return;
+    setState(() {
+      _loadingCourseDetail = false;
+      if (_selectedCourseId == courseId) {
+        _selectedDetail = d;
+      }
+    });
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.removeListener(_onSearchTextChanged);
     _searchController.dispose();
-    _eventTabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDefaultEvents() async {
+    try {
+      final saved = await UserPreferencesRepository.fetchDefaultEvents();
+      if (!mounted) return;
+      setState(() => _events = saved);
+    } catch (_) {
+      // Use built-in defaults if profile settings are unavailable.
+    }
   }
 
   String get _stepLabel => switch (_step) {
@@ -146,19 +147,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
         _ => 'REVIEW',
       };
 
-  Iterable<_Course> get _filteredCourses {
-    final q = _searchController.text.trim().toLowerCase();
-    if (q.isEmpty) return _courses;
-    return _courses.where(
-      (c) =>
-          c.name.toLowerCase().contains(q) || c.subtitle.toLowerCase().contains(q),
-    );
-  }
-
-  _Course? get _selectedCourse {
+  CourseSearchHit? get _selectedCourseHit {
     if (_selectedCourseId == null) return null;
     try {
-      return _courses.firstWhere((c) => c.id == _selectedCourseId);
+      return _searchHits.firstWhere((c) => c.id == _selectedCourseId);
     } catch (_) {
       return null;
     }
@@ -303,8 +295,33 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
       );
       return;
     }
-    final course = _selectedCourse!;
-    final result = await showCourseSetupSheet(context, courseName: course.name);
+    final hit = _selectedCourseHit;
+    if (hit == null) return;
+
+    if (_loadingCourseDetail) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Loading course…')),
+      );
+      return;
+    }
+
+    final course = _selectedDetail ??
+        CourseDetailView(
+          id: hit.id,
+          name: hit.name,
+          subtitle: hit.subtitle,
+          coverageLevel: hit.coverageLevel,
+          latitude: hit.latitude,
+          longitude: hit.longitude,
+          address: hit.address,
+        );
+
+    final result = await showCourseSetupSheet(
+      context,
+      courseName: course.name,
+      coverageLevel: course.coverageLevel,
+      teeOptions: course.tees,
+    );
     if (!mounted || result == null) return;
     setState(() {
       _courseSetup = result;
@@ -312,31 +329,52 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
     });
   }
 
-  void _addCustomEvent() async {
-    final draft = await showAddCustomEventSheet(context);
-    if (!mounted || draft == null) return;
-    setState(() {
-      final row = _EventRow(
-        id: 'c_${DateTime.now().millisecondsSinceEpoch}',
-        name: draft.name,
-        description: draft.description,
-        defaultPoints: draft.points,
-        isCustom: true,
+  Future<void> _saveCurrentSetupAsDefaults() async {
+    try {
+      await UserPreferencesRepository.saveDefaultEvents(_events);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved as your default event settings')),
       );
-      row.points = draft.points;
-      row.enabled = true;
-      _events.add(row);
-      _eventTabController.index = 1;
-    });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save defaults: $e')),
+      );
+    }
   }
 
-  String _shortCourseTitle(_Course c) {
-    return switch (c.id) {
-      'rm' => 'Royal Melbourne',
-      'rs' => 'Royal Sydney',
-      'rq' => 'Royal Queensland',
-      _ => c.name.split(',').first.trim(),
+  String _shortCourseTitle(String fullName) {
+    return fullName.split(',').first.trim();
+  }
+
+  bool _looksLikeUuid(String value) {
+    return RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+    ).hasMatch(value);
+  }
+
+  String _coverageShortLabel(String code) {
+    return switch (code) {
+      CourseCoverageLevel.manual => 'Manual',
+      CourseCoverageLevel.geoOnly => 'Location only',
+      CourseCoverageLevel.partialScorecard => 'Partial scorecard',
+      CourseCoverageLevel.fullScorecard => 'Full scorecard',
+      _ => code.replaceAll('_', ' '),
     };
+  }
+
+  String _randomClientUuid() {
+    final r = Random.secure();
+    final b = List<int>.generate(16, (_) => r.nextInt(256));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    final hex = StringBuffer();
+    for (final x in b) {
+      hex.write(x.toRadixString(16).padLeft(2, '0'));
+    }
+    final s = hex.toString();
+    return '${s.substring(0, 8)}-${s.substring(8, 12)}-${s.substring(12, 16)}-${s.substring(16, 20)}-${s.substring(20)}';
   }
 
   String _iconKeyForEventName(String name) {
@@ -352,8 +390,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
 
   Future<void> _goHoleScoring() async {
     if (_startingRound) return;
-    final course = _selectedCourse!;
+    final hit = _selectedCourseHit!;
+    final detail = _selectedDetail;
     final setup = _courseSetup!;
+    final courseName = hit.name;
     final startHole = setup.holes == 9 ? (setup.frontNineFirst ? 1 : 10) : 1;
     final participants = [
       for (final p in _players)
@@ -376,13 +416,18 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
             'Run pending migrations.\n${compatibility.errors.join('\n')}',
           );
         }
+        final holePars = detail?.holeParsForTeeSync(setup.courseTeeId);
         roundId = await HistoryRepository.createInProgressRound(
-          courseName: course.name,
-          courseShortTitle: _shortCourseTitle(course),
+          courseName: courseName,
+          courseShortTitle: _shortCourseTitle(courseName),
           holeCount: setup.holes,
           players: _players.map((p) => p.name).toList(),
           participants: participants,
           currentHole: startHole,
+          courseCatalogId:
+              _roundShouldReferenceCatalog && _looksLikeUuid(hit.id) ? hit.id : null,
+          courseCoverageLevel: setup.coverageLevel,
+          holePars: holePars,
         );
       } catch (e) {
         // Do not block gameplay; fallback to local round if sync bootstrap fails.
@@ -397,6 +442,24 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
         if (mounted) setState(() => _startingRound = false);
       }
     }
+
+    if (setup.coverageLevel == CourseCoverageLevel.manual) {
+      unawaited(
+        CourseCatalogRepository.logTelemetry('round_start_manual', {
+          'courseId': hit.id,
+          'holes': setup.holes,
+        }),
+      );
+    } else {
+      unawaited(
+        CourseCatalogRepository.logTelemetry('round_start', {
+          'courseId': hit.id,
+          'coverage': setup.coverageLevel,
+          'holes': setup.holes,
+        }),
+      );
+    }
+
     final enabledRules = _events
         .where((e) => e.enabled)
         .map(
@@ -409,8 +472,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
         .toList();
 
     final args = RoundSessionArgs(
-      courseName: course.name,
-      courseShortTitle: _shortCourseTitle(course),
+      courseName: courseName,
+      courseShortTitle: _shortCourseTitle(courseName),
       holeCount: setup.holes,
       startHole: startHole,
       playerNames: _players.map((p) => p.name).toList(),
@@ -525,7 +588,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                     0 => FilledButton(
                         onPressed: _loadingPlayers || _players.isEmpty
                             ? null
-                            : () => setState(() => _step = 1),
+                            : () {
+                                setState(() => _step = 1);
+                                unawaited(_refreshCourseSearchForStep());
+                              },
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -697,12 +763,17 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                 onPressed: () {
                   _searchController.clear();
                   setState(() {});
+                  unawaited(_runCourseSearch());
                 },
               ),
           ],
         ),
+        if (_loadingCourseSearch) ...[
+          const SizedBox(height: AppTheme.space3),
+          const LinearProgressIndicator(minHeight: 2),
+        ],
         const SizedBox(height: AppTheme.space5),
-        ..._filteredCourses.map((c) {
+        ..._searchHits.map((c) {
           final selected = _selectedCourseId == c.id;
           return Padding(
             padding: const EdgeInsets.only(bottom: AppTheme.space25),
@@ -710,7 +781,14 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
               color: scheme.surface.withValues(alpha: 0),
               child: InkWell(
                 borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-                onTap: () => setState(() => _selectedCourseId = c.id),
+                onTap: () {
+                  setState(() {
+                    _selectedCourseId = c.id;
+                    _roundShouldReferenceCatalog = true;
+                    _selectedDetail = null;
+                  });
+                  unawaited(_loadCourseDetail(c.id));
+                },
                 child: OutlinedSurfaceCard(
                   borderColor: selected ? scheme.primary : scheme.outlineVariant,
                   padding: const EdgeInsets.symmetric(
@@ -725,13 +803,27 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
                           children: [
                             Text(c.name, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
                             Text(
-                              c.subtitle,
+                              c.listSubtitle,
                               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                             ),
+                            if (selected && c.coverageLevel == CourseCoverageLevel.geoOnly)
+                              Padding(
+                                padding: const EdgeInsets.only(top: AppTheme.space2),
+                                child: Text(
+                                  'Location only — you can still play; scorecard may be incomplete.',
+                                  style: text.labelSmall?.copyWith(color: scheme.tertiary),
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                      if (selected)
+                      if (selected && _loadingCourseDetail)
+                        const SizedBox(
+                          width: AppTheme.iconInline,
+                          height: AppTheme.iconInline,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (selected)
                         Icon(Icons.check_circle, color: scheme.primary),
                     ],
                   ),
@@ -742,10 +834,43 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
         }),
         const SizedBox(height: AppTheme.space2),
         TextButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Manual course entry — coming soon')),
+          onPressed: () async {
+            final draft = await showManualCourseEntrySheet(context);
+            if (!mounted || draft == null) return;
+            var persisted = true;
+            final created = await CourseCatalogRepository.createManualPrivateCourse(
+              name: draft.name,
+              subtitle: draft.subtitle,
             );
+            late final CourseSearchHit chosen;
+            if (created == null) {
+              persisted = false;
+              chosen = CourseSearchHit(
+                id: _randomClientUuid(),
+                name: draft.name.trim(),
+                subtitle: draft.subtitle?.trim(),
+                coverageLevel: CourseCoverageLevel.manual,
+              );
+            } else {
+              chosen = created;
+            }
+            final detail = CourseDetailView(
+              id: chosen.id,
+              name: chosen.name,
+              subtitle: chosen.subtitle,
+              coverageLevel: chosen.coverageLevel,
+              address: chosen.address,
+            );
+            if (!mounted) return;
+            setState(() {
+              _roundShouldReferenceCatalog = persisted;
+              _searchHits = [
+                chosen,
+                ..._searchHits.where((x) => x.id != chosen.id),
+              ];
+              _selectedCourseId = chosen.id;
+              _selectedDetail = detail;
+            });
           },
           child: Text(
             'Course not listed? Add a course manually…',
@@ -758,137 +883,29 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
   }
 
   Widget _buildEventsStep(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TabBar(
-          controller: _eventTabController,
-          onTap: (_) => setState(() {}),
-          tabs: const [
-            Tab(text: 'Preset events'),
-            Tab(text: 'Custom events'),
-          ],
-        ),
-        const SizedBox(height: AppTheme.space2),
         Expanded(
-          child: TabBarView(
-            controller: _eventTabController,
-            children: [
-              _eventList(_events.where((e) => !e.isCustom).toList(), scheme, text),
-              _eventList(_events.where((e) => e.isCustom).toList(), scheme, text, emptyCustom: true),
-            ],
+          child: EventPreferencesEditor(
+            events: _events,
+            onChanged: (next) => setState(() => _events = next),
           ),
         ),
-        const SizedBox(height: AppTheme.space2),
-        OutlinedButton.icon(
-          onPressed: _addCustomEvent,
-          icon: Icon(Icons.add, color: scheme.primary),
-          label: Text('Add custom event', style: TextStyle(color: scheme.primary)),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(
-              color: scheme.primary.withValues(alpha: AppTheme.opacityBorderEmphasis),
-              width: AppTheme.chipOutlineWidth,
-            ),
-          ),
+        SizedBox(height: AppTheme.space3),
+        FilledButton.tonalIcon(
+          onPressed: _saveCurrentSetupAsDefaults,
+          icon: const Icon(Icons.bookmark_add_outlined),
+          label: const Text('Save as my defaults'),
         ),
       ],
-    );
-  }
-
-  Widget _eventList(
-    List<_EventRow> rows,
-    ColorScheme scheme,
-    TextTheme text, {
-    bool emptyCustom = false,
-  }) {
-    if (rows.isEmpty && emptyCustom) {
-      return Center(
-        child: Text(
-          'No custom events yet.\nTap “Add custom event” below.',
-          textAlign: TextAlign.center,
-          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.only(bottom: AppTheme.space2),
-      children: rows
-          .map(
-            (e) => Padding(
-              padding: const EdgeInsets.only(bottom: AppTheme.space3),
-              child: OutlinedSurfaceCard(
-                borderColor: scheme.outlineVariant,
-                padding: const EdgeInsets.all(AppTheme.buttonPadV),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Switch(
-                          value: e.enabled,
-                          onChanged: (v) => setState(() => e.enabled = v),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(e.name, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: AppTheme.space1),
-                              Text(
-                                e.description,
-                                style: text.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  height: AppTheme.bodyLineHeightTight,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.space2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        IconButton.filledTonal(
-                          onPressed: e.enabled
-                              ? () => setState(() => e.points = (e.points - 1).clamp(-5, 10))
-                              : null,
-                          icon: const Icon(Icons.remove),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
-                          child: Text(
-                            e.points >= 0 ? '+${e.points}' : '${e.points}',
-                            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                        IconButton.filled(
-                          onPressed: e.enabled
-                              ? () => setState(() => e.points = (e.points + 1).clamp(-5, 10))
-                              : null,
-                          icon: const Icon(Icons.add),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          )
-          .toList(),
     );
   }
 
   Widget _buildReviewStep(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final course = _selectedCourse;
+    final course = _selectedCourseHit;
     final setup = _courseSetup;
     final enabledEvents = _events.where((e) => e.enabled).toList();
 
@@ -917,7 +934,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> with SingleTickerPr
               if (setup != null) ...[
                 const SizedBox(height: AppTheme.spaceHalf),
                 Text(
-                  '${setup.holes} holes · ${setup.frontNineFirst ? 'Front' : 'Back'} 9 · ${setup.teeLabel} tees',
+                  '${setup.holes} holes · ${setup.frontNineFirst ? 'Front' : 'Back'} 9 · ${setup.teeLabel}'
+                  '${setup.courseTeeId != null ? '' : ' (generic tees)'} · ${_coverageShortLabel(setup.coverageLevel)}',
                   style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],

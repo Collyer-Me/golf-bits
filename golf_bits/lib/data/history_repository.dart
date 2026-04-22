@@ -190,6 +190,9 @@ class HistoryRepository {
     required List<String> players,
     required List<RoundParticipant> participants,
     required int currentHole,
+    String? courseCatalogId,
+    String? courseCoverageLevel,
+    Map<String, int>? holePars,
   }) async {
     if (!SupabaseEnv.isConfigured) {
       throw StateError('Supabase is not configured');
@@ -218,6 +221,9 @@ class HistoryRepository {
       'left_early': const <Map<String, dynamic>>[],
       'current_hole': currentHole,
       'score_by_player': <String, int>{for (final p in participants) p.key: 0},
+      if (courseCatalogId != null) 'course_catalog_id': courseCatalogId,
+      if (courseCoverageLevel != null) 'course_coverage_level': courseCoverageLevel,
+      if (holePars != null) 'hole_pars': holePars,
     });
     return res['id'] as String;
   }

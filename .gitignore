@@ -2,6 +2,9 @@
 .DS_Store
 Thumbs.db
 
+# Node (Supabase CLI dev dependency at repo root)
+node_modules/
+
 # Editors / IDE
 .idea/
 .vscode/
@@ -22,6 +25,5 @@ Thumbs.db
 .dart_tool/
 .packages
 
-# Local Supabase inspection/migration artifacts
+# Local Supabase inspection artifacts (keep migrations under supabase/migrations/ committed)
 supabaseSchema
-supabase/migrations/*.sql

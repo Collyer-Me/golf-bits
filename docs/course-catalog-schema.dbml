@@ -1,0 +1,110 @@
+// Golf Bits — course catalog schema (PostgreSQL `public` + auth stub for FKs).
+// Source: supabase/migrations/20260416240000_course_catalog.sql
+//         + supabase/migrations/20260417120000_course_holes_per_tee.sql
+// Open in https://dbdiagram.io/d (import) or a VS Code DBML extension.
+
+Project golf_bits_course_catalog {
+  database_type: "PostgreSQL"
+  Note: "All tables below live in schema public unless noted."
+}
+
+Table auth.users {
+  id uuid [pk, note: "auth.users"]
+}
+
+Table courses {
+  id uuid [pk, default: `gen_random_uuid()`, note: "seed | osm | user | provider rows"]
+  name text [not null]
+  subtitle text
+  latitude double
+  longitude double
+  street_line1 text
+  locality text
+  region text
+  postal_code text
+  country_code text
+  coverage_level text [not null, note: "CHECK geo_only | partial_scorecard | full_scorecard | manual"]
+  source text [not null, note: "CHECK seed | osm | user | provider"]
+  owner_user_id uuid [note: "NULL when visibility=public"]
+  visibility text [not null, default: "public", note: "CHECK public | private"]
+  external_ids jsonb [not null, default: "'{}'::jsonb"]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: '''
+    CHECK courses_owner_private_ck:
+      (visibility = public AND owner_user_id IS NULL)
+      OR (visibility = private AND owner_user_id IS NOT NULL)
+    Partial UNIQUE index on (external_ids->>'osm') WHERE source = osm
+  '''
+}
+
+Table course_tees {
+  id uuid [pk, default: `gen_random_uuid()`]
+  course_id uuid [not null]
+  sort_order integer [not null, default: 0]
+  label text [not null]
+  color_hint text
+  course_rating decimal(5,1)
+  slope_rating integer
+  ratings_json jsonb [not null, default: "'{}'::jsonb", note: "WHS-ready men/women blocks"]
+
+  Indexes {
+    (course_id, sort_order) [name: "course_tees_course_sort_idx"]
+  }
+}
+
+// One row per tee × hole: par and stroke index can differ by tee (e.g. long par 4 vs short par 5).
+Table course_tee_holes {
+  course_tee_id uuid [not null]
+  hole_number integer [not null, note: "CHECK 1..18"]
+  par integer [not null, note: "CHECK 3..6"]
+  stroke_index integer [note: "NULL or CHECK 1..18"]
+  yardage_yds integer [note: "NULL or CHECK 0 < y < 900"]
+
+  Indexes {
+    (course_tee_id, hole_number) [pk]
+  }
+}
+
+Table course_provider_cache {
+  id uuid [pk, default: `gen_random_uuid()`]
+  provider text [not null]
+  external_course_id text [not null]
+  payload jsonb [not null]
+  fetched_at timestamptz [not null, default: `now()`]
+  expires_at timestamptz [not null]
+
+  Note: "UNIQUE (provider, external_course_id). RLS: authenticated has no policies — service role only."
+}
+
+Table course_data_telemetry {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  kind text [not null]
+  payload jsonb [not null, default: "'{}'::jsonb"]
+  created_at timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (user_id, created_at) [name: "course_data_telemetry_user_created_idx"]
+  }
+}
+
+Table rounds {
+  id uuid [pk]
+  course_catalog_id uuid
+  course_coverage_level text
+  hole_pars jsonb
+
+  Note: "Also has players, scores, status, created_by, … — see rounds migrations."
+}
+
+Ref: courses.owner_user_id > auth.users.id [delete: cascade]
+
+Ref: course_tees.course_id > courses.id [delete: cascade]
+
+Ref: course_tee_holes.course_tee_id > course_tees.id [delete: cascade]
+
+Ref: course_data_telemetry.user_id > auth.users.id [delete: cascade]
+
+Ref: rounds.course_catalog_id > courses.id

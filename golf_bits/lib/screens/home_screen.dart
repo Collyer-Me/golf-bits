@@ -13,9 +13,11 @@ import '../theme/app_theme.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'component_gallery_screen.dart';
+import 'friends_screen.dart';
 import 'history_detail_screen.dart';
 import 'history_screen.dart';
 import 'hole_scoring_screen.dart';
+import 'profile_event_defaults_screen.dart';
 import 'round_setup_screen.dart';
 
 /// Main shell: home dashboard + bottom nav (History, People, Profile).
@@ -549,16 +551,7 @@ class _PeopleTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('People')),
-      body: Center(
-        child: Text(
-          'Friend groups and invites — coming soon',
-          style: text.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-      ),
-    );
+    return const FriendsScreen();
   }
 }
 
@@ -617,6 +610,16 @@ class _ProfileTab extends StatelessWidget {
             ),
           ),
           SizedBox(height: AppTheme.space6),
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(builder: (_) => const ProfileEventDefaultsScreen()),
+              );
+            },
+            icon: const Icon(Icons.tune),
+            label: const Text('Default Round Events'),
+          ),
+          SizedBox(height: AppTheme.space3),
           OutlinedButton.icon(
             onPressed: () async {
               final result = await SchemaCompatibilityService.checkRoundSyncSchema(forceRefresh: true);

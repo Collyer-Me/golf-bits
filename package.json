@@ -1,0 +1,28 @@
+{
+  "name": "bits",
+  "version": "1.0.0",
+  "description": "Mobile app source lives in **[golf_bits/](golf_bits/)** — **Flutter** + **Material 3** + **Supabase**.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "supabase": "supabase",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Collyer-Me/golf-bits.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Collyer-Me/golf-bits/issues"
+  },
+  "homepage": "https://github.com/Collyer-Me/golf-bits#readme",
+  "devDependencies": {
+    "supabase": "^2.93.0"
+  }
+}
