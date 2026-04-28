@@ -161,6 +161,57 @@ class HistoryRound {
     return false;
   }
 
+  /// When [standings] was never written (e.g. completion sync failed) but per-hole
+  /// sync saved [scores], rebuild the leaderboard for history UI.
+  static List<HistoryStanding> _standingsFromScores({
+    required Map<String, int> scores,
+    required List<RoundParticipant> participants,
+    required List<String> players,
+  }) {
+    if (scores.isEmpty) return [];
+
+    String nameForKey(String key) {
+      for (final p in participants) {
+        if (p.key == key) return p.displayName;
+      }
+      final m = RegExp(r'^p(\d+)$').firstMatch(key);
+      if (m != null) {
+        final i = int.tryParse(m.group(1)!);
+        if (i != null && i >= 0 && i < players.length) return players[i];
+      }
+      return key;
+    }
+
+    final entries = scores.entries
+        .map(
+          (e) => (
+            key: e.key,
+            name: nameForKey(e.key),
+            bits: e.value,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => b.bits.compareTo(a.bits));
+    if (entries.isEmpty) return [];
+
+    final topBits = entries.first.bits;
+    return [
+      for (var i = 0; i < entries.length; i++)
+        HistoryStanding(
+          rank: i + 1,
+          name: entries[i].name,
+          bits: entries[i].bits,
+          subtitle: i == 0
+              ? (entries.length > 1 ? 'Winner' : 'Leader')
+              : (topBits - entries[i].bits == 0
+                  ? 'Tied leader'
+                  : '−${topBits - entries[i].bits} vs leader'),
+          isWinnerRow: i == 0,
+          participantKey: entries[i].key,
+        ),
+    ];
+  }
+
   factory HistoryRound.fromSupabase(Map<String, dynamic> row) {
     final id = row['id'] as String;
     final endedAt = timestampUtcFromRow(row);
@@ -168,7 +219,7 @@ class HistoryRound {
     final rawPlayers = row['players'] as List<dynamic>? ?? const [];
     final players = rawPlayers.map((e) => e as String).toList();
     final standingsJson = row['standings'] as List<dynamic>? ?? const [];
-    final standings = standingsJson.map((e) => HistoryStanding.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    var standings = standingsJson.map((e) => HistoryStanding.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     final leftJson = row['left_early'] as List<dynamic>? ?? const [];
     final leftEarly = leftJson.map((e) => HistoryLeftEarly.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     final participantsJson = row['participants'] as List<dynamic>? ?? const [];
@@ -188,6 +239,13 @@ class HistoryRound {
     } else {
       scores = const {};
     }
+    if (standings.isEmpty && scores.isNotEmpty) {
+      standings = _standingsFromScores(
+        scores: scores,
+        participants: participants,
+        players: players,
+      );
+    }
     final int holeCountResolved = ((row['hole_count'] as num?)?.toInt()) ??
         ((row['holes'] as num?)?.toInt()) ??
         18;
@@ -198,17 +256,21 @@ class HistoryRound {
     final String winnerNameResolved;
     final int winnerBitsResolved;
     final sortedStandings = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
-    if ((row['winner_name'] as String?)?.isNotEmpty == true) {
-      winnerNameResolved = row['winner_name'] as String;
+    final rawWinner = (row['winner_name'] as String?)?.trim() ?? '';
+    final winnerIsPlaceholder = rawWinner.isEmpty || rawWinner == 'TBD';
+    if (!winnerIsPlaceholder) {
+      winnerNameResolved = rawWinner;
     } else if (sortedStandings.isNotEmpty) {
       winnerNameResolved = sortedStandings.first.name;
     } else {
       winnerNameResolved = resolvedPlayers.isNotEmpty ? resolvedPlayers.first : 'TBD';
     }
-    if (row['winner_bits'] is num) {
+    if (!winnerIsPlaceholder && row['winner_bits'] is num) {
       winnerBitsResolved = (row['winner_bits'] as num).toInt();
     } else if (sortedStandings.isNotEmpty) {
       winnerBitsResolved = sortedStandings.first.bits;
+    } else if (row['winner_bits'] is num) {
+      winnerBitsResolved = (row['winner_bits'] as num).toInt();
     } else {
       winnerBitsResolved = 0;
     }

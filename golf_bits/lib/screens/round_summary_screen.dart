@@ -26,9 +26,11 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
 
   Future<void> _backToHome() async {
     final live = widget.result;
-    if (live != null &&
-        SupabaseEnv.isConfigured &&
-        Supabase.instance.client.auth.currentSession != null) {
+    final loggedInUser = Supabase.instance.client.auth.currentUser;
+    var mayNavigateHome =
+        live == null || !SupabaseEnv.isConfigured || loggedInUser == null;
+
+    if (!mayNavigateHome) {
       setState(() => _saving = true);
       try {
         final row = live.toInsertRow();
@@ -50,6 +52,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
             SnackBar(content: Text('Round saved to your history.$bitLine')),
           );
         }
+        mayNavigateHome = true;
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +63,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
         if (mounted) setState(() => _saving = false);
       }
     }
-    if (mounted) {
+    if (mounted && mayNavigateHome) {
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
