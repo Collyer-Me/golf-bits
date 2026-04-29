@@ -68,9 +68,14 @@ begin
     select
       r.id as round_id,
       r.created_by as owner_user_id,
-      coalesce(r.ended_at, r.completed_at, r.created_at, now()) as played_at,
-      r.participants,
-      r.players,
+      coalesce(
+        nullif(to_jsonb(r)->>'ended_at', '')::timestamptz,
+        nullif(to_jsonb(r)->>'completed_at', '')::timestamptz,
+        nullif(to_jsonb(r)->>'created_at', '')::timestamptz,
+        now()
+      ) as played_at,
+      to_jsonb(r)->'participants' as participants_json,
+      to_jsonb(r)->'players' as players_json,
       lower(nullif(trim(p.display_name), '')) as owner_name_normalized
     from public.rounds r
     left join public.profiles p on p.id = r.created_by
@@ -101,7 +106,7 @@ begin
     from round_row rr
     cross join lateral jsonb_array_elements(
       case
-        when jsonb_typeof(rr.participants) = 'array' then rr.participants
+        when jsonb_typeof(rr.participants_json) = 'array' then rr.participants_json
         else '[]'::jsonb
       end
     ) as e(elem)
@@ -119,7 +124,12 @@ begin
       'players'::text as source,
       rr.owner_name_normalized
     from round_row rr
-    cross join lateral unnest(coalesce(rr.players, '{}')) as x(player_name)
+    cross join lateral jsonb_array_elements_text(
+      case
+        when jsonb_typeof(rr.players_json) = 'array' then rr.players_json
+        else '[]'::jsonb
+      end
+    ) as x(player_name)
   ),
   prepared as (
     select
@@ -218,11 +228,50 @@ end;
 $$;
 
 drop trigger if exists rounds_sync_coplayer_links on public.rounds;
-create trigger rounds_sync_coplayer_links
-after insert or update of created_by, participants, players, ended_at, completed_at, created_at
-on public.rounds
-for each row
-execute function public.on_rounds_sync_coplayer_links();
+do $$
+declare
+  update_cols text := 'created_by';
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'rounds' and column_name = 'participants'
+  ) then
+    update_cols := update_cols || ', participants';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'rounds' and column_name = 'players'
+  ) then
+    update_cols := update_cols || ', players';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'rounds' and column_name = 'ended_at'
+  ) then
+    update_cols := update_cols || ', ended_at';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'rounds' and column_name = 'completed_at'
+  ) then
+    update_cols := update_cols || ', completed_at';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'rounds' and column_name = 'created_at'
+  ) then
+    update_cols := update_cols || ', created_at';
+  end if;
+
+  execute format(
+    'create trigger rounds_sync_coplayer_links
+     after insert or update of %s
+     on public.rounds
+     for each row
+     execute function public.on_rounds_sync_coplayer_links()',
+    update_cols
+  );
+end $$;
 
 create or replace function public.coplayer_overview(input_limit int default 500)
 returns table(
