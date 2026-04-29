@@ -137,6 +137,11 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
 
   void _openEventSheet(_HolePlayer player) {
     final rules = widget.session?.eventRules ?? const <RoundEventRule>[];
+    String eventKey(String label, int delta) => '$label::$delta';
+    final selectedForPlayerHole = _bitLog
+        .where((e) => e.participantKey == player.id && e.hole == _hole)
+        .map((e) => eventKey(e.eventLabel, e.delta))
+        .toSet();
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -144,8 +149,8 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       builder: (ctx) => _EventAwardSheet(
         playerName: player.name,
         rules: rules,
+        initialSelectedKeys: selectedForPlayerHole,
         onAward: (label, delta, iconKey) {
-          Navigator.of(ctx).pop();
           final draft = RoundBitEventDraft(
             playerName: player.name,
             participantKey: player.id,
@@ -429,23 +434,52 @@ class _PlayerRowCard extends StatelessWidget {
 
 typedef _AwardCallback = void Function(String label, int delta, String iconKey);
 
-class _EventAwardSheet extends StatelessWidget {
+class _EventAwardSheet extends StatefulWidget {
   const _EventAwardSheet({
     required this.playerName,
     required this.rules,
+    required this.initialSelectedKeys,
     required this.onAward,
   });
 
   final String playerName;
   final List<RoundEventRule> rules;
+  final Set<String> initialSelectedKeys;
   final _AwardCallback onAward;
+
+  @override
+  State<_EventAwardSheet> createState() => _EventAwardSheetState();
+}
+
+class _EventAwardSheetState extends State<_EventAwardSheet> {
+  late final Set<String> _selectedKeys;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedKeys = {...widget.initialSelectedKeys};
+  }
+
+  static String _eventKey(String label, int delta) => '$label::$delta';
+
+  void _toggle(_EventDef e) {
+    setState(() {
+      final key = _eventKey(e.label, e.delta);
+      if (_selectedKeys.contains(key)) {
+        _selectedKeys.remove(key);
+      } else {
+        _selectedKeys.add(key);
+      }
+    });
+    widget.onAward(e.label, e.delta, e.iconKey);
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    final mapped = (rules.isEmpty
+    final mapped = (widget.rules.isEmpty
             ? [
                 const RoundEventRule(label: 'Birdie', delta: 1, iconKey: 'sports_golf'),
                 const RoundEventRule(label: 'Eagle', delta: 2, iconKey: 'trending_up'),
@@ -478,7 +512,7 @@ class _EventAwardSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      playerName,
+                      widget.playerName,
                       style: text.headlineSmall?.copyWith(
                         color: scheme.primary,
                         fontStyle: FontStyle.italic,
@@ -535,12 +569,17 @@ class _EventAwardSheet extends StatelessWidget {
       crossAxisSpacing: AppTheme.space2,
       childAspectRatio: 2.35,
       children: items.map((e) {
-        if (negative) {
+        final selected = _selectedKeys.contains(_eventKey(e.label, e.delta));
+        if (!selected) {
           return OutlinedButton(
-            onPressed: () => onAward(e.label, e.delta, e.iconKey),
+            onPressed: () => _toggle(e),
             style: OutlinedButton.styleFrom(
-              foregroundColor: scheme.error,
-              side: BorderSide(color: scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis)),
+              foregroundColor: negative ? scheme.error : scheme.onSurface,
+              side: BorderSide(
+                color: negative
+                    ? scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis)
+                    : scheme.outlineVariant,
+              ),
             ),
             child: Text(
               '${e.label.toUpperCase()} ${e.sublabel}',
@@ -550,10 +589,10 @@ class _EventAwardSheet extends StatelessWidget {
           );
         }
         return FilledButton(
-          onPressed: () => onAward(e.label, e.delta, e.iconKey),
+          onPressed: () => _toggle(e),
           style: FilledButton.styleFrom(
-            backgroundColor: scheme.primary,
-            foregroundColor: scheme.onPrimary,
+            backgroundColor: negative ? scheme.error : scheme.primary,
+            foregroundColor: negative ? scheme.onError : scheme.onPrimary,
           ),
           child: Text(
             '${e.label.toUpperCase()} ${e.sublabel}',
