@@ -64,6 +64,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   bool _loadingCourseSearch = false;
   CourseDetailView? _selectedDetail;
   bool _loadingCourseDetail = false;
+  /// False after fetch if [getCourseDetail] returned null for this selection.
+  bool _detailFetchSucceeded = false;
   Timer? _searchDebounce;
   /// When false, `hit.id` is not a row in `public.courses` (e.g. offline manual draft).
   bool _roundShouldReferenceCatalog = true;
@@ -112,6 +114,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     setState(() {
       _loadingCourseDetail = true;
       _selectedDetail = null;
+      _detailFetchSucceeded = false;
     });
     final d = await CourseCatalogRepository.getCourseDetail(courseId);
     if (!mounted) return;
@@ -119,6 +122,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       _loadingCourseDetail = false;
       if (_selectedCourseId == courseId) {
         _selectedDetail = d;
+        _detailFetchSucceeded = d != null;
       }
     });
   }
@@ -826,6 +830,18 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             ),
           );
         }),
+        if (_selectedCourseId != null &&
+            _selectedCourseHit != null &&
+            !_loadingCourseDetail) ...[
+          const SizedBox(height: AppTheme.space4),
+          _CourseReadinessCallout(
+            summary: CourseReadinessSummary.fromHitAndDetail(
+              hit: _selectedCourseHit!,
+              detail: _selectedDetail,
+              detailFetchSucceeded: _detailFetchSucceeded,
+            ),
+          ),
+        ],
         const SizedBox(height: AppTheme.space2),
         TextButton(
           onPressed: () async {
@@ -864,6 +880,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
               ];
               _selectedCourseId = chosen.id;
               _selectedDetail = detail;
+              _detailFetchSucceeded = true;
             });
           },
           child: Text(
@@ -949,6 +966,83 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CourseReadinessCallout extends StatelessWidget {
+  const _CourseReadinessCallout({required this.summary});
+
+  final CourseReadinessSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    if (summary.detailUnavailable) {
+      return OutlinedSurfaceCard(
+        borderColor: scheme.errorContainer,
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_rounded, color: scheme.error),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Could not load this course',
+                    style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: scheme.onErrorContainer),
+                  ),
+                  const SizedBox(height: AppTheme.space1),
+                  Text(
+                    'Check your connection or try again later. You can pick a different listing or use "Add manually" below.',
+                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final lines = <String>[];
+    if (summary.manualOrGeoNote != null) {
+      lines.add(summary.manualOrGeoNote!);
+    }
+    if (summary.expectsScorecardButNoTees) {
+      lines.add(
+        'Listing indicates a scorecard, but no hole-by-hole tee data loaded. You can still continue — tees will behave like a generic placeholder until better data arrives.',
+      );
+    }
+
+    if (lines.isEmpty) return const SizedBox.shrink();
+
+    return OutlinedSurfaceCard(
+      borderColor: scheme.outlineVariant,
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: scheme.primary, size: AppTheme.iconNavigation),
+          const SizedBox(width: AppTheme.space3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final line in lines) ...[
+                  Text(line, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  if (line != lines.last) const SizedBox(height: AppTheme.space2),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -188,9 +188,9 @@ abstract final class CourseCatalogRepository {
         (a, b) => ((a['sort_order'] as num?)?.toInt() ?? 0).compareTo((b['sort_order'] as num?)?.toInt() ?? 0),
       );
 
-    final sortedTees = <CourseTeeOption>[
+    final sortedTees = prepareTeesForDisplay([
       for (final m in teesRaw) CourseTeeOption.fromJson(m),
-    ];
+    ]);
 
     return CourseDetailView(
       id: row['id'] as String,

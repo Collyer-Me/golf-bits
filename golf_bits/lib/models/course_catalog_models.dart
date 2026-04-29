@@ -181,6 +181,63 @@ class CourseTeeOption {
       holes: holeList,
     );
   }
+
+  /// Sum of hole yardages where present (tie-break / display).
+  int get totalYardageYds {
+    var sum = 0;
+    for (final h in holes) {
+      final y = h.yardageYds;
+      if (y != null) sum += y;
+    }
+    return sum;
+  }
+
+  /// At least 18 distinct hole indices (handles sparse provider data better than holes.length alone).
+  bool get hasEighteenDistinctHoles =>
+      {...holes.map((h) => h.holeNumber)}.length >= 18;
+}
+
+/// Drop tees with no holes, dedupe similar labels/colors, then sort: full 18 first, then total yardage, then label.
+List<CourseTeeOption> prepareTeesForDisplay(List<CourseTeeOption> raw) {
+  final nonempty = raw.where((t) => t.holes.isNotEmpty).toList();
+  if (nonempty.isEmpty) return const [];
+
+  String dedupeKey(CourseTeeOption t) {
+    final ln = t.label.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    final ch = (t.colorHint ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    return '$ln|$ch';
+  }
+
+  bool betterDuplicate(CourseTeeOption a, CourseTeeOption b) {
+    if (a.hasEighteenDistinctHoles != b.hasEighteenDistinctHoles) {
+      return a.hasEighteenDistinctHoles ? true : false;
+    }
+    if (a.totalYardageYds != b.totalYardageYds) {
+      return a.totalYardageYds > b.totalYardageYds;
+    }
+    if (a.holes.length != b.holes.length) {
+      return a.holes.length > b.holes.length;
+    }
+    return true;
+  }
+
+  final byKey = <String, CourseTeeOption>{};
+  for (final t in nonempty) {
+    final k = dedupeKey(t);
+    final prev = byKey[k];
+    byKey[k] = prev == null ? t : (betterDuplicate(prev, t) ? prev : t);
+  }
+
+  final list = byKey.values.toList()
+    ..sort((a, b) {
+      final a18 = a.hasEighteenDistinctHoles;
+      final b18 = b.hasEighteenDistinctHoles;
+      if (a18 != b18) return a18 ? -1 : 1;
+      final yd = b.totalYardageYds.compareTo(a.totalYardageYds);
+      if (yd != 0) return yd;
+      return a.label.toLowerCase().compareTo(b.label.toLowerCase());
+    });
+  return list;
 }
 
 class CourseDetailView {
@@ -229,9 +286,11 @@ class CourseDetailView {
 
   factory CourseDetailView.fromDetailJson(Map<String, dynamic> j) {
     final c = j['course'] as Map<String, dynamic>? ?? const {};
-    final teeList = (j['tees'] as List<dynamic>? ?? const [])
-        .map((e) => CourseTeeOption.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final teeList = prepareTeesForDisplay(
+      (j['tees'] as List<dynamic>? ?? const [])
+          .map((e) => CourseTeeOption.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList(),
+    );
     return CourseDetailView(
       id: c['id'] as String,
       name: c['name'] as String,
@@ -244,5 +303,54 @@ class CourseDetailView {
       address: CourseAddress.fromJson(c['address'] as Map<String, dynamic>?),
       tees: teeList,
     );
+  }
+}
+
+/// Reasons to show next to selected course ([RoundSetupScreen]).
+class CourseReadinessSummary {
+  const CourseReadinessSummary({
+    this.detailUnavailable = false,
+    this.requiresGenericTees = false,
+    this.expectsScorecardButNoTees = false,
+    this.manualOrGeoNote,
+  });
+
+  final bool detailUnavailable;
+  final bool requiresGenericTees;
+  final bool expectsScorecardButNoTees;
+  final String? manualOrGeoNote;
+
+  static CourseReadinessSummary fromHitAndDetail({
+    required CourseSearchHit hit,
+    required CourseDetailView? detail,
+    required bool detailFetchSucceeded,
+  }) {
+    if (!detailFetchSucceeded || detail == null) {
+      return const CourseReadinessSummary(detailUnavailable: true);
+    }
+    final geo = hit.coverageLevel == CourseCoverageLevel.geoOnly;
+    final manual = hit.coverageLevel == CourseCoverageLevel.manual;
+    if (manual || geo) {
+      if (detail.hasTeeMatrix) return const CourseReadinessSummary();
+      return CourseReadinessSummary(
+        requiresGenericTees: true,
+        manualOrGeoNote: manual
+            ? 'Manual entry — hole-by-hole scoring uses generic tees until scorecard data exists.'
+            : 'Location-only listing — tee boxes stay generic until a scorecard loads for this course.',
+      );
+    }
+
+    final partialOrFull =
+        hit.coverageLevel == CourseCoverageLevel.partialScorecard ||
+            hit.coverageLevel == CourseCoverageLevel.fullScorecard;
+    final noUsableTees = !detail.hasTeeMatrix;
+    if (partialOrFull && noUsableTees) {
+      return const CourseReadinessSummary(
+        expectsScorecardButNoTees: true,
+        requiresGenericTees: true,
+      );
+    }
+
+    return const CourseReadinessSummary();
   }
 }

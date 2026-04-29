@@ -166,6 +166,59 @@ function normalizeHoles(rawHoles: unknown[]): TeeHole[] {
   return rows;
 }
 
+function teeTotalYds(holes: TeeHole[]): number {
+  let s = 0;
+  for (const h of holes) {
+    if (h.yardageYds != null) s += h.yardageYds;
+  }
+  return s;
+}
+
+function teeHas18Distinct(holes: TeeHole[]): boolean {
+  const nums = new Set<number>();
+  for (const h of holes) nums.add(h.holeNumber);
+  return nums.size >= 18;
+}
+
+function teeDedupeKey(label: string, colorHint: string | null): string {
+  const ln = label.trim().toLowerCase().replace(/\s+/g, ' ');
+  const ch = (colorHint ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return `${ln}|${ch}`;
+}
+
+function betterDuplicateTees(a: TeePayload, b: TeePayload): TeePayload {
+  const a18 = teeHas18Distinct(a.holes);
+  const b18 = teeHas18Distinct(b.holes);
+  if (a18 !== b18) return a18 ? a : b;
+  const ay = teeTotalYds(a.holes);
+  const by = teeTotalYds(b.holes);
+  if (ay !== by) return ay > by ? a : b;
+  if (a.holes.length !== b.holes.length) return a.holes.length > b.holes.length ? a : b;
+  return a;
+}
+
+/** Drop empty tees, dedupe by label/color, sort: full 18 first, then yardage. */
+function finalizeTeePayloads(tees: TeePayload[]): TeePayload[] {
+  const nonempty = tees.filter((t) => t.holes.length > 0);
+  if (nonempty.length === 0) return [];
+  const byKey = new Map<string, TeePayload>();
+  for (const t of nonempty) {
+    const k = teeDedupeKey(t.label, t.colorHint);
+    const prev = byKey.get(k);
+    byKey.set(k, prev == null ? t : betterDuplicateTees(prev, t));
+  }
+  const arr = [...byKey.values()];
+  arr.sort((a, b) => {
+    const da = teeHas18Distinct(a.holes) ? 1 : 0;
+    const db = teeHas18Distinct(b.holes) ? 1 : 0;
+    if (da !== db) return db - da;
+    const yt = teeTotalYds(b.holes) - teeTotalYds(a.holes);
+    if (yt !== 0) return yt;
+    return a.label.localeCompare(b.label);
+  });
+  return arr;
+}
+
 function normalizeTees(detail: GcaDetail): TeePayload[] {
   const teesObj = asObj(detail.tees);
   const teesFromSpecObj = teesObj
@@ -195,7 +248,7 @@ function normalizeTees(detail: GcaDetail): TeePayload[] {
       holes,
     });
   }
-  return tees.filter((t) => t.holes.length > 0);
+  return finalizeTeePayloads(tees.filter((t) => t.holes.length > 0));
 }
 
 function coverageFromTees(tees: TeePayload[]): string {
@@ -321,6 +374,72 @@ function scoreForCountryHint(c: NormalizedCourse, countryHint: string | null): n
     return 2;
   }
   return 0;
+}
+
+function normalizeMatchText(v: string): string {
+  return v.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function isNoiseToken(token: string): boolean {
+  return [
+    'golf',
+    'club',
+    'country',
+    'course',
+    'resort',
+    'links',
+    'gc',
+    'the',
+    'and',
+  ].includes(token);
+}
+
+function matchTokens(v: string): string[] {
+  return normalizeMatchText(v)
+    .split(' ')
+    .filter((t) => t.length >= 3 && !isNoiseToken(t));
+}
+
+function nameMatchScore(query: string, candidateName: string): number {
+  const qNorm = normalizeMatchText(query);
+  const cNorm = normalizeMatchText(candidateName);
+  if (!qNorm || !cNorm) return 0;
+  if (cNorm === qNorm) return 1;
+  if (cNorm.includes(qNorm)) return 0.95;
+  const qTokens = [...new Set(matchTokens(query))];
+  const cTokens = new Set(matchTokens(candidateName));
+  if (qTokens.length === 0) return 0;
+  const qFirst = normalizeMatchText(query).split(' ').find((t) => t.length >= 2 && !['the', 'and'].includes(t));
+  const cFirst = normalizeMatchText(candidateName).split(' ').find((t) => t.length >= 2 && !['the', 'and'].includes(t));
+  if (qFirst && cFirst && qFirst !== cFirst) return 0.45;
+  const hit = qTokens.filter((t) => cTokens.has(t)).length;
+  return hit / qTokens.length;
+}
+
+function coverageRank(level: string | null | undefined): number {
+  if (level === 'full_scorecard') return 4;
+  if (level === 'partial_scorecard') return 3;
+  if (level === 'manual') return 2;
+  if (level === 'geo_only') return 1;
+  return 0;
+}
+
+function dedupeByNameAndLocality(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const name = normalizeMatchText(firstStr(row.name) ?? '');
+    const locality = normalizeMatchText(firstStr(row.locality, row.region) ?? '');
+    const key = `${name}|${locality}`;
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, row);
+      continue;
+    }
+    const prevRank = coverageRank(firstStr(prev.coverage_level));
+    const nextRank = coverageRank(firstStr(row.coverage_level));
+    if (nextRank > prevRank) byKey.set(key, row);
+  }
+  return [...byKey.values()];
 }
 
 async function upsertNormalizedCourse(
@@ -501,6 +620,7 @@ Deno.serve(async (req) => {
   let providerSyncedCount = 0;
   let providerQueriesTried: string[] = [];
   let providerCandidates = 0;
+  let rejectedByNameMatch = 0;
 
   if (includeRemote && raw.length >= 3 && serviceKey && golfCourseApiKey) {
     const svc = svcClient;
@@ -519,12 +639,25 @@ Deno.serve(async (req) => {
         if (!detail) continue;
         const normalized = normalizeFromGca(sr, detail);
         if (!normalized) continue;
+        const matchScore = nameMatchScore(raw, normalized.name);
+        if (matchScore < 0.55) {
+          rejectedByNameMatch++;
+          continue;
+        }
         normalizedCandidates.push(normalized);
       }
 
       const ranked = normalizedCandidates
-        .map((c) => ({ c, score: scoreForCountryHint(c, countryHint) }))
-        .filter((x) => !strictCountry || countryHint == null || x.score > 0)
+        .map((c) => {
+          const countryScore = scoreForCountryHint(c, countryHint);
+          const matchScore = nameMatchScore(raw, c.name);
+          return {
+            c,
+            countryScore,
+            score: (countryScore * 10) + Math.round(matchScore * 10),
+          };
+        })
+        .filter((x) => !strictCountry || countryHint == null || x.countryScore > 0)
         .sort((a, b) => b.score - a.score)
         .map((x) => x.c)
         .slice(0, 4);
@@ -646,6 +779,7 @@ Deno.serve(async (req) => {
     }
   }
 
+  const dedupedRows = dedupeByNameAndLocality(rows);
   const localCount = dbCourses?.length ?? 0;
   if (userClient != null && actorUserId != null) {
     await userClient.from('course_data_telemetry').insert({
@@ -660,13 +794,14 @@ Deno.serve(async (req) => {
         strictCountry,
         providerSyncedCount,
         providerCandidates,
+        rejectedByNameMatch,
         providerQueriesTried,
-        resultCount: rows.length,
+        resultCount: dedupedRows.length,
       },
     });
   }
 
-  const courses = rows.slice(0, limit).map((r) => toCourseRow(r as Record<string, unknown>));
+  const courses = dedupedRows.slice(0, limit).map((r) => toCourseRow(r as Record<string, unknown>));
 
   return jsonResponse({
     courses,
@@ -677,6 +812,7 @@ Deno.serve(async (req) => {
       remoteCount,
       providerSyncedCount,
       providerCandidates,
+      rejectedByNameMatch,
       providerQueriesTried,
       countryHint,
       strictCountry,

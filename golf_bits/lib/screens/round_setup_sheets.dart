@@ -153,22 +153,37 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
   bool _frontNine = true;
   int _teeIndex = 0;
 
-  List<_TeeVisual> _resolvedTees(ColorScheme scheme) {
+  List<_TeePickRow> _teePickRows(ColorScheme scheme) {
     if (widget.teeOptions.isEmpty) {
       return [
-        _TeeVisual('CHAMP', null, scheme.surfaceContainerLowest),
-        _TeeVisual('WHITE', null, scheme.surfaceContainerHighest),
-        _TeeVisual('RED', null, scheme.tertiary),
+        _TeePickRow('Championship', null, scheme.surfaceContainerLowest, subtitle: 'Generic'),
+        _TeePickRow('White', null, scheme.surfaceContainerHighest, subtitle: 'Generic'),
+        _TeePickRow('Red', null, scheme.tertiary, subtitle: 'Generic'),
       ];
     }
     return [
       for (final o in widget.teeOptions)
-        _TeeVisual(
+        _TeePickRow(
           o.label,
           o.id,
           _teeColor(scheme, o.colorHint),
+          subtitle: _teeSubtitle(o),
         ),
     ];
+  }
+
+  String _teeSubtitle(CourseTeeOption o) {
+    final parts = <String>[];
+    if (o.totalYardageYds > 0) parts.add('${o.totalYardageYds} yds');
+    if (o.holes.isNotEmpty) parts.add('${o.holes.length} holes${o.hasEighteenDistinctHoles ? ' (18-card)' : ''}');
+    if (o.courseRating != null || o.slopeRating != null) {
+      final r = [
+        if (o.courseRating != null) 'CR ${o.courseRating}',
+        if (o.slopeRating != null) 'Slope ${o.slopeRating}',
+      ].join(' · ');
+      parts.add(r);
+    }
+    return parts.isEmpty ? '' : parts.join(' · ');
   }
 
   Color _teeColor(ColorScheme scheme, String? hint) {
@@ -184,7 +199,7 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final tees = _resolvedTees(scheme);
+    final tees = _teePickRows(scheme);
     if (_teeIndex >= tees.length) {
       _teeIndex = 0;
     }
@@ -241,55 +256,93 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
             ),
             SizedBox(height: AppTheme.space5),
             Text('Select tee box', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-            SizedBox(height: AppTheme.space3),
-            Wrap(
-              alignment: WrapAlignment.spaceEvenly,
-              spacing: AppTheme.space4,
-              runSpacing: AppTheme.space4,
-              children: List.generate(tees.length, (i) {
-                final t = tees[i];
-                final selected = i == _teeIndex;
-                return GestureDetector(
-                  onTap: () => setState(() => _teeIndex = i),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: AppTheme.iconHero,
-                        height: AppTheme.iconHero,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: t.color,
-                          border: Border.all(
-                            color: selected ? scheme.primary : scheme.outlineVariant,
-                            width: selected ? AppTheme.selectionRingWidth : AppTheme.outlineBorderWidth,
+            SizedBox(height: AppTheme.space2),
+            ...List.generate(tees.length, (i) {
+              final t = tees[i];
+              final selected = i == _teeIndex;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppTheme.space1),
+                child: Material(
+                  color: scheme.surface.withValues(alpha: 0),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    onTap: () => setState(() => _teeIndex = i),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppTheme.space2, horizontal: AppTheme.spaceHalf),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Radio<int>(
+                            value: i,
+                            groupValue: _teeIndex,
+                            onChanged: (v) => setState(() => _teeIndex = v ?? i),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          boxShadow: selected
-                              ? [
-                                  BoxShadow(
-                                    color: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
-                                    blurRadius: AppTheme.elevationBlurSm,
+                          SizedBox(
+                            width: AppTheme.space4 + AppTheme.radiusSm,
+                            height: AppTheme.space4 + AppTheme.radiusSm,
+                            child: Center(
+                              child: Container(
+                                width: AppTheme.radiusSm + AppTheme.space3,
+                                height: AppTheme.radiusSm + AppTheme.space3,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: t.color,
+                                  border: Border.all(
+                                    color: selected ? scheme.primary : scheme.outlineVariant,
+                                    width: selected ? AppTheme.selectionRingWidth : AppTheme.outlineBorderWidth,
                                   ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            t.label.isNotEmpty ? t.label[0] : '?',
-                            style: TextStyle(
-                              color: AppTheme.textOnFilledCircle(t.color, scheme),
-                              fontWeight: FontWeight.w900,
-                              fontSize: AppTheme.teeGlyphSize,
+                                  boxShadow: selected
+                                      ? [
+                                          BoxShadow(
+                                            color: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
+                                            blurRadius: AppTheme.elevationBlurSm,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    t.label.isNotEmpty ? t.label.substring(0, 1).toUpperCase() : '?',
+                                    style: TextStyle(
+                                      color: AppTheme.textOnFilledCircle(t.color, scheme),
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: AppTheme.teeGlyphSize - 6,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: AppTheme.space3),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  t.label,
+                                  style: text.bodyMedium?.copyWith(
+                                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                  ),
+                                ),
+                                if (t.subtitle != null && t.subtitle!.trim().isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: AppTheme.spaceHalf),
+                                    child: Text(
+                                      t.subtitle!,
+                                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: AppTheme.spaceHalf),
-                      Text(t.label, style: text.labelSmall),
-                    ],
+                    ),
                   ),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
             SizedBox(height: AppTheme.space7),
             FilledButton(
               onPressed: () {
@@ -298,7 +351,7 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
                   CourseSetupResult(
                     holes: _holes,
                     frontNineFirst: _frontNine,
-                    teeLabel: picked.label,
+                    teeLabel: picked.labelDisplay,
                     courseTeeId: picked.courseTeeId,
                     coverageLevel: widget.coverageLevel,
                   ),
@@ -313,11 +366,15 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
   }
 }
 
-class _TeeVisual {
-  const _TeeVisual(this.label, this.courseTeeId, this.color);
+class _TeePickRow {
+  _TeePickRow(this.label, this.courseTeeId, this.color, {this.subtitle});
+
   final String label;
   final String? courseTeeId;
   final Color color;
+  final String? subtitle;
+
+  String get labelDisplay => subtitle == 'Generic' ? label.toUpperCase() : label;
 }
 
 /// Quick manual course: name (+ optional city/region line).
