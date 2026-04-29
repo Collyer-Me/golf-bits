@@ -266,22 +266,29 @@ class HistoryRepository {
   /// Removes one matching event (latest first) for tap-to-toggle behavior.
   static Future<void> deleteLatestBitEventForRound({
     required String roundId,
-    required String participantKey,
+    String? participantKey,
+    String? playerName,
     required int hole,
     required String eventLabel,
     required int delta,
   }) async {
     if (!SupabaseEnv.isConfigured) return;
-    final rows = await Supabase.instance.client
+    var query = Supabase.instance.client
         .from('round_bit_events')
         .select('id')
         .eq('round_id', roundId)
-        .eq('participant_key', participantKey)
         .eq('hole', hole)
         .eq('event_label', eventLabel)
         .eq('delta', delta)
-        .order('created_at', ascending: false)
-        .limit(1);
+        .order('created_at', ascending: false);
+    if (participantKey != null && participantKey.isNotEmpty) {
+      query = query.eq('participant_key', participantKey);
+    } else if (playerName != null && playerName.isNotEmpty) {
+      query = query.eq('player_name', playerName);
+    } else {
+      return;
+    }
+    final rows = await query.limit(1);
     final list = rows as List<dynamic>;
     if (list.isEmpty) return;
     final id = (list.first as Map)['id'];

@@ -259,6 +259,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       await HistoryRepository.deleteLatestBitEventForRound(
         roundId: roundId,
         participantKey: event.participantKey,
+        playerName: event.playerName,
         hole: event.hole,
         eventLabel: event.eventLabel,
         delta: event.delta,
