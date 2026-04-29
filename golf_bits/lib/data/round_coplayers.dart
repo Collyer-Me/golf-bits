@@ -5,6 +5,9 @@ import '../config/supabase_env.dart';
 /// Reads co-player display names from `rounds.players` / `rounds.participants` with
 /// tolerant decoding so one bad row does not wipe the whole list.
 abstract final class RoundCoplayers {
+  static const _coplayerOverviewRpc = 'coplayer_overview';
+  static const _recentCoplayersRpc = 'recent_coplayers';
+
   static List<Map<String, dynamic>> _roundMaps(dynamic rows) {
     return (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
@@ -197,6 +200,28 @@ abstract final class RoundCoplayers {
     return out;
   }
 
+  static Future<List<Map<String, dynamic>>> _fetchCoplayerOverviewRpcRows({
+    int limit = 1000,
+  }) async {
+    final rows = await Supabase.instance.client.rpc(
+      _coplayerOverviewRpc,
+      params: {'input_limit': limit},
+    );
+    final list = rows as List<dynamic>;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> _fetchRecentCoplayersRpcRows({
+    int limit = 8,
+  }) async {
+    final rows = await Supabase.instance.client.rpc(
+      _recentCoplayersRpc,
+      params: {'input_limit': limit},
+    );
+    final list = rows as List<dynamic>;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   /// Fetches `players` + `participants` for the signed-in user's rounds and returns co-player name counts.
   /// Uses owner-column fallbacks (`created_by`, `user_id`, `owner_id`) for legacy schemas.
   static Future<Map<String, int>> fetchCoPlayerCountsForCurrentUser({String? knownDisplayName}) async {
@@ -228,13 +253,31 @@ abstract final class RoundCoplayers {
           : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
     }
 
-    final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
-    final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
-    final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
-    final unfilteredRows = await _fetchRowsUnfiltered(client);
-    final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows, unfilteredRows]);
-    if (rows.isEmpty) return {};
-    return mergeCountsFromRoundRows(rows, displayName, user.id);
+    try {
+      final rows = await _fetchCoplayerOverviewRpcRows();
+      final out = <String, int>{};
+      for (final row in rows) {
+        final name = (row['display_name'] as String?)?.trim() ?? '';
+        final count = (row['rounds_played'] as num?)?.toInt() ?? 0;
+        if (name.isEmpty || count <= 0) continue;
+        out[name] = count;
+      }
+      if (out.isNotEmpty) return out;
+    } catch (_) {
+      // Fall back to legacy row parsing when RPC/migration is unavailable.
+    }
+
+    try {
+      final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
+      final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
+      final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
+      final unfilteredRows = await _fetchRowsUnfiltered(client);
+      final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows, unfilteredRows]);
+      if (rows.isEmpty) return {};
+      return mergeCountsFromRoundRows(rows, displayName, user.id);
+    } catch (_) {
+      return {};
+    }
   }
 
   static Future<List<String>> fetchRecentCoPlayerNamesForCurrentUser({
@@ -269,17 +312,36 @@ abstract final class RoundCoplayers {
           : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
     }
 
-    final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
-    final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
-    final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
-    final unfilteredRows = await _fetchRowsUnfiltered(client);
-    final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows, unfilteredRows]);
-    if (rows.isEmpty) return const [];
-    return recentUniqueNamesFromRoundRows(
-      rows,
-      displayName,
-      myUserId: user.id,
-      limit: limit,
-    );
+    try {
+      final rows = await _fetchRecentCoplayersRpcRows(limit: limit);
+      final out = <String>[];
+      final seen = <String>{};
+      for (final row in rows) {
+        final name = (row['display_name'] as String?)?.trim() ?? '';
+        if (name.isEmpty) continue;
+        final lowered = name.toLowerCase();
+        if (seen.add(lowered)) out.add(name);
+      }
+      if (out.isNotEmpty) return out.take(limit).toList();
+    } catch (_) {
+      // Fall back to legacy row parsing when RPC/migration is unavailable.
+    }
+
+    try {
+      final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
+      final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
+      final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
+      final unfilteredRows = await _fetchRowsUnfiltered(client);
+      final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows, unfilteredRows]);
+      if (rows.isEmpty) return const [];
+      return recentUniqueNamesFromRoundRows(
+        rows,
+        displayName,
+        myUserId: user.id,
+        limit: limit,
+      );
+    } catch (_) {
+      return const [];
+    }
   }
 }

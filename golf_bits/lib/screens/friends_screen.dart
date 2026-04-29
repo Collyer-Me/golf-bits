@@ -62,8 +62,12 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
     List<CoplayerSummary> coplayers = const [];
     try {
       coplayers = await FriendsRepository.fetchCoplayerSummaries(data);
-    } catch (_) {
-      // Non-fatal: Friends tab can still list friendships.
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load people from round history: $e')),
+        );
+      }
     }
     if (!mounted) return;
     setState(() {

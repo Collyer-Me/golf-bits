@@ -240,11 +240,21 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
     }
 
-    final counts = await RoundCoplayers.fetchCoPlayerCountsForCurrentUser(knownDisplayName: displayName);
-    final recentNames = await RoundCoplayers.fetchRecentCoPlayerNamesForCurrentUser(
-      knownDisplayName: displayName,
-      limit: 8,
-    );
+    Map<String, int> counts = const {};
+    List<String> recentNames = const [];
+    try {
+      counts = await RoundCoplayers.fetchCoPlayerCountsForCurrentUser(knownDisplayName: displayName);
+      recentNames = await RoundCoplayers.fetchRecentCoPlayerNamesForCurrentUser(
+        knownDisplayName: displayName,
+        limit: 8,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load recent players from history.')),
+        );
+      }
+    }
 
     final recents = <MapEntry<String, int>>[
       for (final name in recentNames) MapEntry(name, counts[name] ?? 1),
