@@ -273,22 +273,32 @@ class HistoryRepository {
     required int delta,
   }) async {
     if (!SupabaseEnv.isConfigured) return;
-    var query = Supabase.instance.client
-        .from('round_bit_events')
-        .select('id')
-        .eq('round_id', roundId)
-        .eq('hole', hole)
-        .eq('event_label', eventLabel)
-        .eq('delta', delta)
-        .order('created_at', ascending: false);
+    dynamic rows;
     if (participantKey != null && participantKey.isNotEmpty) {
-      query = query.eq('participant_key', participantKey);
+      rows = await Supabase.instance.client
+          .from('round_bit_events')
+          .select('id')
+          .eq('round_id', roundId)
+          .eq('participant_key', participantKey)
+          .eq('hole', hole)
+          .eq('event_label', eventLabel)
+          .eq('delta', delta)
+          .order('created_at', ascending: false)
+          .limit(1);
     } else if (playerName != null && playerName.isNotEmpty) {
-      query = query.eq('player_name', playerName);
+      rows = await Supabase.instance.client
+          .from('round_bit_events')
+          .select('id')
+          .eq('round_id', roundId)
+          .eq('player_name', playerName)
+          .eq('hole', hole)
+          .eq('event_label', eventLabel)
+          .eq('delta', delta)
+          .order('created_at', ascending: false)
+          .limit(1);
     } else {
       return;
     }
-    final rows = await query.limit(1);
     final list = rows as List<dynamic>;
     if (list.isEmpty) return;
     final id = (list.first as Map)['id'];
