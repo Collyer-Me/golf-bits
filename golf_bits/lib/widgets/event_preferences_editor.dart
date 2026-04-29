@@ -153,90 +153,196 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
           .map(
             (event) => Padding(
               padding: const EdgeInsets.only(bottom: AppTheme.space3),
-              child: OutlinedSurfaceCard(
-                borderColor: scheme.outlineVariant,
-                padding: const EdgeInsets.all(AppTheme.buttonPadV),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Switch(
-                          value: event.enabled,
-                          onChanged: (v) => _updateEvent(event.copyWith(enabled: v)),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                event.displayLabel,
-                                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              if (event.nickname != null && event.nickname!.isNotEmpty) ...[
-                                const SizedBox(height: AppTheme.spaceHalf),
-                                Text(
-                                  'Original: ${event.name}',
-                                  style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                                ),
-                              ],
-                              const SizedBox(height: AppTheme.space1),
-                              Text(
-                                event.description,
-                                style: text.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  height: AppTheme.bodyLineHeightTight,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+              child: _EventPreferenceCard(
+                event: event,
+                scheme: scheme,
+                text: text,
+                onToggleEnabled: (v) => _updateEvent(event.copyWith(enabled: v)),
+                onDecrementPoints: () => _updateEvent(
+                      event.copyWith(points: (event.points - 1).clamp(-5, 10)),
                     ),
-                    const SizedBox(height: AppTheme.space2),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => _editNickname(event),
-                        icon: const Icon(Icons.edit_outlined, size: AppTheme.iconDense),
-                        label: Text(event.nickname?.isNotEmpty == true ? 'Edit nickname' : 'Set nickname'),
-                      ),
+                onIncrementPoints: () => _updateEvent(
+                      event.copyWith(points: (event.points + 1).clamp(-5, 10)),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        IconButton.filledTonal(
-                          onPressed: event.enabled
-                              ? () => _updateEvent(
-                                    event.copyWith(points: (event.points - 1).clamp(-5, 10)),
-                                  )
-                              : null,
-                          icon: const Icon(Icons.remove),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
-                          child: Text(
-                            event.points >= 0 ? '+${event.points}' : '${event.points}',
-                            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                        IconButton.filled(
-                          onPressed: event.enabled
-                              ? () => _updateEvent(
-                                    event.copyWith(points: (event.points + 1).clamp(-5, 10)),
-                                  )
-                              : null,
-                          icon: const Icon(Icons.add),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                onEditNickname: () => _editNickname(event),
               ),
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class _EventPreferenceCard extends StatelessWidget {
+  const _EventPreferenceCard({
+    required this.event,
+    required this.scheme,
+    required this.text,
+    required this.onToggleEnabled,
+    required this.onDecrementPoints,
+    required this.onIncrementPoints,
+    required this.onEditNickname,
+  });
+
+  final EventPreference event;
+  final ColorScheme scheme;
+  final TextTheme text;
+  final ValueChanged<bool> onToggleEnabled;
+  final VoidCallback onDecrementPoints;
+  final VoidCallback onIncrementPoints;
+  final VoidCallback onEditNickname;
+
+  TextStyle _sectionLabel(TextTheme theme) {
+    return (theme.labelSmall ?? theme.bodySmall!).copyWith(
+      color: scheme.onSurfaceVariant,
+      letterSpacing: AppTheme.letterStepCaps,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  String get _nicknameLine {
+    final n = event.nickname?.trim();
+    if (n == null || n.isEmpty) return '';
+    return n.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mutedBody = scheme.onSurfaceVariant;
+    final pointsLabelStyle = text.titleMedium?.copyWith(
+      fontWeight: FontWeight.w800,
+      color: scheme.onPrimaryContainer,
+    );
+    final stepperEnabled = event.enabled;
+
+    return OutlinedSurfaceCard(
+      borderColor: scheme.outlineVariant,
+      padding: const EdgeInsets.all(AppTheme.cardInnerPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  event.name,
+                  style: text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: event.nickname?.isNotEmpty == true ? 'Edit nickname' : 'Set nickname',
+                onPressed: onEditNickname,
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: AppTheme.iconDense,
+                  color: mutedBody,
+                ),
+              ),
+            ],
+          ),
+          if (_nicknameLine.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.spaceHalf),
+            Text(
+              _nicknameLine,
+              style: text.labelSmall?.copyWith(
+                color: mutedBody,
+                letterSpacing: AppTheme.letterStepCaps,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppTheme.space5),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ACTIVE STATUS', style: _sectionLabel(text)),
+                    const SizedBox(height: AppTheme.space2),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Switch(
+                        value: event.enabled,
+                        onChanged: onToggleEnabled,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('POINTS MODIFIER', style: _sectionLabel(text)),
+                    const SizedBox(height: AppTheme.space2),
+                    SizedBox(
+                      width: double.infinity,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: scheme.outlineVariant,
+                            width: AppTheme.outlineBorderWidth,
+                          ),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: stepperEnabled ? onDecrementPoints : null,
+                              visualDensity: VisualDensity.compact,
+                              icon: Icon(
+                                Icons.remove,
+                                color: mutedBody,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                event.points >= 0 ? '+${event.points}' : '${event.points}',
+                                textAlign: TextAlign.center,
+                                style: pointsLabelStyle,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: stepperEnabled ? onIncrementPoints : null,
+                              visualDensity: VisualDensity.compact,
+                              icon: Icon(
+                                Icons.add,
+                                color: mutedBody,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space5),
+          Divider(
+            height: AppTheme.space1,
+            thickness: 1,
+            color: scheme.outlineVariant.withValues(alpha: AppTheme.opacitySecondaryBorder),
+          ),
+          const SizedBox(height: AppTheme.space5),
+          Text(
+            event.description,
+            style: text.bodySmall?.copyWith(
+              color: mutedBody,
+              height: AppTheme.bodyLineHeightRelaxed,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
