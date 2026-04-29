@@ -69,9 +69,9 @@ abstract final class UserPreferencesRepository {
     if (!SupabaseEnv.isConfigured) return;
     final user = _client.auth.currentUser;
     if (user == null) return;
-    await _client.from('profiles').upsert({
-      'id': user.id,
-      'marketing_opt_in': value,
-    });
+    await _client
+        .from('profiles')
+        .update({'marketing_opt_in': value})
+        .eq('id', user.id);
   }
 }

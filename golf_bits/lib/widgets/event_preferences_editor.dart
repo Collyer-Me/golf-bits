@@ -203,9 +203,11 @@ class _EventPreferenceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mutedBody = scheme.onSurfaceVariant;
+    final Color pointsColor =
+        event.points < 0 ? scheme.error : scheme.onPrimaryContainer;
     final pointsLabelStyle = text.titleMedium?.copyWith(
       fontWeight: FontWeight.w800,
-      color: scheme.onPrimaryContainer,
+      color: pointsColor,
     );
     final stepperEnabled = event.enabled;
 
