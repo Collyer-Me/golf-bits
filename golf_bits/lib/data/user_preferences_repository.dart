@@ -44,4 +44,34 @@ abstract final class UserPreferencesRepository {
       });
     }
   }
+
+  /// Whether the user opted in to marketing emails (`profiles.marketing_opt_in`).
+  static Future<bool> fetchMarketingOptIn() async {
+    if (!SupabaseEnv.isConfigured) return false;
+    final user = _client.auth.currentUser;
+    if (user == null) return false;
+    try {
+      final row = await _client
+          .from('profiles')
+          .select('marketing_opt_in')
+          .eq('id', user.id)
+          .maybeSingle();
+      if (row == null) return false;
+      final v = row['marketing_opt_in'];
+      if (v is bool) return v;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> saveMarketingOptIn(bool value) async {
+    if (!SupabaseEnv.isConfigured) return;
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    await _client.from('profiles').upsert({
+      'id': user.id,
+      'marketing_opt_in': value,
+    });
+  }
 }

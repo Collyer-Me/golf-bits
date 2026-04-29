@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_root.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
+import '../data/user_preferences_repository.dart';
 import '../main.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
@@ -16,6 +17,7 @@ import 'friends_screen.dart';
 import 'history_detail_screen.dart';
 import 'history_screen.dart';
 import 'hole_scoring_screen.dart';
+import 'change_password_screen.dart';
 import 'profile_event_defaults_screen.dart';
 import 'round_setup_screen.dart';
 
@@ -608,13 +610,53 @@ class _PeopleTab extends StatelessWidget {
   }
 }
 
-class _ProfileTab extends StatelessWidget {
+class _ProfileTab extends StatefulWidget {
   const _ProfileTab();
+
+  @override
+  State<_ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<_ProfileTab> {
+  bool _marketingPrefsLoading = true;
+  bool _marketingOptIn = false;
 
   static bool _isAnonymousUser(User? user) {
     if (user == null) return false;
     final provider = user.appMetadata['provider'];
     return provider == 'anonymous';
+  }
+
+  static String _displayNameFor(User user) {
+    final fullName = (user.userMetadata?['full_name'] as String?)?.trim();
+    final fallbackName = user.email?.split('@').first.trim();
+    if (fullName != null && fullName.isNotEmpty) return fullName;
+    if (fallbackName != null && fallbackName.isNotEmpty) return fallbackName;
+    return 'Player';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadMarketingOptIn());
+  }
+
+  Future<void> _loadMarketingOptIn() async {
+    if (!SupabaseEnv.isConfigured) {
+      if (mounted) setState(() => _marketingPrefsLoading = false);
+      return;
+    }
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null || _isAnonymousUser(user)) {
+      if (mounted) setState(() => _marketingPrefsLoading = false);
+      return;
+    }
+    final v = await UserPreferencesRepository.fetchMarketingOptIn();
+    if (!mounted) return;
+    setState(() {
+      _marketingOptIn = v;
+      _marketingPrefsLoading = false;
+    });
   }
 
   @override
@@ -625,65 +667,152 @@ class _ProfileTab extends StatelessWidget {
     final user = session?.user;
     final anon = user != null && _isAnonymousUser(user);
     final email = user?.email;
-    final String title;
+
+    final List<Widget> accountChildren = [
+      Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      SizedBox(height: AppTheme.space3),
+    ];
+
     if (!SupabaseEnv.isConfigured) {
-      title = 'Playing on this device';
+      accountChildren.add(
+        Text(
+          'Playing on this device',
+          style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      );
+    } else if (user == null) {
+      accountChildren.add(
+        Text(
+          'Signed in',
+          style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      );
     } else if (anon) {
-      title = 'Guest';
-    } else if (email != null && email.isNotEmpty) {
-      title = email;
+      accountChildren.add(
+        Text(
+          'Guest',
+          style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      );
+      accountChildren.addAll([
+        SizedBox(height: AppTheme.space2),
+        Text(
+          'Create an account any time to sync rounds across devices.',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ]);
     } else {
-      title = 'Signed in';
+      accountChildren.add(
+        Text(
+          _displayNameFor(user),
+          style: text.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurface,
+          ),
+        ),
+      );
+      if (email != null && email.isNotEmpty) {
+        accountChildren.addAll([
+          SizedBox(height: AppTheme.space1),
+          Text(
+            email,
+            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ]);
+      }
     }
+
+    final showChangePassword = SupabaseEnv.isConfigured &&
+        user != null &&
+        !anon &&
+        email != null &&
+        email.isNotEmpty;
+    final showMarketingEmails = SupabaseEnv.isConfigured && user != null && !anon;
+
+    final children = <Widget>[
+      OutlinedSurfaceCard(
+        borderColor: scheme.outlineVariant,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: accountChildren,
+        ),
+      ),
+      SizedBox(height: AppTheme.space6),
+      OutlinedButton.icon(
+        onPressed: () {
+          Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const ProfileEventDefaultsScreen()),
+          );
+        },
+        icon: const Icon(Icons.casino),
+        label: const Text('Default bets & events'),
+      ),
+      SizedBox(height: AppTheme.space3),
+    ];
+
+    if (showChangePassword) {
+      children.addAll([
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(builder: (_) => const ChangePasswordScreen()),
+            );
+          },
+          icon: const Icon(Icons.lock_reset),
+          label: const Text('Change password'),
+        ),
+        SizedBox(height: AppTheme.space2),
+      ]);
+    }
+
+    if (showMarketingEmails) {
+      children.add(
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text('Marketing emails', style: text.titleSmall),
+          subtitle: Text(
+            'Occasional updates, tips, and offers from Bits',
+            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          value: _marketingOptIn,
+          onChanged: _marketingPrefsLoading
+              ? null
+              : (next) async {
+                  final prev = _marketingOptIn;
+                  setState(() => _marketingOptIn = next);
+                  try {
+                    await UserPreferencesRepository.saveMarketingOptIn(next);
+                  } catch (e) {
+                    if (!mounted) return;
+                    setState(() => _marketingOptIn = prev);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not save preference: $e')),
+                    );
+                  }
+                },
+        ),
+      );
+    }
+
+    children.addAll([
+      SizedBox(height: AppTheme.space3),
+      FilledButton.tonal(
+        onPressed: () async {
+          if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {
+            await Supabase.instance.client.auth.signOut();
+          } else {
+            AuthRoot.maybeOf(context)?.exitApp();
+          }
+        },
+        child: const Text('Sign out'),
+      ),
+    ]);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: ListView(
         padding: AppTheme.screenPadding,
-        children: [
-          OutlinedSurfaceCard(
-            borderColor: scheme.outlineVariant,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                SizedBox(height: AppTheme.space3),
-                Text(
-                  title,
-                  style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-                ),
-                if (anon) ...[
-                  SizedBox(height: AppTheme.space2),
-                  Text(
-                    'Create an account any time to sync rounds across devices.',
-                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          SizedBox(height: AppTheme.space6),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(builder: (_) => const ProfileEventDefaultsScreen()),
-              );
-            },
-            icon: const Icon(Icons.tune),
-            label: const Text('Default Round Events'),
-          ),
-          SizedBox(height: AppTheme.space3),
-          FilledButton.tonal(
-            onPressed: () async {
-              if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {
-                await Supabase.instance.client.auth.signOut();
-              } else {
-                AuthRoot.maybeOf(context)?.exitApp();
-              }
-            },
-            child: const Text('Sign out'),
-          ),
-        ],
+        children: children,
       ),
     );
   }
