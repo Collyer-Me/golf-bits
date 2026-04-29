@@ -241,13 +241,30 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     }
 
     final counts = await RoundCoplayers.fetchCoPlayerCountsForCurrentUser(knownDisplayName: displayName);
+    final recentNames = await RoundCoplayers.fetchRecentCoPlayerNamesForCurrentUser(
+      knownDisplayName: displayName,
+      limit: 8,
+    );
 
-    final recents = counts.entries.toList()
-      ..sort((a, b) {
-        final byCount = b.value.compareTo(a.value);
-        if (byCount != 0) return byCount;
-        return a.key.toLowerCase().compareTo(b.key.toLowerCase());
-      });
+    final recents = <MapEntry<String, int>>[
+      for (final name in recentNames) MapEntry(name, counts[name] ?? 1),
+    ];
+    if (recents.length < 8) {
+      final used = {for (final r in recents) r.key.trim().toLowerCase()};
+      final byCount = counts.entries.toList()
+        ..sort((a, b) {
+          final byCount = b.value.compareTo(a.value);
+          if (byCount != 0) return byCount;
+          return a.key.toLowerCase().compareTo(b.key.toLowerCase());
+        });
+      for (final entry in byCount) {
+        if (recents.length >= 8) break;
+        final key = entry.key.trim().toLowerCase();
+        if (key.isEmpty || used.contains(key)) continue;
+        used.add(key);
+        recents.add(entry);
+      }
+    }
 
     if (!mounted) return;
     setState(() {
@@ -257,7 +274,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       _recent
         ..clear()
         ..addAll([
-          for (final e in recents) _Recent(id: 'recent_${e.key}', name: e.key, rounds: e.value),
+          for (final e in recents.take(8)) _Recent(id: 'recent_${e.key}', name: e.key, rounds: e.value),
         ]);
       _loadingPlayers = false;
     });
