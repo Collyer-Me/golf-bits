@@ -295,7 +295,8 @@ as $$
       identity_key,
       count(*)::int as rounds_played,
       max(played_at) as last_played_at,
-      max(participant_user_id) as participant_user_id,
+      (array_agg(participant_user_id order by played_at desc) filter (where participant_user_id is not null))[1]
+        as participant_user_id,
       max(participant_email) filter (where participant_email is not null and trim(participant_email) <> '') as participant_email
     from base
     group by identity_key
