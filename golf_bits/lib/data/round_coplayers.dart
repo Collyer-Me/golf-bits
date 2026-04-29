@@ -5,6 +5,35 @@ import '../config/supabase_env.dart';
 /// Reads co-player display names from `rounds.players` / `rounds.participants` with
 /// tolerant decoding so one bad row does not wipe the whole list.
 abstract final class RoundCoplayers {
+  static List<Map<String, dynamic>> _roundMaps(dynamic rows) {
+    return (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> _fetchRowsByOwnerColumn(
+    SupabaseClient client,
+    String userId,
+    String ownerColumn,
+  ) async {
+    try {
+      final rows = await client.from('rounds').select('players,participants').eq(ownerColumn, userId).limit(200);
+      return _roundMaps(rows);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static List<Map<String, dynamic>> _mergeDistinctRowsByContent(List<List<Map<String, dynamic>>> groups) {
+    final merged = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final group in groups) {
+      for (final row in group) {
+        final sig = '${row['players']}|${row['participants']}';
+        if (seen.add(sig)) merged.add(row);
+      }
+    }
+    return merged;
+  }
+
   /// Decodes legacy `players` arrays that may be strings or small maps.
   static List<String> namesFromPlayersArrayOnly(List<dynamic> raw) {
     return [
@@ -79,25 +108,28 @@ abstract final class RoundCoplayers {
   }
 
   /// Fetches `players` + `participants` for the signed-in user's rounds and returns co-player name counts.
-  static Future<Map<String, int>> fetchCoPlayerCountsForCurrentUser() async {
+  /// Uses owner-column fallbacks (`created_by`, `user_id`, `owner_id`) for legacy schemas.
+  static Future<Map<String, int>> fetchCoPlayerCountsForCurrentUser({String? knownDisplayName}) async {
     if (!SupabaseEnv.isConfigured) return {};
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
     if (user == null) return {};
 
-    var displayName = '';
-    try {
-      dynamic rows;
+    var displayName = knownDisplayName?.trim() ?? '';
+    if (displayName.isEmpty) {
       try {
-        rows = await client.from('profiles').select('display_name').eq('id', user.id).limit(1);
-      } catch (_) {
-        rows = await client.from('profiles').select('display_name').eq('user_id', user.id).limit(1);
-      }
-      final list = rows as List<dynamic>;
-      if (list.isNotEmpty) {
-        displayName = ((list.first as Map)['display_name'] as String?)?.trim() ?? '';
-      }
-    } catch (_) {}
+        dynamic rows;
+        try {
+          rows = await client.from('profiles').select('display_name').eq('id', user.id).limit(1);
+        } catch (_) {
+          rows = await client.from('profiles').select('display_name').eq('user_id', user.id).limit(1);
+        }
+        final list = rows as List<dynamic>;
+        if (list.isNotEmpty) {
+          displayName = ((list.first as Map)['display_name'] as String?)?.trim() ?? '';
+        }
+      } catch (_) {}
+    }
     if (displayName.isEmpty) {
       final metaName = (user.userMetadata?['full_name'] as String?)?.trim();
       final emailName = user.email?.split('@').first.trim();
@@ -106,16 +138,11 @@ abstract final class RoundCoplayers {
           : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
     }
 
-    try {
-      final rows = await client
-          .from('rounds')
-          .select('players,participants')
-          .eq('created_by', user.id)
-          .limit(200);
-      final maps = (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      return mergeCountsFromRoundRows(maps, displayName);
-    } catch (_) {
-      return {};
-    }
+    final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
+    final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
+    final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
+    final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows]);
+    if (rows.isEmpty) return {};
+    return mergeCountsFromRoundRows(rows, displayName);
   }
 }

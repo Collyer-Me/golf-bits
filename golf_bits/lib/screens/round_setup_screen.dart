@@ -240,18 +240,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
     }
 
-    Map<String, int> counts = {};
-    try {
-      final rows = await client
-          .from('rounds')
-          .select('players,participants')
-          .eq('created_by', user.id)
-          .limit(200);
-      final maps = (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      counts = RoundCoplayers.mergeCountsFromRoundRows(maps, displayName);
-    } catch (_) {
-      // Keep Recent players empty if rounds query fails.
-    }
+    final counts = await RoundCoplayers.fetchCoPlayerCountsForCurrentUser(knownDisplayName: displayName);
 
     final recents = counts.entries.toList()
       ..sort((a, b) {

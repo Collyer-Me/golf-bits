@@ -52,12 +52,12 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
     try {
       data = await FriendsRepository.fetchOverview();
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not load friends: $e')),
-      );
-      return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load friends: $e')),
+        );
+      }
+      data = const [];
     }
     List<CoplayerSummary> coplayers = const [];
     try {
