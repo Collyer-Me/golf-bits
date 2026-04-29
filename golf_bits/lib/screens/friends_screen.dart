@@ -24,6 +24,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
   bool _loading = true;
   bool _searching = false;
   List<FriendConnection> _connections = const [];
+  List<CoplayerSummary> _coplayers = const [];
   List<FriendCandidate> _searchResults = const [];
 
   String? get _uid => SupabaseEnv.isConfigured ? Supabase.instance.client.auth.currentUser?.id : null;
@@ -47,20 +48,29 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
 
   Future<void> _loadOverview() async {
     setState(() => _loading = true);
+    List<FriendConnection> data = const [];
     try {
-      final data = await FriendsRepository.fetchOverview();
-      if (!mounted) return;
-      setState(() {
-        _connections = data;
-        _loading = false;
-      });
+      data = await FriendsRepository.fetchOverview();
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not load friends: $e')),
       );
+      return;
     }
+    List<CoplayerSummary> coplayers = const [];
+    try {
+      coplayers = await FriendsRepository.fetchCoplayerSummaries(data);
+    } catch (_) {
+      // Non-fatal: Friends tab can still list friendships.
+    }
+    if (!mounted) return;
+    setState(() {
+      _connections = data;
+      _coplayers = coplayers;
+      _loading = false;
+    });
   }
 
   void _onSearchChanged() {
@@ -156,7 +166,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _friendsTab(accepted),
+                      _friendsTab(accepted, _coplayers),
                       _requestsTab(incoming, outgoing),
                       _findTab(),
                     ],
@@ -167,15 +177,58 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
     );
   }
 
-  Widget _friendsTab(List<FriendConnection> accepted) {
-    if (accepted.isEmpty) {
-      return _emptyState('No friends yet', 'Use Find to send your first friend request.');
+  Widget _friendsTab(List<FriendConnection> accepted, List<CoplayerSummary> coplayers) {
+    if (accepted.isEmpty && coplayers.isEmpty) {
+      return _emptyState(
+        'No people here yet',
+        'Play a round with others, or use Find to add friends by account. People from your rounds appear here even without an email.',
+      );
     }
     final text = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final muted = text.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
     return ListView(
       padding: AppTheme.screenPadding,
       children: [
+        if (coplayers.isNotEmpty) ...[
+          Text(
+            'People you have played with',
+            style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppTheme.spaceHalf),
+          Text(
+            'These names come from your saved rounds. They are not linked to an account in the app unless you add them in Find.',
+            style: muted,
+          ),
+          const SizedBox(height: AppTheme.space3),
+          for (final c in coplayers)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppTheme.space3),
+              child: OutlinedSurfaceCard(
+                borderColor: scheme.outlineVariant,
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(c.displayName, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: AppTheme.spaceHalf),
+                    Text(
+                      '${c.roundsPlayed} ${c.roundsPlayed == 1 ? 'round' : 'rounds'} · no linked account or email on file',
+                      style: muted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (accepted.isNotEmpty) ...[
+            const SizedBox(height: AppTheme.space5),
+            Text(
+              'Friends',
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: AppTheme.space3),
+          ],
+        ],
         for (final friend in accepted)
           Padding(
             padding: const EdgeInsets.only(bottom: AppTheme.space3),
@@ -189,11 +242,13 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(friend.otherDisplayName, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                        if (friend.otherEmail != null && friend.otherEmail!.isNotEmpty)
-                          Text(
-                            friend.otherEmail!,
-                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
+                        const SizedBox(height: AppTheme.spaceHalf),
+                        Text(
+                          (friend.otherEmail != null && friend.otherEmail!.trim().isNotEmpty)
+                              ? friend.otherEmail!.trim()
+                              : 'No email on file for this friend.',
+                          style: muted,
+                        ),
                       ],
                     ),
                   ),
@@ -335,11 +390,12 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
                               candidate.displayName,
                               style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                             ),
-                            if (candidate.email != null && candidate.email!.isNotEmpty)
-                              Text(
-                                candidate.email!,
-                                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                              ),
+                            Text(
+                              (candidate.email != null && candidate.email!.trim().isNotEmpty)
+                                  ? candidate.email!.trim()
+                                  : 'No email on file for this profile.',
+                              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
                           ],
                         ),
                       ),

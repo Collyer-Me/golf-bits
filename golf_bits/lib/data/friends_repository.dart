@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
 import '../models/friend_models.dart';
+import 'round_coplayers.dart';
 
 abstract final class FriendsRepository {
   static SupabaseClient get _client => Supabase.instance.client;
@@ -15,6 +16,36 @@ abstract final class FriendsRepository {
         .map((row) => FriendConnection.fromRpc(Map<String, dynamic>.from(row as Map)))
         .where((item) => item.friendshipId.isNotEmpty && item.otherUserId.isNotEmpty)
         .toList();
+  }
+
+  /// Co-players from your rounds who are not already covered by a non-declined friendship row.
+  static List<CoplayerSummary> coplayerSummariesExcludingFriendships(
+    List<FriendConnection> connections,
+    Map<String, int> nameCounts,
+  ) {
+    final reserved = <String>{
+      for (final c in connections)
+        if (c.status != 'declined') c.otherDisplayName.trim().toLowerCase(),
+    };
+    final out = <CoplayerSummary>[];
+    for (final e in nameCounts.entries) {
+      final key = e.key.trim().toLowerCase();
+      if (key.isEmpty || reserved.contains(key)) continue;
+      out.add(CoplayerSummary(displayName: e.key, roundsPlayed: e.value));
+    }
+    out.sort((a, b) {
+      final byCount = b.roundsPlayed.compareTo(a.roundsPlayed);
+      if (byCount != 0) return byCount;
+      return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+    });
+    return out;
+  }
+
+  static Future<List<CoplayerSummary>> fetchCoplayerSummaries(
+    List<FriendConnection> connections,
+  ) async {
+    final counts = await RoundCoplayers.fetchCoPlayerCountsForCurrentUser();
+    return coplayerSummariesExcludingFriendships(connections, counts);
   }
 
   static Future<List<FriendCandidate>> searchCandidates(String query) async {

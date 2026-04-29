@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_env.dart';
 import '../data/course_catalog_repository.dart';
 import '../data/history_repository.dart';
+import '../data/round_coplayers.dart';
 import '../data/schema_compatibility_service.dart';
 import '../data/user_preferences_repository.dart';
 import '../models/course_catalog_models.dart';
@@ -235,22 +236,15 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
     }
 
-    final counts = <String, int>{};
+    Map<String, int> counts = {};
     try {
       final rows = await client
           .from('rounds')
-          .select('players')
+          .select('players,participants')
           .eq('created_by', user.id)
           .limit(200);
-      for (final row in rows as List<dynamic>) {
-        final players = (row as Map)['players'] as List<dynamic>? ?? const [];
-        for (final p in players) {
-          final name = (p as String).trim();
-          if (name.isEmpty) continue;
-          if (name.toLowerCase() == displayName.toLowerCase()) continue;
-          counts[name] = (counts[name] ?? 0) + 1;
-        }
-      }
+      final maps = (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      counts = RoundCoplayers.mergeCountsFromRoundRows(maps, displayName);
     } catch (_) {
       // Keep Recent players empty if rounds query fails.
     }

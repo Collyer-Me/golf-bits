@@ -1,3 +1,11 @@
+/// Someone who appears on your saved rounds but is not necessarily a friend account.
+class CoplayerSummary {
+  const CoplayerSummary({required this.displayName, required this.roundsPlayed});
+
+  final String displayName;
+  final int roundsPlayed;
+}
+
 class FriendCandidate {
   const FriendCandidate({
     required this.userId,

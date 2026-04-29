@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+
+import '../data/round_coplayers.dart';
 import 'round_session_args.dart';
 
 /// One row on the history detail standings table.
@@ -217,7 +219,7 @@ class HistoryRound {
     final endedAt = timestampUtcFromRow(row);
     final now = DateTime.now();
     final rawPlayers = row['players'] as List<dynamic>? ?? const [];
-    final players = rawPlayers.map((e) => e as String).toList();
+    final players = RoundCoplayers.namesFromPlayersArrayOnly(rawPlayers);
     final standingsJson = row['standings'] as List<dynamic>? ?? const [];
     var standings = standingsJson.map((e) => HistoryStanding.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     final leftJson = row['left_early'] as List<dynamic>? ?? const [];
