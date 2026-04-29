@@ -345,17 +345,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
               ),
             ),
             SizedBox(height: AppTheme.space3),
-            OutlinedButton.icon(
-              onPressed: () => _dismissRound(round),
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('DISMISS ROUND'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: scheme.error,
-                side: BorderSide(
-                  color: scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis),
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -530,6 +519,18 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
                   SizedBox(width: AppTheme.space2),
                   Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
                 ],
+              ),
+            ),
+            SizedBox(height: AppTheme.space3),
+            OutlinedButton.icon(
+              onPressed: () => _dismissRound(round),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('DISMISS ROUND'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: scheme.error,
+                side: BorderSide(
+                  color: scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis),
+                ),
               ),
             ),
           ],
