@@ -200,12 +200,6 @@ class _EventPreferenceCard extends StatelessWidget {
     );
   }
 
-  String get _nicknameLine {
-    final n = event.nickname?.trim();
-    if (n == null || n.isEmpty) return '';
-    return n.toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final mutedBody = scheme.onSurfaceVariant;
@@ -214,6 +208,10 @@ class _EventPreferenceCard extends StatelessWidget {
       color: scheme.onPrimaryContainer,
     );
     final stepperEnabled = event.enabled;
+
+    final nick = event.nickname?.trim();
+    final hasNickname = nick != null && nick.isNotEmpty;
+    final primaryTitle = hasNickname ? nick! : event.name;
 
     return OutlinedSurfaceCard(
       borderColor: scheme.outlineVariant,
@@ -226,7 +224,7 @@ class _EventPreferenceCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  event.name,
+                  primaryTitle,
                   style: text.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: scheme.onSurface,
@@ -245,84 +243,87 @@ class _EventPreferenceCard extends StatelessWidget {
               ),
             ],
           ),
-          if (_nicknameLine.isNotEmpty) ...[
+          if (hasNickname) ...[
             const SizedBox(height: AppTheme.spaceHalf),
             Text(
-              _nicknameLine,
+              event.name,
               style: text.labelSmall?.copyWith(
                 color: mutedBody,
-                letterSpacing: AppTheme.letterStepCaps,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ],
           const SizedBox(height: AppTheme.space5),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('ACTIVE STATUS', style: _sectionLabel(text)),
-                    const SizedBox(height: AppTheme.space2),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Switch(
-                        value: event.enabled,
-                        onChanged: onToggleEnabled,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'ACTIVE STATUS',
+                  style: _sectionLabel(text),
                 ),
               ),
               const SizedBox(width: AppTheme.space3),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('POINTS MODIFIER', style: _sectionLabel(text)),
-                    const SizedBox(height: AppTheme.space2),
-                    SizedBox(
-                      width: double.infinity,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: scheme.outlineVariant,
-                            width: AppTheme.outlineBorderWidth,
-                          ),
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                        ),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              onPressed: stepperEnabled ? onDecrementPoints : null,
-                              visualDensity: VisualDensity.compact,
-                              icon: Icon(
-                                Icons.remove,
-                                color: mutedBody,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                event.points >= 0 ? '+${event.points}' : '${event.points}',
-                                textAlign: TextAlign.center,
-                                style: pointsLabelStyle,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: stepperEnabled ? onIncrementPoints : null,
-                              visualDensity: VisualDensity.compact,
-                              icon: Icon(
-                                Icons.add,
-                                color: mutedBody,
-                              ),
-                            ),
-                          ],
+                child: Text(
+                  'POINTS MODIFIER',
+                  style: _sectionLabel(text),
+                  textAlign: TextAlign.end,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space2),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Switch(
+                    value: event.enabled,
+                    onChanged: onToggleEnabled,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppTheme.space3),
+              Expanded(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: scheme.outlineVariant,
+                      width: AppTheme.outlineBorderWidth,
+                    ),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: stepperEnabled ? onDecrementPoints : null,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.remove,
+                          color: mutedBody,
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: Text(
+                          event.points >= 0 ? '+${event.points}' : '${event.points}',
+                          textAlign: TextAlign.center,
+                          style: pointsLabelStyle,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: stepperEnabled ? onIncrementPoints : null,
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.add,
+                          color: mutedBody,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
