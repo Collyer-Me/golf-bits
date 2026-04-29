@@ -255,6 +255,41 @@ class HistoryRepository {
     await _updateRoundWithFallback(roundId: roundId, payload: row);
   }
 
+  /// Deletes an in-progress round and any related bit events.
+  ///
+  /// Used for "dismiss/discard" UX where the user explicitly abandons a round
+  /// before completion.
+  static Future<void> deleteRound(String roundId) async {
+    if (!SupabaseEnv.isConfigured) return;
+    final uid = _uid;
+    if (roundId.isEmpty) return;
+
+    // Best-effort cleanup of bit events; ignore failures so we can still try to
+    // remove the parent round row.
+    try {
+      await _client.from('round_bit_events').delete().eq('round_id', roundId);
+    } catch (_) {
+      // Non-fatal.
+    }
+
+    if (uid == null) {
+      await _client.from('rounds').delete().eq('id', roundId);
+      return;
+    }
+
+    try {
+      await _client.from('rounds').delete().eq('id', roundId).eq('created_by', uid);
+    } catch (e) {
+      if (_isRlsViolation(e)) throw _rlsError();
+      final col = _missingColumn(e);
+      if (col == 'created_by') {
+        await _client.from('rounds').delete().eq('id', roundId);
+        return;
+      }
+      rethrow;
+    }
+  }
+
   /// Inserts bit events after the parent round row exists.
   static Future<void> saveBitEventsForRound(String roundId, List<RoundBitEventDraft> events) async {
     if (!SupabaseEnv.isConfigured || events.isEmpty) return;

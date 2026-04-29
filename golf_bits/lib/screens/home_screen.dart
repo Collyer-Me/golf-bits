@@ -7,13 +7,11 @@ import '../auth/auth_root.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../main.dart';
-import '../data/schema_compatibility_service.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
-import 'component_gallery_screen.dart';
 import 'friends_screen.dart';
 import 'history_detail_screen.dart';
 import 'history_screen.dart';
@@ -108,6 +106,38 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
   HistoryRound? _activeRound;
   HistoryRound? _previousRound;
   bool _showSyncBanner = true;
+
+  Future<void> _dismissRound(HistoryRound round) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dismiss round?'),
+        content: const Text('The round will be removed from your in-progress list.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await HistoryRepository.deleteRound(round.id);
+      if (mounted) await _loadDashboard();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not dismiss round: $e')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -213,16 +243,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
           PopupMenuButton<String>(
             onSelected: (v) async {
               switch (v) {
-                case 'gallery':
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const ComponentGalleryScreen()),
-                  );
-                  return;
-                case 'preview':
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const HoleScoringScreen()),
-                  );
-                  return;
                 case 'logout':
                   try {
                     await _signOut(context);
@@ -238,8 +258,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
               }
             },
             itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 'gallery', child: Text('Style guide & components')),
-              const PopupMenuItem(value: 'preview', child: Text('Preview in-round UI')),
               const PopupMenuDivider(),
               const PopupMenuItem(value: 'logout', child: Text('Log out')),
             ],
@@ -324,6 +342,18 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
                   SizedBox(width: AppTheme.space25),
                   const Text('Start New Round'),
                 ],
+              ),
+            ),
+            SizedBox(height: AppTheme.space3),
+            OutlinedButton.icon(
+              onPressed: () => _dismissRound(round),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('DISMISS ROUND'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: scheme.error,
+                side: BorderSide(
+                  color: scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis),
+                ),
               ),
             ),
           ],
@@ -640,48 +670,6 @@ class _ProfileTab extends StatelessWidget {
             },
             icon: const Icon(Icons.tune),
             label: const Text('Default Round Events'),
-          ),
-          SizedBox(height: AppTheme.space3),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final result = await SchemaCompatibilityService.checkRoundSyncSchema(forceRefresh: true);
-              if (!context.mounted) return;
-              await showDialog<void>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text(result.ok ? 'Sync diagnostics: OK' : 'Sync diagnostics: issues found'),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (result.errors.isEmpty)
-                          const Text('No required schema issues detected.')
-                        else ...[
-                          const Text('Errors:'),
-                          const SizedBox(height: AppTheme.space2),
-                          Text(result.errors.join('\n')),
-                        ],
-                        if (result.warnings.isNotEmpty) ...[
-                          const SizedBox(height: AppTheme.space4),
-                          const Text('Warnings:'),
-                          const SizedBox(height: AppTheme.space2),
-                          Text(result.warnings.join('\n')),
-                        ],
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            icon: const Icon(Icons.health_and_safety_outlined),
-            label: const Text('Run Sync Diagnostics'),
           ),
           SizedBox(height: AppTheme.space3),
           FilledButton.tonal(
