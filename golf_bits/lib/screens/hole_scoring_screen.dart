@@ -488,7 +488,7 @@ class _EventAwardSheetState extends State<_EventAwardSheet> {
                 const RoundEventRule(label: 'Three-Putt', delta: -1, iconKey: 'remove_circle_outline'),
                 const RoundEventRule(label: 'Water Hazard', delta: -1, iconKey: 'waves_outlined'),
               ]
-            : rules)
+            : widget.rules)
         .map((r) => _EventDef(r.label, _bitText(r.delta), r.delta, r.iconKey))
         .toList();
     final positive = mapped.where((e) => e.delta >= 0).toList();
