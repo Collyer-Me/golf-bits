@@ -18,7 +18,13 @@ abstract final class RoundCoplayers {
       final rows = await client.from('rounds').select('players,participants').eq(ownerColumn, userId).limit(200);
       return _roundMaps(rows);
     } catch (_) {
-      return const [];
+      try {
+        // Legacy schema may not have `participants` yet.
+        final rows = await client.from('rounds').select('players').eq(ownerColumn, userId).limit(200);
+        return _roundMaps(rows);
+      } catch (_) {
+        return const [];
+      }
     }
   }
 
@@ -32,6 +38,20 @@ abstract final class RoundCoplayers {
       }
     }
     return merged;
+  }
+
+  static Future<List<Map<String, dynamic>>> _fetchRowsUnfiltered(SupabaseClient client) async {
+    try {
+      final rows = await client.from('rounds').select('players,participants').limit(200);
+      return _roundMaps(rows);
+    } catch (_) {
+      try {
+        final rows = await client.from('rounds').select('players').limit(200);
+        return _roundMaps(rows);
+      } catch (_) {
+        return const [];
+      }
+    }
   }
 
   /// Decodes legacy `players` arrays that may be strings or small maps.
@@ -141,7 +161,8 @@ abstract final class RoundCoplayers {
     final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
     final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
     final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
-    final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows]);
+    final unfilteredRows = await _fetchRowsUnfiltered(client);
+    final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows, unfilteredRows]);
     if (rows.isEmpty) return {};
     return mergeCountsFromRoundRows(rows, displayName);
   }
