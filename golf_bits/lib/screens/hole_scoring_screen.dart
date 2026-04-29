@@ -155,19 +155,47 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
             delta: delta,
             iconKey: iconKey,
           );
+          var removed = false;
           setState(() {
             final byHole = _holeScores[player.id]!;
-            byHole[_hole] = (byHole[_hole] ?? 0) + delta;
-            player.totalScore += delta;
-            if (widget.session != null) {
+            final existingIdx = _bitLog.lastIndexWhere(
+              (e) =>
+                  e.participantKey == player.id &&
+                  e.hole == _hole &&
+                  e.eventLabel == label &&
+                  e.delta == delta,
+            );
+            if (existingIdx >= 0) {
+              removed = true;
+              _bitLog.removeAt(existingIdx);
+              final nextHoleScore = (byHole[_hole] ?? 0) - delta;
+              if (nextHoleScore == 0) {
+                byHole.remove(_hole);
+              } else {
+                byHole[_hole] = nextHoleScore;
+              }
+              player.totalScore -= delta;
+            } else {
+              byHole[_hole] = (byHole[_hole] ?? 0) + delta;
+              player.totalScore += delta;
               _bitLog.add(draft);
             }
           });
-          unawaited(_persistAward(draft));
+          if (removed) {
+            unawaited(_persistAwardRemoval(draft));
+          } else {
+            unawaited(_persistAward(draft));
+          }
           unawaited(_persistProgress());
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${player.name}: ${delta >= 0 ? '+' : ''}$delta bits · $label')),
+              SnackBar(
+                content: Text(
+                  removed
+                      ? '${player.name}: removed $label'
+                      : '${player.name}: ${delta >= 0 ? '+' : ''}$delta bits · $label',
+                ),
+              ),
             );
           }
         },
@@ -221,6 +249,22 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       await HistoryRepository.saveBitEventsForRound(roundId, [event]);
     } catch (_) {
       // Non-fatal; summary save still persists final state.
+    }
+  }
+
+  Future<void> _persistAwardRemoval(RoundBitEventDraft event) async {
+    final roundId = widget.session?.roundId;
+    if (roundId == null || roundId.isEmpty) return;
+    try {
+      await HistoryRepository.deleteLatestBitEventForRound(
+        roundId: roundId,
+        participantKey: event.participantKey,
+        hole: event.hole,
+        eventLabel: event.eventLabel,
+        delta: event.delta,
+      );
+    } catch (_) {
+      // Non-fatal; local score still reflects the latest user intent.
     }
   }
 

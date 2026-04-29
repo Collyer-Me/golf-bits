@@ -6,6 +6,8 @@ import 'auth/pending_auth_link.dart';
 import 'config/supabase_env.dart';
 import 'theme/app_theme.dart';
 
+final RouteObserver<ModalRoute<void>> appRouteObserver = RouteObserver<ModalRoute<void>>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -35,6 +37,7 @@ class GolfBitsApp extends StatelessWidget {
       title: 'Golf Bits',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
+      navigatorObservers: [appRouteObserver],
       home: const AuthRoot(),
     );
   }

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_root.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
+import '../main.dart';
 import '../data/schema_compatibility_service.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
@@ -98,7 +99,7 @@ class _HomeDashboard extends StatefulWidget {
   State<_HomeDashboard> createState() => _HomeDashboardState();
 }
 
-class _HomeDashboardState extends State<_HomeDashboard> {
+class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
   /// Called when the user switches back to the Home tab so rounds stay fresh.
   void reloadFromParent() => unawaited(_loadDashboard());
 
@@ -111,6 +112,27 @@ class _HomeDashboardState extends State<_HomeDashboard> {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadDashboard());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    appRouteObserver.unsubscribe(this);
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic>) {
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
     unawaited(_loadDashboard());
   }
 

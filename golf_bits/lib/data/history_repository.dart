@@ -263,6 +263,32 @@ class HistoryRepository {
     await Supabase.instance.client.from('round_bit_events').insert(rows);
   }
 
+  /// Removes one matching event (latest first) for tap-to-toggle behavior.
+  static Future<void> deleteLatestBitEventForRound({
+    required String roundId,
+    required String participantKey,
+    required int hole,
+    required String eventLabel,
+    required int delta,
+  }) async {
+    if (!SupabaseEnv.isConfigured) return;
+    final rows = await Supabase.instance.client
+        .from('round_bit_events')
+        .select('id')
+        .eq('round_id', roundId)
+        .eq('participant_key', participantKey)
+        .eq('hole', hole)
+        .eq('event_label', eventLabel)
+        .eq('delta', delta)
+        .order('created_at', ascending: false)
+        .limit(1);
+    final list = rows as List<dynamic>;
+    if (list.isEmpty) return;
+    final id = (list.first as Map)['id'];
+    if (id == null) return;
+    await Supabase.instance.client.from('round_bit_events').delete().eq('id', id);
+  }
+
   /// Bit timeline for one player in a saved round.
   static Future<List<Map<String, dynamic>>> fetchBitEventsForPlayer({
     required String roundId,
