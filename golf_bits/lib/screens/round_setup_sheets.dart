@@ -278,43 +278,7 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
                             onChanged: (v) => setState(() => _teeIndex = v ?? i),
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          SizedBox(
-                            width: AppTheme.space4 + AppTheme.radiusSm,
-                            height: AppTheme.space4 + AppTheme.radiusSm,
-                            child: Center(
-                              child: Container(
-                                width: AppTheme.radiusSm + AppTheme.space3,
-                                height: AppTheme.radiusSm + AppTheme.space3,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: t.color,
-                                  border: Border.all(
-                                    color: selected ? scheme.primary : scheme.outlineVariant,
-                                    width: selected ? AppTheme.selectionRingWidth : AppTheme.outlineBorderWidth,
-                                  ),
-                                  boxShadow: selected
-                                      ? [
-                                          BoxShadow(
-                                            color: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
-                                            blurRadius: AppTheme.elevationBlurSm,
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    t.label.isNotEmpty ? t.label.substring(0, 1).toUpperCase() : '?',
-                                    style: TextStyle(
-                                      color: AppTheme.textOnFilledCircle(t.color, scheme),
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: AppTheme.teeGlyphSize - 6,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.space3),
+                          const SizedBox(width: AppTheme.space1),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
