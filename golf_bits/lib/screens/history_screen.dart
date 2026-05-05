@@ -12,6 +12,12 @@ import '../widgets/outlined_surface_card.dart';
 import 'history_detail_screen.dart';
 import 'round_setup_screen.dart';
 
+bool _isAnonymousSession() {
+  final u = Supabase.instance.client.auth.currentUser;
+  if (u == null) return false;
+  return u.appMetadata['provider'] == 'anonymous';
+}
+
 /// Past rounds list + empty state (Supabase `rounds` when configured, else demo data).
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -162,6 +168,27 @@ class HistoryScreenState extends State<HistoryScreen> {
                     child: Text(
                       'Demo data (add Supabase secrets to load your rounds).',
                       style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                if (SupabaseEnv.isConfigured && _isAnonymousSession())
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppTheme.space4),
+                    child: OutlinedSurfaceCard(
+                      borderColor: scheme.outlineVariant,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Guest session',
+                            style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: AppTheme.space2),
+                          Text(
+                            'Create a free account from Profile to keep round history if you change devices or browser.',
+                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 Row(

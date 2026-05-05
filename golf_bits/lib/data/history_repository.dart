@@ -403,4 +403,17 @@ class HistoryRepository {
       userId: userId,
     );
   }
+
+  /// Sets `participants[].user_id` on rounds where your profile email matches an entry (post-signup link).
+  static Future<int> claimParticipantIdentityForCurrentUser() async {
+    if (!SupabaseEnv.isConfigured || _uid == null) return 0;
+    try {
+      final n = await _client.rpc('claim_participant_identity_for_current_user');
+      if (n is int) return n;
+      if (n is num) return n.toInt();
+      return 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 }

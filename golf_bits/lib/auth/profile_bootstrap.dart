@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
+import '../data/history_repository.dart';
 
 /// Ensures a signed-in user has a profile row in `public.profiles`.
 abstract final class ProfileBootstrap {
@@ -20,9 +21,16 @@ abstract final class ProfileBootstrap {
       await Supabase.instance.client.from('profiles').upsert({
         'id': user.id,
         'display_name': displayName,
+        if (user.email != null && user.email!.trim().isNotEmpty) 'email': user.email!.trim(),
       });
     } on PostgrestException catch (_) {
       // Profile sync should not block successful auth.
+    }
+
+    try {
+      await HistoryRepository.claimParticipantIdentityForCurrentUser();
+    } catch (_) {
+      // Link saved-round participant rows by email when profile email exists.
     }
   }
 }

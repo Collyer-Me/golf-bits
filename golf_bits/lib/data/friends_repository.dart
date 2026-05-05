@@ -62,10 +62,11 @@ abstract final class FriendsRepository {
         .toList();
   }
 
-  static Future<void> sendFriendRequest(String otherUserId) async {
+  /// Returns true if a new row was created, an incoming request was auto-accepted, or no-op was needed (already connected).
+  static Future<bool> sendFriendRequest(String otherUserId) async {
     final uid = _uid;
-    if (!SupabaseEnv.isConfigured || uid == null) return;
-    if (otherUserId.isEmpty || otherUserId == uid) return;
+    if (!SupabaseEnv.isConfigured || uid == null) return false;
+    if (otherUserId.isEmpty || otherUserId == uid) return false;
 
     final existing = await _client
         .from('friendships')
@@ -74,49 +75,59 @@ abstract final class FriendsRepository {
         .limit(1);
     final existingList = existing as List<dynamic>;
     if (existingList.isEmpty) {
-      await _client.from('friendships').insert({
+      final inserted = await _client.from('friendships').insert({
         'requester_user_id': uid,
         'addressee_user_id': otherUserId,
         'status': 'pending',
-      });
-      return;
+      }).select('id');
+      final ok = (inserted as List<dynamic>).isNotEmpty;
+      return ok;
     }
     final row = Map<String, dynamic>.from(existingList.first as Map);
     final status = (row['status'] as String?) ?? 'pending';
     final requester = (row['requester_user_id'] as String?) ?? '';
     final id = (row['id'] as String?) ?? '';
     if (status == 'pending' && requester == otherUserId && id.isNotEmpty) {
-      await _client
+      final updated = await _client
           .from('friendships')
           .update({'status': 'accepted', 'acted_by': uid, 'responded_at': DateTime.now().toUtc().toIso8601String()})
-          .eq('id', id);
+          .eq('id', id)
+          .select('id');
+      return (updated as List<dynamic>).isNotEmpty;
     }
+    // Already pending outgoing or accepted — treat as success for UX (snackbar can say "already connected").
+    return status == 'accepted' || (status == 'pending' && requester == uid);
   }
 
-  static Future<void> acceptRequest(String friendshipId) async {
+  static Future<bool> acceptRequest(String friendshipId) async {
     final uid = _uid;
-    if (!SupabaseEnv.isConfigured || uid == null) return;
-    await _client
+    if (!SupabaseEnv.isConfigured || uid == null) return false;
+    final res = await _client
         .from('friendships')
         .update({'status': 'accepted', 'acted_by': uid, 'responded_at': DateTime.now().toUtc().toIso8601String()})
         .eq('id', friendshipId)
         .eq('addressee_user_id', uid)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .select('id');
+    return (res as List<dynamic>).isNotEmpty;
   }
 
-  static Future<void> declineRequest(String friendshipId) async {
+  static Future<bool> declineRequest(String friendshipId) async {
     final uid = _uid;
-    if (!SupabaseEnv.isConfigured || uid == null) return;
-    await _client
+    if (!SupabaseEnv.isConfigured || uid == null) return false;
+    final res = await _client
         .from('friendships')
         .update({'status': 'declined', 'acted_by': uid, 'responded_at': DateTime.now().toUtc().toIso8601String()})
         .eq('id', friendshipId)
         .eq('addressee_user_id', uid)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .select('id');
+    return (res as List<dynamic>).isNotEmpty;
   }
 
-  static Future<void> removeFriend(String friendshipId) async {
-    if (!SupabaseEnv.isConfigured || _uid == null) return;
-    await _client.from('friendships').delete().eq('id', friendshipId);
+  static Future<bool> removeFriend(String friendshipId) async {
+    if (!SupabaseEnv.isConfigured || _uid == null) return false;
+    final res = await _client.from('friendships').delete().eq('id', friendshipId).select('id');
+    return (res as List<dynamic>).isNotEmpty;
   }
 }

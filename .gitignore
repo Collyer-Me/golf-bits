@@ -27,3 +27,6 @@ node_modules/
 
 # Local Supabase inspection artifacts (keep migrations under supabase/migrations/ committed)
 supabaseSchema
+
+# Supabase CLI local link/cache (never commit)
+supabase/.temp/

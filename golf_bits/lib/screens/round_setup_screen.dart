@@ -6,11 +6,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
 import '../data/course_catalog_repository.dart';
+import '../data/friends_repository.dart';
 import '../data/history_repository.dart';
 import '../data/round_coplayers.dart';
 import '../data/schema_compatibility_service.dart';
 import '../data/user_preferences_repository.dart';
 import '../models/course_catalog_models.dart';
+import '../models/friend_models.dart';
 import '../models/event_preferences.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
@@ -56,6 +58,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
 
   final List<_Player> _players = <_Player>[];
   final List<_Recent> _recent = <_Recent>[];
+  List<FriendConnection> _acceptedFriends = const [];
 
   final _searchController = TextEditingController();
   String? _selectedCourseId;
@@ -240,6 +243,15 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
     }
 
+    List<FriendConnection> acceptedFriends = const [];
+    try {
+      final overview = await FriendsRepository.fetchOverview();
+      acceptedFriends = overview.where((f) => f.isAccepted).toList()
+        ..sort((a, b) => a.otherDisplayName.toLowerCase().compareTo(b.otherDisplayName.toLowerCase()));
+    } catch (_) {
+      acceptedFriends = const [];
+    }
+
     Map<String, int> counts = const {};
     List<String> recentNames = const [];
     try {
@@ -286,7 +298,23 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         ..addAll([
           for (final e in recents.take(8)) _Recent(id: 'recent_${e.key}', name: e.key, rounds: e.value),
         ]);
+      _acceptedFriends = acceptedFriends;
       _loadingPlayers = false;
+    });
+  }
+
+  void _addFromFriend(FriendConnection f) {
+    if (_players.any((p) => p.userId == f.otherUserId)) return;
+    if (_players.any((p) => p.name.trim().toLowerCase() == f.otherDisplayName.trim().toLowerCase())) return;
+    setState(() {
+      _players.add(
+        _Player(
+          id: 'friend_${f.otherUserId}',
+          name: f.otherDisplayName,
+          email: f.otherEmail,
+          userId: f.otherUserId,
+        ),
+      );
     });
   }
 
@@ -710,6 +738,46 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             ),
           ],
         ),
+        if (_acceptedFriends.isNotEmpty) ...[
+          const SizedBox(height: AppTheme.space7),
+          Text(
+            'Friends',
+            style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppTheme.space3),
+          ..._acceptedFriends.map((f) {
+            final already = _players.any((p) => p.userId == f.otherUserId);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppTheme.space25),
+              child: OutlinedSurfaceCard(
+                borderColor: scheme.outlineVariant,
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(f.otherDisplayName, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          if (f.otherEmail != null && f.otherEmail!.trim().isNotEmpty)
+                            Text(
+                              f.otherEmail!.trim(),
+                              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                        ],
+                      ),
+                    ),
+                    IconButton.filled(
+                      onPressed: already ? null : () => _addFromFriend(f),
+                      icon: const Icon(Icons.add),
+                      tooltip: already ? 'Already added' : 'Add to round',
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
         const SizedBox(height: AppTheme.space7),
         Text(
           'Recent players',
