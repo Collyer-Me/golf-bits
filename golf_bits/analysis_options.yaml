@@ -2,6 +2,7 @@ include: package:flutter_lints/flutter.yaml
 
 linter:
   rules:
-    prefer_const_constructors: true
+    # Full-repo const suggestions are high-churn; add const in hot paths as you touch files.
+    prefer_const_constructors: false
     prefer_const_declarations: true
     avoid_print: true

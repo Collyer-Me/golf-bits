@@ -272,11 +272,13 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Radio<int>(
-                            value: i,
-                            groupValue: _teeIndex,
-                            onChanged: (v) => setState(() => _teeIndex = v ?? i),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppTheme.spaceHalf),
+                            child: Icon(
+                              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                              size: AppTheme.iconDense,
+                              color: selected ? scheme.primary : scheme.onSurfaceVariant,
+                            ),
                           ),
                           const SizedBox(width: AppTheme.space1),
                           Expanded(

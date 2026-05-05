@@ -213,7 +213,8 @@ class _EventPreferenceCard extends StatelessWidget {
 
     final nick = event.nickname?.trim();
     final hasNickname = nick != null && nick.isNotEmpty;
-    final primaryTitle = hasNickname ? nick! : event.name;
+    final String primaryTitle =
+        (nick != null && nick.isNotEmpty) ? nick : event.name;
 
     return OutlinedSurfaceCard(
       borderColor: scheme.outlineVariant,

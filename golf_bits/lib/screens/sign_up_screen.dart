@@ -98,6 +98,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
       if (response.session != null) {
         await ProfileBootstrap.ensureCurrentUserProfile();
+        if (!mounted) return;
         await Navigator.of(context).push<void>(
           MaterialPageRoute<void>(builder: (_) => const LocationPermissionScreen()),
         );

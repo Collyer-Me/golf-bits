@@ -1,4 +1,4 @@
-/// Stable client models for course catalog search + detail (matches Edge Function JSON).
+// Stable client models for course catalog search + detail (matches Edge Function JSON).
 
 class CourseAddress {
   const CourseAddress({
