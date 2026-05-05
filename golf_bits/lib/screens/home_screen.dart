@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../auth/auth_root.dart';
 import '../config/supabase_env.dart';
+import '../navigation/auth_navigation.dart';
 import '../data/history_repository.dart';
 import '../data/user_preferences_repository.dart';
 import '../main.dart';
@@ -18,8 +18,10 @@ import 'history_detail_screen.dart';
 import 'history_screen.dart';
 import 'hole_scoring_screen.dart';
 import 'change_password_screen.dart';
+import 'log_in_screen.dart';
 import 'profile_event_defaults_screen.dart';
 import 'round_setup_screen.dart';
+import 'sign_up_screen.dart';
 
 /// Main shell: home dashboard + bottom nav (History, People, Profile).
 class HomeScreen extends StatefulWidget {
@@ -211,13 +213,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
     return provider == 'anonymous';
   }
 
-  Future<void> _signOut(BuildContext context) async {
-    if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {
-      await Supabase.instance.client.auth.signOut();
-      return;
-    }
-    AuthRoot.maybeOf(context)?.exitApp();
-  }
+  Future<void> _signOut(BuildContext context) => signOutAndReturnToWelcome(context);
 
   @override
   Widget build(BuildContext context) {
@@ -668,60 +664,6 @@ class _ProfileTabState extends State<_ProfileTab> {
     final anon = user != null && _isAnonymousUser(user);
     final email = user?.email;
 
-    final List<Widget> accountChildren = [
-      Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-      SizedBox(height: AppTheme.space3),
-    ];
-
-    if (!SupabaseEnv.isConfigured) {
-      accountChildren.add(
-        Text(
-          'Playing on this device',
-          style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      );
-    } else if (user == null) {
-      accountChildren.add(
-        Text(
-          'Signed in',
-          style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      );
-    } else if (anon) {
-      accountChildren.add(
-        Text(
-          'Guest',
-          style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      );
-      accountChildren.addAll([
-        SizedBox(height: AppTheme.space2),
-        Text(
-          'Create an account any time to sync rounds across devices.',
-          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      ]);
-    } else {
-      accountChildren.add(
-        Text(
-          _displayNameFor(user),
-          style: text.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-          ),
-        ),
-      );
-      if (email != null && email.isNotEmpty) {
-        accountChildren.addAll([
-          SizedBox(height: AppTheme.space1),
-          Text(
-            email,
-            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ]);
-      }
-    }
-
     final showChangePassword = SupabaseEnv.isConfigured &&
         user != null &&
         !anon &&
@@ -729,14 +671,120 @@ class _ProfileTabState extends State<_ProfileTab> {
         email.isNotEmpty;
     final showMarketingEmails = SupabaseEnv.isConfigured && user != null && !anon;
 
-    final children = <Widget>[
-      OutlinedSurfaceCard(
-        borderColor: scheme.outlineVariant,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: accountChildren,
+    final children = <Widget>[];
+
+    if (!SupabaseEnv.isConfigured) {
+      children.add(
+        OutlinedSurfaceCard(
+          borderColor: scheme.outlineVariant,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              SizedBox(height: AppTheme.space3),
+              Text(
+                'Playing on this device',
+                style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
-      ),
+      );
+    } else if (user == null) {
+      children.add(
+        OutlinedSurfaceCard(
+          borderColor: scheme.outlineVariant,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              SizedBox(height: AppTheme.space3),
+              Text(
+                'Signed in',
+                style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (anon) {
+      children.add(
+        OutlinedSurfaceCard(
+          borderColor: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.person_off_outlined, color: scheme.primary, size: AppTheme.iconInline + 4),
+                  SizedBox(width: AppTheme.space3),
+                  Expanded(
+                    child: Text(
+                      "You're playing as a guest",
+                      style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: AppTheme.space3),
+              Text(
+                'Round history stays on this device. Create an account to sync across devices, '
+                'use People, and keep your profile in one place.',
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              SizedBox(height: AppTheme.space6),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
+                  );
+                },
+                child: const Text('Create free account'),
+              ),
+              SizedBox(height: AppTheme.space3),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const LogInScreen()),
+                  );
+                },
+                child: const Text('Log in'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      children.add(
+        OutlinedSurfaceCard(
+          borderColor: scheme.outlineVariant,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              SizedBox(height: AppTheme.space3),
+              Text(
+                _displayNameFor(user),
+                style: text.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
+              ),
+              if (email != null && email.isNotEmpty) ...[
+                SizedBox(height: AppTheme.space1),
+                Text(
+                  email,
+                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    children.addAll([
       SizedBox(height: AppTheme.space6),
       OutlinedButton.icon(
         onPressed: () {
@@ -748,7 +796,7 @@ class _ProfileTabState extends State<_ProfileTab> {
         label: const Text('Default bets & events'),
       ),
       SizedBox(height: AppTheme.space3),
-    ];
+    ]);
 
     if (showChangePassword) {
       children.addAll([
@@ -797,13 +845,7 @@ class _ProfileTabState extends State<_ProfileTab> {
     children.addAll([
       SizedBox(height: AppTheme.space3),
       FilledButton.tonal(
-        onPressed: () async {
-          if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession != null) {
-            await Supabase.instance.client.auth.signOut();
-          } else {
-            AuthRoot.maybeOf(context)?.exitApp();
-          }
-        },
+        onPressed: () => signOutAndReturnToWelcome(context),
         child: const Text('Sign out'),
       ),
     ]);

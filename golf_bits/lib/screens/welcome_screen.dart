@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../auth/guest_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_wordmark.dart';
 import '../widgets/outlined_surface_card.dart';
@@ -143,6 +144,18 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   );
                 },
                 child: const Text('I already have an account'),
+              ),
+              SizedBox(height: AppTheme.space4),
+              Text(
+                'No account needed to try the app.',
+                textAlign: TextAlign.center,
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              SizedBox(height: AppTheme.space3),
+              OutlinedButton.icon(
+                onPressed: () => showGuestPlayBottomSheet(context),
+                icon: const Icon(Icons.person_outline),
+                label: const Text('Continue as guest'),
               ),
               SizedBox(height: AppTheme.space2),
             ],

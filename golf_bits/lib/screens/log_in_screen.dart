@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_error_message.dart';
+import '../auth/guest_session.dart';
 import '../auth/profile_bootstrap.dart';
 import '../auth/auth_redirect.dart';
 import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_wordmark.dart';
-import 'guest_play_sheet.dart';
 import 'sign_up_screen.dart';
 
 /// Log in — email/password, password reset, and guest (anonymous when enabled in the Supabase project).
@@ -108,37 +108,6 @@ class _LogInScreenState extends State<LogInScreen> {
     }
   }
 
-  void _openGuestSheet() {
-    GuestPlaySheet.show(
-      context,
-      onContinueGuest: () async {
-        Navigator.of(context).pop();
-        if (SupabaseEnv.isConfigured) {
-          try {
-            await Supabase.instance.client.auth.signInAnonymously();
-          } on AuthException {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Anonymous sign-in is disabled in the project. You can still play on this device.',
-                  ),
-                ),
-              );
-            }
-          }
-        }
-        if (mounted) openAppHome(context);
-      },
-      onCreateAccountInstead: () {
-        Navigator.of(context).pop();
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -215,7 +184,10 @@ class _LogInScreenState extends State<LogInScreen> {
                 SizedBox(height: AppTheme.space6),
                 Center(
                   child: TextButton(
-                    onPressed: _openGuestSheet,
+                    onPressed: () => showGuestPlayBottomSheet(
+                      context,
+                      replaceWithSignUpOnCreateAccount: true,
+                    ),
                     child: const Text('Continue as guest'),
                   ),
                 ),

@@ -557,7 +557,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
               );
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'save', child: Text('Save draft')),
+              PopupMenuItem(value: 'save', child: Text('Save round')),
               PopupMenuItem(value: 'help', child: Text('Help')),
             ],
           ),
