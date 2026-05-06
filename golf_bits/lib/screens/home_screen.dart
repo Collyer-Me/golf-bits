@@ -692,8 +692,31 @@ class _ProfileTabState extends State<_ProfileTab> {
               Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
               SizedBox(height: AppTheme.space3),
               Text(
-                'Signed in',
+                'Not signed in',
                 style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              SizedBox(height: AppTheme.space2),
+              Text(
+                'Create an account to sync rounds and use People features.',
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              SizedBox(height: AppTheme.space6),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
+                  );
+                },
+                child: const Text('Create free account'),
+              ),
+              SizedBox(height: AppTheme.space3),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const LogInScreen()),
+                  );
+                },
+                child: const Text('Log in'),
               ),
             ],
           ),

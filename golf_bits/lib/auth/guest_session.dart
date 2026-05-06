@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'guest_user.dart';
 import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
 import '../screens/guest_play_sheet.dart';
@@ -17,8 +18,13 @@ void showGuestPlayBottomSheet(
     onContinueGuest: () async {
       Navigator.of(context).pop();
       if (SupabaseEnv.isConfigured) {
+        final auth = Supabase.instance.client.auth;
         try {
-          await Supabase.instance.client.auth.signInAnonymously();
+          final current = auth.currentUser;
+          if (current != null && !isSupabaseGuestUser(current)) {
+            await auth.signOut();
+          }
+          await auth.signInAnonymously();
         } on AuthException {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
