@@ -416,4 +416,49 @@ class HistoryRepository {
       return 0;
     }
   }
+
+  /// Sends round invite emails (best-effort) for participant emails not yet linked to a user.
+  static Future<void> sendRoundInvites({
+    required String roundId,
+    required String courseName,
+    required List<RoundParticipant> participants,
+  }) async {
+    if (!SupabaseEnv.isConfigured || _uid == null) return;
+    final invites = [
+      for (final p in participants)
+        if ((p.userId == null || p.userId!.isEmpty) && (p.email?.trim().isNotEmpty ?? false))
+          {
+            'email': p.email!.trim().toLowerCase(),
+            'displayName': p.displayName,
+          },
+    ];
+    if (invites.isEmpty) return;
+    try {
+      await _client.functions.invoke(
+        'send-round-invite',
+        body: {
+          'roundId': roundId,
+          'courseName': courseName,
+          'invites': invites,
+        },
+      );
+    } catch (_) {
+      // Non-fatal: round creation should still succeed even when email provider is down.
+    }
+  }
+
+  /// Accepts invite token for signed-in user and links participant identity where possible.
+  static Future<bool> acceptRoundInviteForCurrentUser(String token) async {
+    if (!SupabaseEnv.isConfigured || _uid == null) return false;
+    try {
+      final v = await _client.rpc(
+        'accept_round_invite_for_current_user',
+        params: {'invite_token': token},
+      );
+      if (v is bool) return v;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
 }

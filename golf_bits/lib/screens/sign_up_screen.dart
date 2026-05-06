@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_error_message.dart';
+import '../auth/pending_auth_link.dart';
 import '../auth/auth_redirect.dart';
 import '../auth/profile_bootstrap.dart';
 import '../config/supabase_env.dart';
@@ -24,6 +25,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final inviteEmail = PendingAuthLink.inviteEmail;
+    if (inviteEmail != null && inviteEmail.trim().isNotEmpty) {
+      _email.text = inviteEmail.trim();
+    }
+  }
 
   @override
   void dispose() {
@@ -164,6 +174,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
                 SizedBox(height: AppTheme.space7),
+                if (PendingAuthLink.inviteEmail != null) ...[
+                  Text(
+                    'Invite detected: create your account with this email to link your round participation.',
+                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                  SizedBox(height: AppTheme.space3),
+                ],
                 TextFormField(
                   controller: _name,
                   textInputAction: TextInputAction.next,

@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
+import 'pending_auth_link.dart';
 
 /// Ensures a signed-in user has a profile row in `public.profiles`.
 abstract final class ProfileBootstrap {
@@ -31,6 +32,15 @@ abstract final class ProfileBootstrap {
       await HistoryRepository.claimParticipantIdentityForCurrentUser();
     } catch (_) {
       // Link saved-round participant rows by email when profile email exists.
+    }
+
+    final inviteToken = PendingAuthLink.takeRoundInviteToken();
+    if (inviteToken != null && inviteToken.isNotEmpty) {
+      try {
+        await HistoryRepository.acceptRoundInviteForCurrentUser(inviteToken);
+      } catch (_) {
+        // Non-fatal: invite claim can be retried from a later session.
+      }
     }
   }
 }

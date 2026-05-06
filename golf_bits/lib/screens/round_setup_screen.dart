@@ -201,14 +201,24 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   Future<void> _loadPlayersFromSupabase() async {
     if (!SupabaseEnv.isConfigured) {
       if (!mounted) return;
-      setState(() => _loadingPlayers = false);
+      setState(() {
+        _players
+          ..clear()
+          ..add(_Player(id: 'you_local', name: 'You', isYou: true));
+        _loadingPlayers = false;
+      });
       return;
     }
     final client = Supabase.instance.client;
     final user = client.auth.currentUser;
     if (user == null) {
       if (!mounted) return;
-      setState(() => _loadingPlayers = false);
+      setState(() {
+        _players
+          ..clear()
+          ..add(_Player(id: 'you_local', name: 'You', isYou: true));
+        _loadingPlayers = false;
+      });
       return;
     }
 
@@ -448,9 +458,21 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         ),
     ];
     String? roundId;
-    if (SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentUser != null) {
+    if (SupabaseEnv.isConfigured) {
       setState(() => _startingRound = true);
       try {
+        var user = Supabase.instance.client.auth.currentUser;
+        if (user == null) {
+          try {
+            await Supabase.instance.client.auth.signInAnonymously();
+            user = Supabase.instance.client.auth.currentUser;
+          } catch (_) {
+            user = null;
+          }
+        }
+        if (user == null) {
+          throw StateError('No Supabase session available');
+        }
         final compatibility = await SchemaCompatibilityService.checkRoundSyncSchema();
         if (!compatibility.ok) {
           throw StateError(
@@ -470,6 +492,11 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
               _roundShouldReferenceCatalog && _looksLikeUuid(hit.id) ? hit.id : null,
           courseCoverageLevel: setup.coverageLevel,
           holePars: holePars,
+        );
+        await HistoryRepository.sendRoundInvites(
+          roundId: roundId,
+          courseName: courseName,
+          participants: participants,
         );
       } catch (e) {
         // Do not block gameplay; fallback to local round if sync bootstrap fails.

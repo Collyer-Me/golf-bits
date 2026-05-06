@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 abstract final class PendingAuthLink {
   static bool _passwordRecovery = false;
   static bool _emailSignupConfirmed = false;
+  static String? _roundInviteToken;
+  static String? _roundInviteEmail;
 
   /// Call from [main] immediately before [Supabase.initialize] (web only).
   static void captureFromUriBeforeSupabaseInit(Uri uri) {
@@ -15,6 +17,10 @@ abstract final class PendingAuthLink {
     _passwordRecovery = type == 'recovery';
     // New-user email confirmation (verify signup) uses this type in the redirect URL.
     _emailSignupConfirmed = type == 'signup';
+    final token = params['invite_token']?.trim();
+    final email = params['invite_email']?.trim();
+    if (token != null && token.isNotEmpty) _roundInviteToken = token;
+    if (email != null && email.isNotEmpty) _roundInviteEmail = email;
   }
 
   static Map<String, String> _mergedQueryAndFragment(Uri uri) {
@@ -38,4 +44,14 @@ abstract final class PendingAuthLink {
     _emailSignupConfirmed = false;
     return v;
   }
+
+  /// One-shot token from round invite links.
+  static String? takeRoundInviteToken() {
+    final v = _roundInviteToken;
+    _roundInviteToken = null;
+    return v;
+  }
+
+  /// Sticky invite email for sign-up prefill.
+  static String? get inviteEmail => _roundInviteEmail;
 }
