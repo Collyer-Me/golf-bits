@@ -8,6 +8,11 @@ Flutter app under this folder. Use this file plus [`README.md`](README.md) to st
 
 **Current target:** web-first delivery for now; mobile-specific polish/validation is a later phase.
 
+## Anonymous (guest) users
+
+- Guest rounds must keep the same `auth.uid` when the player adds credentials. Flow: **`auth.updateUser(...)`** (“upgrade guest”), not **`signUp()`** while signed in as a guest (that orphans cloud rounds tied to the old anonymous id).
+- In **Supabase Dashboard → Authentication**, ensure settings allow linking anonymous identities to email/password (or your chosen upgrade path per Supabase docs) so **`updateUser` / linking** behaves as intended for anonymous users.
+
 ## Design system (non-negotiable)
 
 1. **Colours**

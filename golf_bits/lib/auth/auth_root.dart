@@ -94,6 +94,14 @@ class AuthRootState extends State<AuthRoot> {
       return;
     }
 
+    if (data.event == AuthChangeEvent.userUpdated) {
+      final hasSession = Supabase.instance.client.auth.currentSession != null;
+      if (hasSession) {
+        unawaited(ProfileBootstrap.ensureCurrentUserProfile());
+      }
+      return;
+    }
+
     final hasSession = Supabase.instance.client.auth.currentSession != null;
     if (hasSession && !_inApp) {
       unawaited(ProfileBootstrap.ensureCurrentUserProfile());

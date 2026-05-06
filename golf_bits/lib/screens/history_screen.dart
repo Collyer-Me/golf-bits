@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/guest_promotion.dart';
 import '../auth/guest_user.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
@@ -10,6 +11,7 @@ import '../models/history_round.dart';
 import '../theme/app_theme.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
+import 'guest_upgrade_screen.dart';
 import 'history_detail_screen.dart';
 import 'round_setup_screen.dart';
 
@@ -176,13 +178,22 @@ class HistoryScreenState extends State<HistoryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Guest session',
+                            GuestPromotionCopy.title,
                             style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           SizedBox(height: AppTheme.space2),
                           Text(
-                            'Create a free account from Profile to keep round history if you change devices or browser.',
+                            GuestPromotionCopy.historyBody,
                             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                          SizedBox(height: AppTheme.space5),
+                          FilledButton(
+                            onPressed: () {
+                              Navigator.of(context).push<void>(
+                                MaterialPageRoute<void>(builder: (_) => const GuestUpgradeScreen()),
+                              );
+                            },
+                            child: Text(GuestPromotionCopy.upgradeCta),
                           ),
                         ],
                       ),

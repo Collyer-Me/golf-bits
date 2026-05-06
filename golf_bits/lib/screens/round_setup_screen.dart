@@ -17,6 +17,7 @@ import '../models/event_preferences.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../widgets/event_preferences_editor.dart';
+import '../widgets/guest_cloud_round_sheet.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'hole_scoring_screen.dart';
 import 'round_setup_sheets.dart';
@@ -462,42 +463,57 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       setState(() => _startingRound = true);
       try {
         var user = Supabase.instance.client.auth.currentUser;
+        var attemptedAnonymousCloud = false;
         if (user == null) {
-          try {
-            await Supabase.instance.client.auth.signInAnonymously();
-            user = Supabase.instance.client.auth.currentUser;
-          } catch (_) {
-            user = null;
+          final allowGuestCloud = await GuestCloudRoundConsent.ensureAcknowledged(context);
+          if (!mounted) {
+            return;
+          }
+          if (allowGuestCloud) {
+            attemptedAnonymousCloud = true;
+            try {
+              await Supabase.instance.client.auth.signInAnonymously();
+              user = Supabase.instance.client.auth.currentUser;
+            } catch (_) {
+              user = null;
+            }
           }
         }
         if (user == null) {
-          throw StateError('No Supabase session available');
-        }
-        final compatibility = await SchemaCompatibilityService.checkRoundSyncSchema();
-        if (!compatibility.ok) {
-          throw StateError(
-            'Database schema is not compatible for round sync. '
-            'Run pending migrations.\n${compatibility.errors.join('\n')}',
+          if (attemptedAnonymousCloud && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sync unavailable right now. Starting local round on this device.'),
+              ),
+            );
+          }
+        } else {
+          final compatibility = await SchemaCompatibilityService.checkRoundSyncSchema();
+          if (!compatibility.ok) {
+            throw StateError(
+              'Database schema is not compatible for round sync. '
+              'Run pending migrations.\n${compatibility.errors.join('\n')}',
+            );
+          }
+          final holePars = detail?.holeParsForTeeSync(setup.courseTeeId);
+          roundId = await HistoryRepository.createInProgressRound(
+            courseName: courseName,
+            courseShortTitle: _shortCourseTitle(courseName),
+            holeCount: setup.holes,
+            players: _players.map((p) => p.name).toList(),
+            participants: participants,
+            currentHole: startHole,
+            courseCatalogId:
+                _roundShouldReferenceCatalog && _looksLikeUuid(hit.id) ? hit.id : null,
+            courseCoverageLevel: setup.coverageLevel,
+            holePars: holePars,
+          );
+          await HistoryRepository.sendRoundInvites(
+            roundId: roundId,
+            courseName: courseName,
+            participants: participants,
           );
         }
-        final holePars = detail?.holeParsForTeeSync(setup.courseTeeId);
-        roundId = await HistoryRepository.createInProgressRound(
-          courseName: courseName,
-          courseShortTitle: _shortCourseTitle(courseName),
-          holeCount: setup.holes,
-          players: _players.map((p) => p.name).toList(),
-          participants: participants,
-          currentHole: startHole,
-          courseCatalogId:
-              _roundShouldReferenceCatalog && _looksLikeUuid(hit.id) ? hit.id : null,
-          courseCoverageLevel: setup.coverageLevel,
-          holePars: holePars,
-        );
-        await HistoryRepository.sendRoundInvites(
-          roundId: roundId,
-          courseName: courseName,
-          participants: participants,
-        );
       } catch (e) {
         // Do not block gameplay; fallback to local round if sync bootstrap fails.
         if (mounted) {

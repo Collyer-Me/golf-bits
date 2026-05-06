@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/guest_promotion.dart';
 import '../auth/guest_user.dart';
 import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
@@ -12,6 +13,7 @@ import '../main.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
+import '../widgets/guest_promotion_strip.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'friends_screen.dart';
@@ -19,6 +21,7 @@ import 'history_detail_screen.dart';
 import 'history_screen.dart';
 import 'hole_scoring_screen.dart';
 import 'change_password_screen.dart';
+import 'guest_upgrade_screen.dart';
 import 'log_in_screen.dart';
 import 'profile_event_defaults_screen.dart';
 import 'round_setup_screen.dart';
@@ -290,7 +293,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
                   ..._buildPreviousSessionSection(context),
                   if (_isGuestUser() && _showSyncBanner) ...[
                     SizedBox(height: AppTheme.space4),
-                    _SyncBanner(onDismiss: () => setState(() => _showSyncBanner = false)),
+                    GuestPromotionStrip(onDismiss: () => setState(() => _showSyncBanner = false)),
                   ],
                   SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
                 ],
@@ -555,46 +558,6 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
   }
 }
 
-class _SyncBanner extends StatelessWidget {
-  const _SyncBanner({required this.onDismiss});
-
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space2),
-        child: Row(
-          children: [
-            Icon(Icons.sync, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
-            SizedBox(width: AppTheme.space3),
-            Expanded(
-              child: Text(
-                'Create an account to sync history across devices.',
-                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant, height: 1.35),
-              ),
-            ),
-            IconButton(
-              onPressed: onDismiss,
-              icon: Icon(Icons.close, color: scheme.onSurfaceVariant),
-              visualDensity: VisualDensity.compact,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _PeopleTab extends StatelessWidget {
   const _PeopleTab();
 
@@ -736,7 +699,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                   SizedBox(width: AppTheme.space3),
                   Expanded(
                     child: Text(
-                      "You're playing as a guest",
+                      GuestPromotionCopy.title,
                       style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
@@ -744,18 +707,17 @@ class _ProfileTabState extends State<_ProfileTab> {
               ),
               SizedBox(height: AppTheme.space3),
               Text(
-                'Round history stays on this device. Create an account to sync across devices, '
-                'use People, and keep your profile in one place.',
+                GuestPromotionCopy.subtitle,
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
               SizedBox(height: AppTheme.space6),
               FilledButton(
                 onPressed: () {
                   Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
+                    MaterialPageRoute<void>(builder: (_) => const GuestUpgradeScreen()),
                   );
                 },
-                child: const Text('Create free account'),
+                child: Text(GuestPromotionCopy.upgradeCta),
               ),
               SizedBox(height: AppTheme.space3),
               OutlinedButton(
@@ -765,6 +727,15 @@ class _ProfileTabState extends State<_ProfileTab> {
                   );
                 },
                 child: const Text('Log in'),
+              ),
+              SizedBox(height: AppTheme.space3),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
+                  );
+                },
+                child: Text(GuestPromotionCopy.createInsteadCta),
               ),
             ],
           ),
