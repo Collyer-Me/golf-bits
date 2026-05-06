@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/guest_user.dart';
 import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
 import '../data/history_repository.dart';
@@ -207,10 +208,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
 
   static bool _isGuestUser() {
     if (!SupabaseEnv.isConfigured) return false;
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return false;
-    final provider = user.appMetadata['provider'];
-    return provider == 'anonymous';
+    return isSupabaseGuestUser(Supabase.instance.client.auth.currentUser);
   }
 
   Future<void> _signOut(BuildContext context) => signOutAndReturnToWelcome(context);
@@ -617,12 +615,6 @@ class _ProfileTabState extends State<_ProfileTab> {
   bool _marketingPrefsLoading = true;
   bool _marketingOptIn = false;
 
-  static bool _isAnonymousUser(User? user) {
-    if (user == null) return false;
-    final provider = user.appMetadata['provider'];
-    return provider == 'anonymous';
-  }
-
   static String _displayNameFor(User user) {
     final fullName = (user.userMetadata?['full_name'] as String?)?.trim();
     final fallbackName = user.email?.split('@').first.trim();
@@ -643,7 +635,7 @@ class _ProfileTabState extends State<_ProfileTab> {
       return;
     }
     final user = Supabase.instance.client.auth.currentUser;
-    if (user == null || _isAnonymousUser(user)) {
+    if (user == null || isSupabaseGuestUser(user)) {
       if (mounted) setState(() => _marketingPrefsLoading = false);
       return;
     }
@@ -661,7 +653,7 @@ class _ProfileTabState extends State<_ProfileTab> {
     final text = Theme.of(context).textTheme;
     final session = SupabaseEnv.isConfigured ? Supabase.instance.client.auth.currentSession : null;
     final user = session?.user;
-    final anon = user != null && _isAnonymousUser(user);
+    final anon = user != null && isSupabaseGuestUser(user);
     final email = user?.email;
 
     final showChangePassword = SupabaseEnv.isConfigured &&

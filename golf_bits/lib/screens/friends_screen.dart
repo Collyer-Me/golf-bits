@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/guest_user.dart';
 import '../config/supabase_env.dart';
 import '../data/friends_repository.dart';
 import '../models/friend_models.dart';
@@ -34,15 +35,9 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
 
   String? get _uid => SupabaseEnv.isConfigured ? Supabase.instance.client.auth.currentUser?.id : null;
 
-  static bool _isAnonymousUser(User? user) {
-    if (user == null) return false;
-    final provider = user.appMetadata['provider'];
-    return provider == 'anonymous';
-  }
-
   bool get _anonymousFindBlocked {
     if (!SupabaseEnv.isConfigured) return false;
-    return _isAnonymousUser(Supabase.instance.client.auth.currentUser);
+    return isSupabaseGuestUser(Supabase.instance.client.auth.currentUser);
   }
 
   Future<void> _onPullRefresh() async {

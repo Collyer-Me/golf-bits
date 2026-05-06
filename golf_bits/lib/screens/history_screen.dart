@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/guest_user.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/history_round.dart';
@@ -12,11 +13,7 @@ import '../widgets/outlined_surface_card.dart';
 import 'history_detail_screen.dart';
 import 'round_setup_screen.dart';
 
-bool _isAnonymousSession() {
-  final u = Supabase.instance.client.auth.currentUser;
-  if (u == null) return false;
-  return u.appMetadata['provider'] == 'anonymous';
-}
+bool _isAnonymousSession() => isSupabaseGuestUser(Supabase.instance.client.auth.currentUser);
 
 /// Past rounds list + empty state (Supabase `rounds` when configured, else demo data).
 class HistoryScreen extends StatefulWidget {
