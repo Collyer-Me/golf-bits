@@ -100,8 +100,8 @@ class _GuestUpgradeScreenState extends State<GuestUpgradeScreen> {
           email: _email.text.trim(),
           password: _password.text.trim(),
           data: {'full_name': _name.text.trim()},
-          emailRedirectTo: supabaseAuthRedirectUrl(),
         ),
+        emailRedirectTo: supabaseAuthRedirectUrl(),
       );
       if (!mounted) return;
 

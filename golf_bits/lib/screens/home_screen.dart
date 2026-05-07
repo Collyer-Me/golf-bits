@@ -243,11 +243,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
             onSelected: (v) async {
               switch (v) {
                 case 'logout':
+                  final logoutMessenger = ScaffoldMessenger.of(context);
                   try {
                     await _signOut(context);
                   } catch (e) {
                     if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    logoutMessenger.showSnackBar(
                       SnackBar(content: Text('Could not log out: $e')),
                     );
                   }
@@ -812,6 +813,7 @@ class _ProfileTabState extends State<_ProfileTab> {
           onChanged: _marketingPrefsLoading
               ? null
               : (next) async {
+                  final marketingMessenger = ScaffoldMessenger.of(context);
                   final prev = _marketingOptIn;
                   setState(() => _marketingOptIn = next);
                   try {
@@ -819,7 +821,7 @@ class _ProfileTabState extends State<_ProfileTab> {
                   } catch (e) {
                     if (!mounted) return;
                     setState(() => _marketingOptIn = prev);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    marketingMessenger.showSnackBar(
                       SnackBar(content: Text('Could not save preference: $e')),
                     );
                   }

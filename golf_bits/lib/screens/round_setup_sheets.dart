@@ -68,7 +68,7 @@ class _AddPlayerSheetState extends State<_AddPlayerSheet> {
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               hintText: 'Enter name…',
-              prefixIcon: const Icon(Icons.badge_outlined),
+              prefixIcon: Icon(Icons.badge_outlined),
             ),
           ),
           SizedBox(height: AppTheme.buttonPadV),
@@ -77,7 +77,7 @@ class _AddPlayerSheetState extends State<_AddPlayerSheet> {
             keyboardType: TextInputType.emailAddress,
             decoration: const InputDecoration(
               hintText: 'Email address (optional)',
-              prefixIcon: const Icon(Icons.mail_outline),
+              prefixIcon: Icon(Icons.mail_outline),
             ),
           ),
           SizedBox(height: AppTheme.space6),
