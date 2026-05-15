@@ -4,6 +4,7 @@ import '../config/supabase_env.dart';
 import '../models/history_round.dart';
 import '../models/round_bit_event_draft.dart';
 import '../models/round_session_args.dart';
+import '../models/stroke_tracking.dart';
 
 class HistoryRepository {
   HistoryRepository._();
@@ -193,6 +194,7 @@ class HistoryRepository {
     String? courseCatalogId,
     String? courseCoverageLevel,
     Map<String, int>? holePars,
+    StrokeTrackingMode strokeTrackingMode = StrokeTrackingMode.off,
   }) async {
     if (!SupabaseEnv.isConfigured) {
       throw StateError('Supabase is not configured');
@@ -224,6 +226,9 @@ class HistoryRepository {
       if (courseCatalogId != null) 'course_catalog_id': courseCatalogId,
       if (courseCoverageLevel != null) 'course_coverage_level': courseCoverageLevel,
       if (holePars != null) 'hole_pars': holePars,
+      'stroke_tracking_mode': strokeTrackingMode.toDb(),
+      'stroke_by_hole': <String, dynamic>{},
+      'gross_by_player': <String, int>{},
     });
     return res['id'] as String;
   }
@@ -233,17 +238,37 @@ class HistoryRepository {
     required String roundId,
     required int currentHole,
     required Map<String, int> scoreByPlayer,
+    Map<String, Map<int, int>>? strokeByHole,
+    Map<String, int>? grossByPlayer,
   }) async {
     if (!SupabaseEnv.isConfigured) return;
-    await _updateRoundWithFallback(
-      roundId: roundId,
-      payload: {
-        'status': 'in_progress',
-        'current_hole': currentHole,
-        'score_by_player': scoreByPlayer,
-        'ended_at': DateTime.now().toUtc().toIso8601String(),
-      },
-    );
+    final payload = <String, dynamic>{
+      'status': 'in_progress',
+      'current_hole': currentHole,
+      'score_by_player': scoreByPlayer,
+      'ended_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    if (strokeByHole != null) {
+      payload['stroke_by_hole'] = strokeByHoleToJson(strokeByHole);
+    }
+    if (grossByPlayer != null) {
+      payload['gross_by_player'] = grossByPlayer;
+    }
+    await _updateRoundWithFallback(roundId: roundId, payload: payload);
+  }
+
+  /// All bit events for a round (resume hydration).
+  static Future<List<Map<String, dynamic>>> fetchBitEventsForRound(String roundId) async {
+    if (!SupabaseEnv.isConfigured || roundId.isEmpty) return [];
+    final rows = await _client.from('round_bit_events').select().eq('round_id', roundId);
+    final list = (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList()
+      ..sort((a, b) {
+        final ha = (a['hole'] as num).toInt();
+        final hb = (b['hole'] as num).toInt();
+        if (ha != hb) return ha.compareTo(hb);
+        return (a['created_at'] as String).compareTo(b['created_at'] as String);
+      });
+    return list;
   }
 
   /// Marks an in-progress round as completed and writes final summary.

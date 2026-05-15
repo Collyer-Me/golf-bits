@@ -6,8 +6,10 @@ import '../data/history_repository.dart';
 import '../models/round_bit_event_draft.dart';
 import '../models/round_result.dart';
 import '../models/round_session_args.dart';
+import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/stroke_hole_counter.dart';
 import 'round_summary_screen.dart';
 
 class _HolePlayer {
@@ -15,13 +17,15 @@ class _HolePlayer {
     required this.id,
     required this.name,
     this.userId,
-    required this.totalScore,
+    this.isYou = false,
+    required this.totalBits,
   });
 
   final String id;
   final String name;
   final String? userId;
-  int totalScore;
+  final bool isYou;
+  int totalBits;
 }
 
 /// In-round: hole header, player rows, event award bottom sheet.
@@ -40,7 +44,10 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   int _holeIndex = 0;
   late final List<_HolePlayer> _players;
   final List<RoundBitEventDraft> _bitLog = [];
-  final Map<String, Map<int, int>> _holeScores = {};
+  final Map<String, Map<int, int>> _holeBits = {};
+  final Map<String, Map<int, int>> _strokeByHole = {};
+  late final StrokeTrackingMode _strokeMode;
+  late final Map<String, int> _holePars;
 
   int get _hole => _holeOrder[_holeIndex];
 
@@ -48,6 +55,8 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   void initState() {
     super.initState();
     final s = widget.session;
+    _strokeMode = s?.strokeTrackingMode ?? StrokeTrackingMode.off;
+    _holePars = s?.holePars ?? const {};
     if (s != null) {
       if (s.holeCount == 9) {
         _holeOrder = List<int>.generate(9, (i) => s.startHole + i);
@@ -64,7 +73,8 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
             id: p.key,
             name: p.displayName,
             userId: p.userId,
-            totalScore: s.initialScoreByPlayer[p.key] ?? 0,
+            isYou: p.isYou,
+            totalBits: s.initialScoreByPlayer[p.key] ?? 0,
           ),
       ];
     } else if (s != null && s.playerNames.isNotEmpty) {
@@ -73,32 +83,116 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           _HolePlayer(
             id: 'p$i',
             name: s.playerNames[i],
-            totalScore: s.initialScoreByPlayer['p$i'] ?? 0,
+            totalBits: s.initialScoreByPlayer['p$i'] ?? 0,
           ),
       ];
     } else {
       _players = [
-        _HolePlayer(id: '1', name: 'Alex', totalScore: 0),
-        _HolePlayer(id: '2', name: 'Jamie', totalScore: 0),
-        _HolePlayer(id: '3', name: 'Chris', totalScore: 0),
+        _HolePlayer(id: '1', name: 'Alex', totalBits: 0),
+        _HolePlayer(id: '2', name: 'Jamie', totalBits: 0),
+        _HolePlayer(id: '3', name: 'Chris', totalBits: 0),
       ];
     }
     for (final p in _players) {
-      _holeScores[p.id] = <int, int>{};
+      _holeBits[p.id] = <int, int>{};
     }
     if (s != null) {
+      for (final entry in s.initialStrokeByHole.entries) {
+        _strokeByHole[entry.key] = Map<int, int>.from(entry.value);
+      }
       final idx = _holeOrder.indexOf(s.currentHole);
       if (idx >= 0) _holeIndex = idx;
-      unawaited(_persistProgress());
+      unawaited(_hydrateFromCloud());
     }
   }
 
-  ({int par, int yards}) get _holeMeta {
-    return switch (_hole) {
-      7 => (par: 4, yards: 385),
-      _ => (par: 4, yards: 360),
-    };
+  Future<void> _hydrateFromCloud() async {
+    final roundId = widget.session?.roundId;
+    if (roundId == null || roundId.isEmpty) {
+      await _persistProgress();
+      return;
+    }
+    try {
+      final events = await HistoryRepository.fetchBitEventsForRound(roundId);
+      if (!mounted) return;
+      setState(() {
+        for (final p in _players) {
+          _holeBits[p.id] = <int, int>{};
+        }
+        _bitLog.clear();
+        for (final row in events) {
+          final hole = (row['hole'] as num).toInt();
+          final label = row['event_label'] as String;
+          final delta = (row['delta'] as num).toInt();
+          final pKey = row['participant_key'] as String?;
+          final pName = row['player_name'] as String;
+          final player = _players.cast<_HolePlayer?>().firstWhere(
+                (p) =>
+                    p != null &&
+                    ((pKey != null && pKey.isNotEmpty && p.id == pKey) || p.name == pName),
+                orElse: () => null,
+              );
+          if (player == null) continue;
+          _bitLog.add(
+            RoundBitEventDraft(
+              playerName: player.name,
+              participantKey: player.id,
+              participantUserId: player.userId,
+              hole: hole,
+              eventLabel: label,
+              delta: delta,
+              iconKey: row['icon_key'] as String?,
+            ),
+          );
+          final byHole = _holeBits[player.id]!;
+          byHole[hole] = (byHole[hole] ?? 0) + delta;
+          player.totalBits += delta;
+        }
+      });
+    } catch (_) {
+      // Non-fatal; totals from score_by_player still apply.
+    }
+    await _persistProgress();
   }
+
+  int? _parForHole(int hole) => parForHole(_holePars, hole);
+
+  bool _tracksStrokes(_HolePlayer player) {
+    final participant = widget.session?.participants
+        .cast<RoundParticipant?>()
+        .firstWhere((p) => p?.key == player.id, orElse: () => null);
+    if (participant != null) {
+      return strokeTracksParticipant(mode: _strokeMode, participant: participant);
+    }
+    if (_strokeMode == StrokeTrackingMode.all) return true;
+    if (_strokeMode == StrokeTrackingMode.self) return player.isYou;
+    return false;
+  }
+
+  int _defaultStrokesForHole(int hole) => _parForHole(hole) ?? 4;
+
+  int _strokesOnHole(_HolePlayer player) {
+    return _strokeByHole[player.id]?[_hole] ?? _defaultStrokesForHole(_hole);
+  }
+
+  bool _hasEnteredStrokeOnHole(_HolePlayer player) {
+    return _strokeByHole[player.id]?.containsKey(_hole) ?? false;
+  }
+
+  void _setStrokes(_HolePlayer player, int strokes) {
+    setState(() {
+      _strokeByHole.putIfAbsent(player.id, () => <int, int>{})[_hole] = strokes;
+    });
+    unawaited(_persistProgress());
+  }
+
+  int _grossFor(_HolePlayer player) {
+    final holes = _strokeByHole[player.id];
+    if (holes == null || holes.isEmpty) return 0;
+    return computeGrossStrokes(holes);
+  }
+
+  Map<String, int> _grossByPlayer() => computeGrossByPlayer(_strokeByHole);
 
   void _prevHole() {
     if (_holeIndex == 0) return;
@@ -106,8 +200,41 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     unawaited(_persistProgress());
   }
 
+  Future<bool> _confirmIncompleteStrokes() async {
+    final missing = <String>[];
+    for (final p in _players) {
+      if (_tracksStrokes(p) && !_hasEnteredStrokeOnHole(p)) {
+        missing.add(p.name);
+      }
+    }
+    if (missing.isEmpty) return true;
+    if (!mounted) return true;
+    final n = missing.length;
+    final label = n == 1 ? missing.first : '$n players';
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Scores not entered'),
+        content: Text(
+          n == 1
+              ? '$label has no gross stroke on hole $_hole. Continue anyway?'
+              : '$label have no gross strokes on hole $_hole. Continue anyway?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Go back')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Continue')),
+        ],
+      ),
+    );
+    return proceed ?? false;
+  }
+
   Future<void> _nextHole() async {
     final isLastHole = _holeIndex >= _holeOrder.length - 1;
+    if (!isLastHole) {
+      final ok = await _confirmIncompleteStrokes();
+      if (!ok) return;
+    }
     if (isLastHole) {
       final shouldEnd = await showDialog<bool>(
         context: context,
@@ -133,7 +260,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     await _persistProgress();
   }
 
-  int _holeScoreFor(_HolePlayer player) => _holeScores[player.id]?[_hole] ?? 0;
+  int _holeBitsFor(_HolePlayer player) => _holeBits[player.id]?[_hole] ?? 0;
 
   void _openEventSheet(_HolePlayer player) {
     final rules = widget.session?.eventRules ?? const <RoundEventRule>[];
@@ -162,7 +289,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           );
           var removed = false;
           setState(() {
-            final byHole = _holeScores[player.id]!;
+            final byHole = _holeBits[player.id]!;
             final existingIdx = _bitLog.lastIndexWhere(
               (e) =>
                   e.participantKey == player.id &&
@@ -179,10 +306,10 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
               } else {
                 byHole[_hole] = nextHoleScore;
               }
-              player.totalScore -= delta;
+              player.totalBits -= delta;
             } else {
               byHole[_hole] = (byHole[_hole] ?? 0) + delta;
-              player.totalScore += delta;
+              player.totalBits += delta;
               _bitLog.add(draft);
             }
           });
@@ -212,12 +339,16 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     final session = widget.session;
     if (session != null && _players.isNotEmpty) {
       final scored = _players
-          .map((p) => (key: p.id, name: p.name, bits: p.totalScore))
+          .map((p) => (key: p.id, name: p.name, bits: p.totalBits))
           .toList();
       final result = RoundResult.fromSessionScores(
         session: session,
         scoredPlayers: scored,
         bitEvents: List<RoundBitEventDraft>.from(_bitLog),
+        strokeByHole: Map<String, Map<int, int>>.from(
+          _strokeByHole.map((k, v) => MapEntry(k, Map<int, int>.from(v))),
+        ),
+        grossByPlayer: _grossByPlayer(),
       );
       Navigator.of(context).push(
         MaterialPageRoute<void>(builder: (_) => RoundSummaryScreen(result: result)),
@@ -230,7 +361,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   }
 
   Map<String, int> _scoreByPlayer() {
-    return {for (final p in _players) p.id: p.totalScore};
+    return {for (final p in _players) p.id: p.totalBits};
   }
 
   Future<void> _persistProgress() async {
@@ -241,9 +372,11 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         roundId: roundId,
         currentHole: _hole,
         scoreByPlayer: _scoreByPlayer(),
+        strokeByHole: _strokeMode.tracksStrokes ? _strokeByHole : null,
+        grossByPlayer: _strokeMode.tracksStrokes ? _grossByPlayer() : null,
       );
     } catch (_) {
-      // Keep gameplay responsive if sync fails; user can still finish and retry later.
+      // Keep gameplay responsive if sync fails.
     }
   }
 
@@ -252,9 +385,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     if (roundId == null || roundId.isEmpty) return;
     try {
       await HistoryRepository.saveBitEventsForRound(roundId, [event]);
-    } catch (_) {
-      // Non-fatal; summary save still persists final state.
-    }
+    } catch (_) {}
   }
 
   Future<void> _persistAwardRemoval(RoundBitEventDraft event) async {
@@ -269,16 +400,15 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         eventLabel: event.eventLabel,
         delta: event.delta,
       );
-    } catch (_) {
-      // Non-fatal; local score still reflects the latest user intent.
-    }
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final meta = _holeMeta;
+    final par = _parForHole(_hole);
+    final coursePar = courseParForHoles(_holePars, _holeOrder);
 
     return Scaffold(
       appBar: AppBar(
@@ -332,7 +462,9 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
                     ),
                     SizedBox(height: AppTheme.space1),
                     Text(
-                      'PAR ${meta.par} — ${meta.yards} YDS',
+                      par != null
+                          ? 'PAR $par${coursePar != null ? ' · Course $coursePar' : ''}'
+                          : 'PAR —',
                       style: text.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],
@@ -345,38 +477,166 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
             ],
           ),
           SizedBox(height: AppTheme.space6),
-          ..._players.map((p) => _PlayerRowCard(
+          ..._players.map((p) {
+            if (_tracksStrokes(p)) {
+              return _TrackedPlayerRow(
                 player: p,
-                holeScore: _holeScoreFor(p),
-                scheme: scheme,
-                text: text,
+                holeBits: _holeBitsFor(p),
+                totalBits: p.totalBits,
+                strokes: _strokesOnHole(p),
+                par: par,
+                gross: _grossFor(p),
+                holePars: _holePars,
+                holeOrder: _holeOrder,
+                playerHoles: _strokeByHole[p.id] ?? const {},
+                onStrokesChanged: (n) => _setStrokes(p, n),
                 onAward: () => _openEventSheet(p),
-              )),
+              );
+            }
+            return _BitsOnlyPlayerRow(
+              playerName: p.name,
+              holeBits: _holeBitsFor(p),
+              totalBits: p.totalBits,
+              onAward: () => _openEventSheet(p),
+            );
+          }),
         ],
       ),
     );
   }
 }
 
-class _PlayerRowCard extends StatelessWidget {
-  const _PlayerRowCard({
+class _TrackedPlayerRow extends StatelessWidget {
+  const _TrackedPlayerRow({
     required this.player,
-    required this.holeScore,
-    required this.scheme,
-    required this.text,
+    required this.holeBits,
+    required this.totalBits,
+    required this.strokes,
+    required this.par,
+    required this.gross,
+    required this.holePars,
+    required this.holeOrder,
+    required this.playerHoles,
+    required this.onStrokesChanged,
     required this.onAward,
   });
 
   final _HolePlayer player;
-  final int holeScore;
-  final ColorScheme scheme;
-  final TextTheme text;
+  final int holeBits;
+  final int totalBits;
+  final int strokes;
+  final int? par;
+  final int gross;
+  final Map<String, int> holePars;
+  final List<int> holeOrder;
+  final Map<int, int> playerHoles;
+  final ValueChanged<int> onStrokesChanged;
   final VoidCallback onAward;
 
   @override
   Widget build(BuildContext context) {
-    final holeStr = holeScore >= 0 ? '+$holeScore' : '$holeScore';
-    final totalStr = player.totalScore >= 0 ? '+${player.totalScore}' : '${player.totalScore}';
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final holeToPar = scoreToParLabel(strokes: strokes, par: par);
+    final grossLabel = gross > 0
+        ? formatGrossWithToPar(
+            gross: gross,
+            holePars: holePars,
+            holeOrder: holeOrder,
+            playerHoles: playerHoles,
+          )
+        : '—';
+    final holeBitsStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
+    final totalBitsStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTheme.space3),
+      child: OutlinedSurfaceCard(
+        borderColor: scheme.outlineVariant,
+        padding: const EdgeInsets.all(AppTheme.space3),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    player.name,
+                    style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: onAward,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    padding: EdgeInsets.zero,
+                    shape: const CircleBorder(),
+                  ),
+                  child: const Icon(Icons.add, size: AppTheme.iconDense),
+                ),
+              ],
+            ),
+            SizedBox(height: AppTheme.space3),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Gross · hole',
+                        style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                      Text(
+                        '$strokes ($holeToPar)',
+                        style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: AppTheme.spaceHalf),
+                      Text(
+                        'Gross total: $grossLabel',
+                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                StrokeHoleCounter(
+                  strokes: strokes,
+                  par: par,
+                  onChanged: onStrokesChanged,
+                ),
+              ],
+            ),
+            SizedBox(height: AppTheme.space2),
+            Text(
+              'Bits: $holeBitsStr this hole · $totalBitsStr total',
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BitsOnlyPlayerRow extends StatelessWidget {
+  const _BitsOnlyPlayerRow({
+    required this.playerName,
+    required this.holeBits,
+    required this.totalBits,
+    required this.onAward,
+  });
+
+  final String playerName;
+  final int holeBits;
+  final int totalBits;
+  final VoidCallback onAward;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final holeStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
+    final totalStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space3),
@@ -393,25 +653,13 @@ class _PlayerRowCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    player.name,
+                    playerName,
                     style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: AppTheme.space1),
-                  Row(
-                    children: [
-                      Text(
-                        holeStr,
-                        style: text.titleMedium?.copyWith(
-                          color: scheme.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(width: AppTheme.space3),
-                      Text(
-                        '$totalStr total',
-                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ],
+                  Text(
+                    'Bits: $holeStr this hole · $totalStr total',
+                    style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ],
               ),

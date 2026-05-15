@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/history_round.dart';
+import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'player_breakdown_screen.dart';
@@ -149,9 +150,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             SizedBox(height: AppTheme.space3),
             ..._round.standings.map(
               (s) => _StandingTile(
-                roundId: _round.id,
-                courseShortTitle: _round.courseShortTitle,
-                dateHeader: _round.dateHeader,
+                round: _round,
                 standing: s,
                 onReturnFromPlayer: () => unawaited(_refetchRound()),
               ),
@@ -189,16 +188,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
 class _StandingTile extends StatelessWidget {
   const _StandingTile({
-    required this.roundId,
-    required this.courseShortTitle,
-    required this.dateHeader,
+    required this.round,
     required this.standing,
     this.onReturnFromPlayer,
   });
 
-  final String roundId;
-  final String courseShortTitle;
-  final String dateHeader;
+  final HistoryRound round;
   final HistoryStanding standing;
   final VoidCallback? onReturnFromPlayer;
 
@@ -210,6 +205,14 @@ class _StandingTile extends StatelessWidget {
     final bitsColor = standing.bits < 0
         ? scheme.error
         : (win ? scheme.onPrimaryContainer : scheme.onSurface);
+    final grossLine = grossLabelForStanding(
+      mode: round.strokeTrackingMode,
+      grossByPlayer: round.grossByPlayer,
+      holePars: round.holePars,
+      holeOrder: round.holeOrderFromStart(),
+      strokeByHole: round.strokeByHole,
+      participantKey: standing.participantKey,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space2),
@@ -219,11 +222,14 @@ class _StandingTile extends StatelessWidget {
           await Navigator.of(context).push<void>(
             MaterialPageRoute<void>(
               builder: (_) => PlayerBreakdownScreen(
-                roundId: roundId,
+                roundId: round.id,
                 playerName: standing.name,
                 participantKey: standing.participantKey,
-                courseShortTitle: courseShortTitle,
-                dateHeader: dateHeader,
+                courseShortTitle: round.courseShortTitle,
+                dateHeader: round.dateHeader,
+                strokeByHole: round.strokeByHole,
+                holePars: round.holePars,
+                grossByPlayer: round.grossByPlayer,
               ),
             ),
           );
@@ -261,6 +267,11 @@ class _StandingTile extends StatelessWidget {
                           standing.subtitle,
                           style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                         ),
+                        if (grossLine != null)
+                          Text(
+                            grossLine,
+                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
                       ],
                     ),
                   ),

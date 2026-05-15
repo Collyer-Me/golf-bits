@@ -1,0 +1,12 @@
+---
+description: No local Flutter SDK — do not run flutter/dart CLI; rely on CI
+alwaysApply: true
+---
+
+# Flutter / Dart CLI (this machine)
+
+**Flutter is not installed on the contributor's PC.** Do not run `flutter`, `dart`, or `fvm` commands in the terminal (including `flutter analyze`, `flutter build web`, `flutter test`, `flutter pub get`, `flutter run`).
+
+- **Quality gates:** rely on **GitHub Actions** after push to `main` (see `.github/workflows/flutter-web-gh-pages.yml`). Mention CI as the verification path when offering commit/push.
+- **Still do:** static review of Dart changes, design-system rules in `golf_bits/AGENTS.md`, and the non-CLI items in root `AGENTS.md` (null-safety, `widget.` fields, query chains).
+- **If the user installs Flutter later**, they can ask to remove or relax this rule.

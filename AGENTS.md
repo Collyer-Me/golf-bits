@@ -64,23 +64,21 @@ Small-only edits (typos, comments, formatting) do not require this prompt unless
 
 ## Agent pre-push quality checklist (Flutter/web)
 
+**This machine has no Flutter SDK.** Do not run `flutter` / `dart` CLI locally. After push, **GitHub Actions** (`.github/workflows/flutter-web-gh-pages.yml`) runs analyze + web build.
+
 When edits include `golf_bits/lib/**/*.dart`, complete this checklist before offering commit/push:
 
-1. **Static checks (required)**
-   - Run `flutter analyze` from `golf_bits/`.
-   - Resolve new analyzer errors in changed files before pushing.
+1. **Static review (required)**
+   - Read changed Dart for obvious analyzer issues (imports, types, `widget.` in `State`, async/`mounted`).
+   - If CI failed on the same branch recently, fix those reported errors before pushing again.
 
-2. **Web compile gate (required for UI/app logic changes)**
-   - Run `flutter build web --release` from `golf_bits/`.
-   - If CI previously failed on web compile in the same session, treat this step as mandatory even for small follow-up fixes.
-
-3. **Change-surface sanity**
+2. **Change-surface sanity**
    - Verify stateful widgets reference instance fields with `widget.<field>` inside `State` classes.
    - Re-scan modified callbacks for null-safety regressions (`String` vs `String?`, optional IDs, async returns).
    - Confirm any new DB query chains are valid for the repository's pinned client versions.
 
-4. **Delivery discipline**
-   - Summarize checks run and results before asking to commit/push.
+3. **Delivery discipline**
+   - Summarize review done and note that **CI** will run `flutter analyze` + web build on push.
    - Keep unrelated temp files (for example `supabase/.temp/`) out of commits.
 
 ### Flutter app

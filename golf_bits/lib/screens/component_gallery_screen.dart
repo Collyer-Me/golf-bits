@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/stroke_hole_counter.dart';
 
 /// Scrollable preview of **Material 3** primitives + one approved custom ([OutlinedSurfaceCard]).
 class ComponentGalleryScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
   int _navIndex = 0;
   bool _birdie = false;
   bool _threePutt = false;
+  int _demoStrokes = 4;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +77,18 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
               OutlinedButton(onPressed: () {}, child: const Text('Outlined')),
               TextButton(onPressed: () {}, child: const Text('Text')),
             ],
+          ),
+          const SizedBox(height: AppTheme.space6),
+          _sectionTitle(context, 'Stroke counter', 'Gross strokes per hole (defaults to par).'),
+          OutlinedSurfaceCard(
+            borderColor: scheme.outlineVariant,
+            child: Center(
+              child: StrokeHoleCounter(
+                strokes: _demoStrokes,
+                par: 4,
+                onChanged: (n) => setState(() => _demoStrokes = n),
+              ),
+            ),
           ),
           const SizedBox(height: AppTheme.space6),
           _sectionTitle(context, 'Search', 'Material SearchBar (theme).'),

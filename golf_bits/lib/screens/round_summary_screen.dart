@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/round_result.dart';
+import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'player_breakdown_screen.dart';
@@ -132,7 +133,17 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
               ),
             ),
             SizedBox(height: AppTheme.space3),
-            ...r.standings.map((s) => Padding(
+            ...r.standings.map((s) {
+              final holeOrder = List<int>.generate(r.holeCount, (i) => i + 1);
+              final grossLine = grossLabelForStanding(
+                mode: r.strokeTrackingMode,
+                grossByPlayer: r.grossByPlayer,
+                holePars: r.holePars,
+                holeOrder: holeOrder,
+                strokeByHole: r.strokeByHole,
+                participantKey: s.participantKey,
+              );
+              return Padding(
                   padding: const EdgeInsets.only(bottom: AppTheme.space2),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(AppTheme.cardRadius),
@@ -140,8 +151,13 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => PlayerBreakdownScreen(
+                            roundId: r.roundId ?? '',
                             playerName: s.name,
                             participantKey: s.participantKey,
+                            courseShortTitle: r.courseShortTitle,
+                            strokeByHole: r.strokeByHole,
+                            holePars: r.holePars,
+                            grossByPlayer: r.grossByPlayer,
                           ),
                         ),
                       );
@@ -172,6 +188,11 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                                   s.subtitle,
                                   style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                                 ),
+                                if (grossLine != null)
+                                  Text(
+                                    grossLine,
+                                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                                  ),
                               ],
                             ),
                           ),
@@ -186,7 +207,8 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                       ),
                     ),
                   ),
-                )),
+                );
+            }),
             if (r.leftEarly.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               Text(

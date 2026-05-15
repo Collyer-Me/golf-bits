@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'history_round.dart';
 import 'round_bit_event_draft.dart';
 import 'round_session_args.dart';
+import 'stroke_tracking.dart';
 
 /// Final round payload for [RoundSummaryScreen] and Supabase `rounds` insert.
 @immutable
@@ -21,6 +22,10 @@ class RoundResult {
     this.roundId,
     this.scoreByPlayer = const {},
     this.participants = const [],
+    this.strokeTrackingMode = StrokeTrackingMode.off,
+    this.holePars = const {},
+    this.strokeByHole = const {},
+    this.grossByPlayer = const {},
   });
 
   final String courseName;
@@ -36,12 +41,18 @@ class RoundResult {
   final String? roundId;
   final Map<String, int> scoreByPlayer;
   final List<RoundParticipant> participants;
+  final StrokeTrackingMode strokeTrackingMode;
+  final Map<String, int> holePars;
+  final Map<String, Map<int, int>> strokeByHole;
+  final Map<String, int> grossByPlayer;
 
   /// Builds standings from per-player bit totals at end of round.
   factory RoundResult.fromSessionScores({
     required RoundSessionArgs session,
     required List<({String key, String name, int bits})> scoredPlayers,
     List<RoundBitEventDraft> bitEvents = const [],
+    Map<String, Map<int, int>>? strokeByHole,
+    Map<String, int>? grossByPlayer,
   }) {
     if (scoredPlayers.isEmpty) {
       throw ArgumentError('scoredPlayers must not be empty');
@@ -80,6 +91,10 @@ class RoundResult {
       roundId: session.roundId,
       scoreByPlayer: {for (final r in scoredPlayers) r.key: r.bits},
       participants: session.participants,
+      strokeTrackingMode: session.strokeTrackingMode,
+      holePars: session.holePars,
+      strokeByHole: strokeByHole ?? session.initialStrokeByHole,
+      grossByPlayer: grossByPlayer ?? session.initialGrossByPlayer,
     );
   }
 
@@ -102,6 +117,10 @@ class RoundResult {
       'current_hole': holeCount,
       'score_by_player': scoreByPlayer,
       'participants': participants.map((p) => p.toJson()).toList(),
+      'stroke_tracking_mode': strokeTrackingMode.toDb(),
+      if (holePars.isNotEmpty) 'hole_pars': holePars,
+      'stroke_by_hole': strokeByHoleToJson(strokeByHole),
+      'gross_by_player': grossByPlayer,
     };
   }
 

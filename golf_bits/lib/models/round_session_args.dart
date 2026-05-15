@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'history_round.dart';
+import 'stroke_tracking.dart';
 
 @immutable
 class RoundEventRule {
@@ -64,6 +65,10 @@ class RoundSessionArgs {
     this.initialScoreByPlayer = const {},
     this.eventRules = const [],
     this.participants = const [],
+    this.strokeTrackingMode = StrokeTrackingMode.off,
+    this.holePars = const {},
+    this.initialStrokeByHole = const {},
+    this.initialGrossByPlayer = const {},
   });
 
   final String courseName;
@@ -76,6 +81,10 @@ class RoundSessionArgs {
   final Map<String, int> initialScoreByPlayer;
   final List<RoundEventRule> eventRules;
   final List<RoundParticipant> participants;
+  final StrokeTrackingMode strokeTrackingMode;
+  final Map<String, int> holePars;
+  final Map<String, Map<int, int>> initialStrokeByHole;
+  final Map<String, int> initialGrossByPlayer;
 
   /// Resume UI from a saved in-progress row (start hole defaults to 1).
   factory RoundSessionArgs.fromHistoryRound(HistoryRound round) {
@@ -90,6 +99,10 @@ class RoundSessionArgs {
       initialScoreByPlayer: round.scoreByPlayer,
       eventRules: const [],
       participants: round.participants,
+      strokeTrackingMode: round.strokeTrackingMode,
+      holePars: round.holePars,
+      initialStrokeByHole: round.strokeByHole,
+      initialGrossByPlayer: round.grossByPlayer,
     );
   }
 }

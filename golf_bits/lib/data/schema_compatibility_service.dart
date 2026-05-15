@@ -115,6 +115,12 @@ abstract final class SchemaCompatibilityService {
       warnings.add('profiles.email missing: email account matching is disabled.');
     }
 
+    if (!rounds.contains('stroke_tracking_mode')) {
+      warnings.add(
+        'rounds.stroke_tracking_mode missing: gross scorecard sync disabled until migration is applied.',
+      );
+    }
+
     final result = SchemaCompatibilityResult(
       ok: errors.isEmpty,
       errors: errors,

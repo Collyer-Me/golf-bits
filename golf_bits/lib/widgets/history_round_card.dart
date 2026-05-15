@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/history_round.dart';
+import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import 'outlined_surface_card.dart';
 
@@ -14,6 +15,27 @@ class HistoryRoundCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    String? lowestGrossLine;
+    if (round.tracksStrokes && round.grossByPlayer.isNotEmpty) {
+      final entries = round.grossByPlayer.entries.where((e) => e.value > 0).toList();
+      if (entries.isNotEmpty) {
+        entries.sort((a, b) => a.value.compareTo(b.value));
+        final best = entries.first;
+        String name = best.key;
+        for (final p in round.participants) {
+          if (p.key == best.key) {
+            name = p.displayName;
+            break;
+          }
+        }
+        final label = round.grossLabelForParticipant(best.key);
+        if (label != null) {
+          lowestGrossLine = round.strokeTrackingMode == StrokeTrackingMode.self
+              ? 'Your gross: $label'
+              : 'Lowest gross: $name · $label';
+        }
+      }
+    }
 
     return Material(
       color: scheme.surface.withValues(alpha: 0),
@@ -97,6 +119,13 @@ class HistoryRoundCard extends StatelessWidget {
                   ),
                 ],
               ),
+              if (lowestGrossLine != null) ...[
+                SizedBox(height: AppTheme.space2),
+                Text(
+                  lowestGrossLine,
+                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
             ],
           ),
         ),

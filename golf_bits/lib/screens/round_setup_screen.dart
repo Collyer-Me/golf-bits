@@ -15,6 +15,7 @@ import '../models/course_catalog_models.dart';
 import '../models/friend_models.dart';
 import '../models/event_preferences.dart';
 import '../models/round_session_args.dart';
+import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/event_preferences_editor.dart';
 import '../widgets/guest_cloud_round_sheet.dart';
@@ -75,6 +76,13 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   bool _roundShouldReferenceCatalog = true;
 
   late List<EventPreference> _events;
+  bool _trackHoleScores = false;
+  StrokeTrackingMode _strokeScope = StrokeTrackingMode.self;
+
+  StrokeTrackingMode get _resolvedStrokeMode {
+    if (!_trackHoleScores) return StrokeTrackingMode.off;
+    return _strokeScope;
+  }
 
   @override
   void initState() {
@@ -507,6 +515,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                 _roundShouldReferenceCatalog && _looksLikeUuid(hit.id) ? hit.id : null,
             courseCoverageLevel: setup.coverageLevel,
             holePars: holePars,
+            strokeTrackingMode: _resolvedStrokeMode,
           );
           await HistoryRepository.sendRoundInvites(
             roundId: roundId,
@@ -556,6 +565,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         )
         .toList();
 
+    final holePars = detail?.holeParsForTeeSync(setup.courseTeeId) ?? const <String, int>{};
+
     final args = RoundSessionArgs(
       courseName: courseName,
       courseShortTitle: _shortCourseTitle(courseName),
@@ -567,6 +578,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       initialScoreByPlayer: {for (final p in participants) p.key: 0},
       eventRules: enabledRules,
       participants: participants,
+      strokeTrackingMode: _resolvedStrokeMode,
+      holePars: holePars,
     );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
@@ -1021,9 +1034,49 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   }
 
   Widget _buildEventsStep(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        OutlinedSurfaceCard(
+          borderColor: scheme.outlineVariant,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Scorecard',
+                style: text.labelLarge?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Track hole scores (gross)'),
+                subtitle: const Text('Optional scorecard alongside Bits'),
+                value: _trackHoleScores,
+                onChanged: (v) => setState(() => _trackHoleScores = v),
+              ),
+              if (_trackHoleScores) ...[
+                const SizedBox(height: AppTheme.space2),
+                SegmentedButton<StrokeTrackingMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: StrokeTrackingMode.self,
+                      label: Text('Just me'),
+                    ),
+                    ButtonSegment(
+                      value: StrokeTrackingMode.all,
+                      label: Text('Everyone'),
+                    ),
+                  ],
+                  selected: {_strokeScope},
+                  onSelectionChanged: (s) => setState(() => _strokeScope = s.first),
+                ),
+              ],
+            ],
+          ),
+        ),
+        SizedBox(height: AppTheme.space4),
         Expanded(
           child: EventPreferencesEditor(
             events: _events,
@@ -1077,6 +1130,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                   style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ],
+              const SizedBox(height: AppTheme.space4),
+              Text('Scorecard', style: text.labelLarge?.copyWith(color: scheme.primary)),
+              const SizedBox(height: AppTheme.space2),
+              Text(_resolvedStrokeMode.setupLabel, style: text.bodyLarge),
               const SizedBox(height: AppTheme.space4),
               Text('Active events', style: text.labelLarge?.copyWith(color: scheme.primary)),
               const SizedBox(height: AppTheme.space2),

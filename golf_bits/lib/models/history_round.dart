@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/round_coplayers.dart';
 import 'round_session_args.dart';
+import 'stroke_tracking.dart';
 
 /// One row on the history detail standings table.
 @immutable
@@ -91,6 +92,10 @@ class HistoryRound {
     this.currentHole,
     this.scoreByPlayer = const {},
     this.participants = const [],
+    this.strokeTrackingMode = StrokeTrackingMode.off,
+    this.holePars = const {},
+    this.strokeByHole = const {},
+    this.grossByPlayer = const {},
   });
 
   final String id;
@@ -111,8 +116,34 @@ class HistoryRound {
   final int? currentHole;
   final Map<String, int> scoreByPlayer;
   final List<RoundParticipant> participants;
+  final StrokeTrackingMode strokeTrackingMode;
+  final Map<String, int> holePars;
+  final Map<String, Map<int, int>> strokeByHole;
+  final Map<String, int> grossByPlayer;
 
   String get holesLine => '$holeCount holes · $whenRelative';
+
+  bool get tracksStrokes => strokeTrackingMode.tracksStrokes;
+
+  List<int> holeOrderFromStart({int startHole = 1}) {
+    if (holeCount == 9) {
+      return List<int>.generate(9, (i) => startHole + i);
+    }
+    return List<int>.generate(holeCount, (i) => i + 1);
+  }
+
+  String? grossLabelForParticipant(String participantKey) {
+    final gross = grossByPlayer[participantKey];
+    if (gross == null || gross <= 0) return null;
+    final holes = strokeByHole[participantKey];
+    if (holes == null || holes.isEmpty) return '$gross';
+    return formatGrossWithToPar(
+      gross: gross,
+      holePars: holePars,
+      holeOrder: holeOrderFromStart(),
+      playerHoles: holes,
+    );
+  }
 
   static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -277,6 +308,16 @@ class HistoryRound {
       winnerBitsResolved = 0;
     }
 
+    final rawHolePars = row['hole_pars'];
+    final Map<String, int> holePars;
+    if (rawHolePars is Map) {
+      holePars = rawHolePars.map(
+        (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? int.tryParse('$v') ?? 0),
+      );
+    } else {
+      holePars = const {};
+    }
+
     return HistoryRound(
       id: id,
       courseName: (row['course_name'] as String?) ?? 'Course',
@@ -293,6 +334,10 @@ class HistoryRound {
       currentHole: (row['current_hole'] as num?)?.toInt(),
       scoreByPlayer: scores,
       participants: participants,
+      strokeTrackingMode: StrokeTrackingMode.fromDb(row['stroke_tracking_mode'] as String?),
+      holePars: holePars,
+      strokeByHole: parseStrokeByHole(row['stroke_by_hole']),
+      grossByPlayer: parseGrossByPlayer(row['gross_by_player']),
     );
   }
 
