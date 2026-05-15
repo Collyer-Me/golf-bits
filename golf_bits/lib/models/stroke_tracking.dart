@@ -120,20 +120,7 @@ String? grossToParLabel({
   required List<int> holeOrder,
 }) {
   if (holes.isEmpty) return null;
-  var gross = 0;
-  var parSum = 0;
-  var hasPar = true;
-  for (final h in holeOrder) {
-    final s = holes[h];
-    if (s == null) continue;
-    gross += s;
-    final p = parForHole(holePars, h);
-    if (p == null) {
-      hasPar = false;
-      break;
-    }
-    parSum += p;
-  }
+  final gross = computeGrossStrokes(holes);
   if (gross == 0) return null;
   return formatGrossWithToPar(
     gross: gross,

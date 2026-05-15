@@ -233,9 +233,10 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     final isLastHole = _holeIndex >= _holeOrder.length - 1;
     if (!isLastHole) {
       final ok = await _confirmIncompleteStrokes();
-      if (!ok) return;
+      if (!ok || !mounted) return;
     }
     if (isLastHole) {
+      if (!mounted) return;
       final shouldEnd = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -253,9 +254,11 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           ],
         ),
       );
+      if (!mounted) return;
       if (shouldEnd == true) _endRound();
       return;
     }
+    if (!mounted) return;
     setState(() => _holeIndex += 1);
     await _persistProgress();
   }
