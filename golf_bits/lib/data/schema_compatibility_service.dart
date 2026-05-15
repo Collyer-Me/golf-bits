@@ -117,7 +117,7 @@ abstract final class SchemaCompatibilityService {
 
     if (!rounds.contains('stroke_tracking_mode')) {
       warnings.add(
-        'rounds.stroke_tracking_mode missing: gross scorecard sync disabled until migration is applied.',
+        'rounds.stroke_tracking_mode missing: scorecard sync disabled until migration is applied.',
       );
     }
 

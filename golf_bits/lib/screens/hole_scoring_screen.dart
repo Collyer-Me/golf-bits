@@ -102,6 +102,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       }
       final idx = _holeOrder.indexOf(s.currentHole);
       if (idx >= 0) _holeIndex = idx;
+      _seedDefaultStrokesForCurrentHole();
       unawaited(_hydrateFromCloud());
     }
   }
@@ -109,6 +110,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   Future<void> _hydrateFromCloud() async {
     final roundId = widget.session?.roundId;
     if (roundId == null || roundId.isEmpty) {
+      _seedDefaultStrokesForCurrentHole();
       await _persistProgress();
       return;
     }
@@ -149,6 +151,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           player.totalBits += delta;
         }
       });
+      _seedDefaultStrokesForCurrentHole();
     } catch (_) {
       // Non-fatal; totals from score_by_player still apply.
     }
@@ -171,12 +174,18 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
 
   int _defaultStrokesForHole(int hole) => _parForHole(hole) ?? 4;
 
-  int _strokesOnHole(_HolePlayer player) {
-    return _strokeByHole[player.id]?[_hole] ?? _defaultStrokesForHole(_hole);
+  /// Fills current hole with course par (or 4) for tracked players so the default counts without a tap.
+  void _seedDefaultStrokesForCurrentHole() {
+    if (!_strokeMode.tracksStrokes) return;
+    for (final p in _players) {
+      if (!_tracksStrokes(p)) continue;
+      final byHole = _strokeByHole.putIfAbsent(p.id, () => <int, int>{});
+      byHole.putIfAbsent(_hole, () => _defaultStrokesForHole(_hole));
+    }
   }
 
-  bool _hasEnteredStrokeOnHole(_HolePlayer player) {
-    return _strokeByHole[player.id]?.containsKey(_hole) ?? false;
+  int _strokesOnHole(_HolePlayer player) {
+    return _strokeByHole[player.id]?[_hole] ?? _defaultStrokesForHole(_hole);
   }
 
   void _setStrokes(_HolePlayer player, int strokes) {
@@ -196,45 +205,15 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
 
   void _prevHole() {
     if (_holeIndex == 0) return;
-    setState(() => _holeIndex -= 1);
+    setState(() {
+      _holeIndex -= 1;
+      _seedDefaultStrokesForCurrentHole();
+    });
     unawaited(_persistProgress());
-  }
-
-  Future<bool> _confirmIncompleteStrokes() async {
-    final missing = <String>[];
-    for (final p in _players) {
-      if (_tracksStrokes(p) && !_hasEnteredStrokeOnHole(p)) {
-        missing.add(p.name);
-      }
-    }
-    if (missing.isEmpty) return true;
-    if (!mounted) return true;
-    final n = missing.length;
-    final label = n == 1 ? missing.first : '$n players';
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Scores not entered'),
-        content: Text(
-          n == 1
-              ? '$label has no gross stroke on hole $_hole. Continue anyway?'
-              : '$label have no gross strokes on hole $_hole. Continue anyway?',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Go back')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Continue')),
-        ],
-      ),
-    );
-    return proceed ?? false;
   }
 
   Future<void> _nextHole() async {
     final isLastHole = _holeIndex >= _holeOrder.length - 1;
-    if (!isLastHole) {
-      final ok = await _confirmIncompleteStrokes();
-      if (!ok || !mounted) return;
-    }
     if (isLastHole) {
       if (!mounted) return;
       final shouldEnd = await showDialog<bool>(
@@ -259,7 +238,10 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       return;
     }
     if (!mounted) return;
-    setState(() => _holeIndex += 1);
+    setState(() {
+      _holeIndex += 1;
+      _seedDefaultStrokesForCurrentHole();
+    });
     await _persistProgress();
   }
 
@@ -339,6 +321,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   }
 
   void _endRound() {
+    _seedDefaultStrokesForCurrentHole();
     final session = widget.session;
     if (session != null && _players.isNotEmpty) {
       final scored = _players
@@ -587,7 +570,7 @@ class _TrackedPlayerRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Gross · hole',
+                        'Score · hole',
                         style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                       Text(
@@ -596,7 +579,7 @@ class _TrackedPlayerRow extends StatelessWidget {
                       ),
                       SizedBox(height: AppTheme.spaceHalf),
                       Text(
-                        'Gross total: $grossLabel',
+                        'Score total: $grossLabel',
                         style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                     ],

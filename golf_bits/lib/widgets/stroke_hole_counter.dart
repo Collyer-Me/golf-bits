@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 
-/// Inline gross stroke stepper for one hole (defaults to par).
+/// Inline stroke stepper for one hole (defaults to par when known).
 class StrokeHoleCounter extends StatelessWidget {
   const StrokeHoleCounter({
     super.key,

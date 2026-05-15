@@ -1049,12 +1049,29 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                 'Scorecard',
                 style: text.labelLarge?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Track hole scores (gross)'),
-                subtitle: const Text('Optional scorecard alongside Bits'),
-                value: _trackHoleScores,
-                onChanged: (v) => setState(() => _trackHoleScores = v),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Track hole scores',
+                          style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          'Optional scorecard alongside Bits',
+                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _trackHoleScores,
+                    onChanged: (v) => setState(() => _trackHoleScores = v),
+                  ),
+                ],
               ),
               if (_trackHoleScores) ...[
                 const SizedBox(height: AppTheme.space2),

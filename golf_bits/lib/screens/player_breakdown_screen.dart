@@ -143,9 +143,9 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
     final gross = widget.grossByPlayer[key];
     if (gross == null || gross <= 0) return null;
     final holes = widget.strokeByHole[key];
-    if (holes == null || holes.isEmpty) return 'Gross $gross';
+    if (holes == null || holes.isEmpty) return 'Score $gross';
     final order = holes.keys.toList()..sort();
-    return 'Gross ${formatGrossWithToPar(
+    return 'Score ${formatGrossWithToPar(
       gross: gross,
       holePars: widget.holePars,
       holeOrder: order,
@@ -310,7 +310,7 @@ class _HoleTimelineBlock extends StatelessWidget {
     final gross = hole.gross;
     final par = hole.par;
     final grossLabel = gross != null
-        ? 'Gross $gross (${scoreToParLabel(strokes: gross, par: par)})'
+        ? 'Score $gross (${scoreToParLabel(strokes: gross, par: par)})'
         : null;
 
     return Row(

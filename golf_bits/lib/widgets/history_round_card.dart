@@ -31,8 +31,8 @@ class HistoryRoundCard extends StatelessWidget {
         final label = round.grossLabelForParticipant(best.key);
         if (label != null) {
           lowestGrossLine = round.strokeTrackingMode == StrokeTrackingMode.self
-              ? 'Your gross: $label'
-              : 'Lowest gross: $name · $label';
+              ? 'Your score: $label'
+              : 'Lowest score: $name · $label';
         }
       }
     }

@@ -144,8 +144,8 @@ String? grossLabelForStanding({
   final gross = grossByPlayer[participantKey];
   if (gross == null || gross <= 0) return null;
   final holes = strokeByHole[participantKey];
-  if (holes == null || holes.isEmpty) return 'Gross $gross';
-  return 'Gross ${formatGrossWithToPar(
+  if (holes == null || holes.isEmpty) return 'Score $gross';
+  return 'Score ${formatGrossWithToPar(
     gross: gross,
     holePars: holePars,
     holeOrder: holeOrder,

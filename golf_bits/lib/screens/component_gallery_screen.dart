@@ -79,7 +79,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
             ],
           ),
           const SizedBox(height: AppTheme.space6),
-          _sectionTitle(context, 'Stroke counter', 'Gross strokes per hole (defaults to par).'),
+          _sectionTitle(context, 'Stroke counter', 'Strokes per hole (defaults to par).'),
           OutlinedSurfaceCard(
             borderColor: scheme.outlineVariant,
             child: Center(
