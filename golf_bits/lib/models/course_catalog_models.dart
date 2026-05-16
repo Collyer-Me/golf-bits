@@ -59,16 +59,40 @@ class CourseSearchHit {
   final double? longitude;
   final CourseAddress address;
 
-  String get listSubtitle {
-    if (subtitle != null && subtitle!.trim().isNotEmpty) return subtitle!.trim();
-    final a = address.displayLine;
-    if (a.isNotEmpty) return a;
-    return switch (coverageLevel) {
-      CourseCoverageLevel.geoOnly => 'Location only — scorecard not loaded',
-      CourseCoverageLevel.manual => 'Manual course',
+  static String coverageTag(String level) {
+    return switch (level) {
+      CourseCoverageLevel.fullScorecard => 'Full scorecard',
       CourseCoverageLevel.partialScorecard => 'Partial scorecard',
+      CourseCoverageLevel.geoOnly => 'Location only',
+      CourseCoverageLevel.manual => 'Manual entry',
       _ => '',
     };
+  }
+
+  CourseSearchHit copyWith({
+    String? subtitle,
+    String? coverageLevel,
+    double? latitude,
+    double? longitude,
+    CourseAddress? address,
+  }) {
+    return CourseSearchHit(
+      id: id,
+      name: name,
+      subtitle: subtitle ?? this.subtitle,
+      coverageLevel: coverageLevel ?? this.coverageLevel,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      address: address ?? this.address,
+    );
+  }
+
+  String get listSubtitle {
+    final loc = subtitle != null && subtitle!.trim().isNotEmpty ? subtitle!.trim() : address.displayLine;
+    final tag = coverageTag(coverageLevel);
+    if (loc.isEmpty) return tag.isEmpty ? '' : tag;
+    if (tag.isEmpty) return loc;
+    return '$loc · $tag';
   }
 
   factory CourseSearchHit.fromJson(Map<String, dynamic> j) {
@@ -88,24 +112,24 @@ class CourseSearchHit {
     CourseSearchHit(
       id: 'b1111111-1111-4111-8111-111111111101',
       name: 'Royal Melbourne Golf Club',
-      subtitle: 'Black Rock, VIC',
-      coverageLevel: CourseCoverageLevel.fullScorecard,
+      subtitle: 'Black Rock, VIC (offline demo)',
+      coverageLevel: CourseCoverageLevel.partialScorecard,
       latitude: -37.975,
       longitude: 145.02,
     ),
     CourseSearchHit(
       id: 'b1111111-1111-4111-8111-111111111102',
       name: 'Royal Sydney Golf Club',
-      subtitle: 'Rose Bay, NSW',
-      coverageLevel: CourseCoverageLevel.fullScorecard,
+      subtitle: 'Rose Bay, NSW (offline demo)',
+      coverageLevel: CourseCoverageLevel.partialScorecard,
       latitude: -33.87,
       longitude: 151.265,
     ),
     CourseSearchHit(
       id: 'b1111111-1111-4111-8111-111111111103',
       name: 'Royal Queensland Golf Club',
-      subtitle: 'Eagle Farm, QLD',
-      coverageLevel: CourseCoverageLevel.fullScorecard,
+      subtitle: 'Eagle Farm, QLD (offline demo)',
+      coverageLevel: CourseCoverageLevel.partialScorecard,
       latitude: -27.425,
       longitude: 153.08,
     ),

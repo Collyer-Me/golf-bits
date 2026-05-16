@@ -8,6 +8,7 @@
   },
   "scripts": {
     "supabase": "supabase",
+    "sync-wa-courses": "node scripts/sync-wa-courses-batch.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

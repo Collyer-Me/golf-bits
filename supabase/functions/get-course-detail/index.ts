@@ -1,4 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import {
+  externalIdsGcaCourseId,
+  fetchGcaCourseDetailSimple,
+  minimalSearchRowFromGcaId,
+  normalizeFromGca,
+  upsertNormalizedCourse,
+} from '../_shared/gca-course-sync.ts';
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +19,51 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+async function loadTeesForCourse(
+  userClient: ReturnType<typeof createClient>,
+  courseId: string,
+): Promise<{ teeList: Record<string, unknown>[]; holeRowCount: number; teesOut: Record<string, unknown>[] }> {
+  const { data: teeRows, error: tErr } = await userClient
+    .from('course_tees')
+    .select(
+      'id,sort_order,label,color_hint,course_rating,slope_rating,ratings_json,course_tee_holes(hole_number,par,stroke_index,yardage_yds)',
+    )
+    .eq('course_id', courseId)
+    .order('sort_order', { ascending: true });
+
+  if (tErr) {
+    throw new Error(tErr.message);
+  }
+
+  const teeList = teeRows ?? [];
+  let holeRowCount = 0;
+
+  const teesOut = teeList.map((t) => {
+    const rawHoles = (t.course_tee_holes as Record<string, unknown>[] | null) ?? [];
+    const holes = [...rawHoles]
+      .map((h) => ({
+        holeNumber: h.hole_number as number,
+        par: h.par as number,
+        strokeIndex: h.stroke_index == null ? null : (h.stroke_index as number),
+        yardageYds: h.yardage_yds == null ? null : (h.yardage_yds as number),
+      }))
+      .sort((a, b) => a.holeNumber - b.holeNumber);
+    holeRowCount += holes.length;
+    return {
+      id: t.id,
+      sortOrder: t.sort_order,
+      label: t.label,
+      colorHint: t.color_hint,
+      courseRating: t.course_rating,
+      slopeRating: t.slope_rating,
+      ratings: t.ratings_json ?? {},
+      holes,
+    };
+  });
+
+  return { teeList, holeRowCount, teesOut };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -22,6 +74,10 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const golfCourseApiKey = Deno.env.get('GOLFCOURSEAPI_KEY') ?? '';
+  const golfCourseApiBase = Deno.env.get('GOLFCOURSEAPI_BASE_URL') ?? 'https://api.golfcourseapi.com';
+
   const authHeader = req.headers.get('Authorization') ?? '';
   if (!authHeader) {
     return jsonResponse({ error: 'Unauthorized' }, 401);
@@ -51,7 +107,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'courseId required' }, 400);
   }
 
-  const { data: course, error: cErr } = await userClient
+  let { data: course, error: cErr } = await userClient
     .from('courses')
     .select(
       'id,name,subtitle,locality,region,country_code,coverage_level,latitude,longitude,street_line1,source,external_ids',
@@ -71,48 +127,76 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Not found' }, 404);
   }
 
-  const { data: teeRows, error: tErr } = await userClient
-    .from('course_tees')
-    .select(
-      'id,sort_order,label,color_hint,course_rating,slope_rating,ratings_json,course_tee_holes(hole_number,par,stroke_index,yardage_yds)',
-    )
-    .eq('course_id', courseId)
-    .order('sort_order', { ascending: true });
+  let { teeList, holeRowCount, teesOut } = await loadTeesForCourse(userClient, courseId);
 
-  if (tErr) {
-    return jsonResponse({ error: tErr.message }, 500);
+  let hydrateAttempted = false;
+  let hydratedOk = false;
+  let hydrateReason: string | null = null;
+
+  if (holeRowCount === 0 && serviceKey && golfCourseApiKey) {
+    const gcaId = externalIdsGcaCourseId(course.external_ids);
+    if (gcaId) {
+      hydrateAttempted = true;
+      const svc = createClient(supabaseUrl, serviceKey);
+      try {
+        const detail = await fetchGcaCourseDetailSimple(golfCourseApiBase, golfCourseApiKey, gcaId);
+        if (!detail) {
+          hydrateReason = 'detail_fetch_failed';
+        } else {
+          const normalized = normalizeFromGca(minimalSearchRowFromGcaId(gcaId), detail);
+          if (!normalized || normalized.tees.length === 0) {
+            hydrateReason = 'empty_scorecard';
+          } else {
+            const updated = await upsertNormalizedCourse(svc, normalized, { pinnedCourseId: courseId });
+            if (!updated) {
+              hydrateReason = 'upsert_failed';
+            } else {
+              hydratedOk = true;
+              const again = await loadTeesForCourse(userClient, courseId);
+              teeList = again.teeList;
+              holeRowCount = again.holeRowCount;
+              teesOut = again.teesOut;
+              const { data: freshCourse } = await userClient
+                .from('courses')
+                .select(
+                  'id,name,subtitle,locality,region,country_code,coverage_level,latitude,longitude,street_line1,source,external_ids',
+                )
+                .eq('id', courseId)
+                .maybeSingle();
+              if (freshCourse) course = freshCourse;
+            }
+          }
+        }
+      } catch (e) {
+        hydrateReason = String(e);
+      }
+
+      await userClient.from('course_data_telemetry').insert({
+        user_id: user.id,
+        kind: 'course_hydrate',
+        payload: {
+          courseId,
+          provider: 'golfcourseapi',
+          externalCourseId: gcaId,
+          ok: hydratedOk,
+          reason: hydrateReason,
+          teeCountAfter: teeList.length,
+          teeHoleRowCountAfter: holeRowCount,
+        },
+      });
+    }
   }
-
-  const teeList = teeRows ?? [];
-  let holeRowCount = 0;
-
-  const teesOut = teeList.map((t) => {
-    const rawHoles = (t.course_tee_holes as Record<string, unknown>[] | null) ?? [];
-    const holes = [...rawHoles]
-      .map((h) => ({
-        holeNumber: (h.hole_number as number),
-        par: (h.par as number),
-        strokeIndex: h.stroke_index == null ? null : (h.stroke_index as number),
-        yardageYds: h.yardage_yds == null ? null : (h.yardage_yds as number),
-      }))
-      .sort((a, b) => a.holeNumber - b.holeNumber);
-    holeRowCount += holes.length;
-    return {
-      id: t.id,
-      sortOrder: t.sort_order,
-      label: t.label,
-      colorHint: t.color_hint,
-      courseRating: t.course_rating,
-      slopeRating: t.slope_rating,
-      ratings: t.ratings_json ?? {},
-      holes,
-    };
-  });
 
   await userClient.from('course_data_telemetry').insert({
     user_id: user.id,
     kind: 'cache_hit',
-    payload: { courseId, teeCount: teeList.length, teeHoleRowCount: holeRowCount },
+    payload: {
+      courseId,
+      teeCount: teeList.length,
+      teeHoleRowCount: holeRowCount,
+      hydrateAttempted,
+      hydratedOk,
+    },
   });
 
   return jsonResponse({
@@ -133,5 +217,10 @@ Deno.serve(async (req) => {
       },
     },
     tees: teesOut,
+    hydrate: {
+      attempted: hydrateAttempted,
+      ok: hydratedOk,
+      reason: hydrateReason,
+    },
   });
 });

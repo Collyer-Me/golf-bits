@@ -67,6 +67,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   CourseSetupResult? _courseSetup;
   List<CourseSearchHit> _searchHits = [];
   bool _loadingCourseSearch = false;
+  int _courseSearchGeneration = 0;
   CourseDetailView? _selectedDetail;
   bool _loadingCourseDetail = false;
   /// False after fetch if [getCourseDetail] returned null for this selection.
@@ -104,17 +105,31 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
 
   Future<void> _runCourseSearch() async {
     if (!mounted || _step != 1) return;
+    final gen = ++_courseSearchGeneration;
     setState(() => _loadingCourseSearch = true);
     final q = _searchController.text.trim();
     final hits = await CourseCatalogRepository.searchCourses(
       query: q,
-      includeRemote: q.length >= 3,
+      includeRemote: q.length >= 2,
     );
-    if (!mounted) return;
+    if (!mounted || gen != _courseSearchGeneration) return;
     setState(() {
       _searchHits = hits;
       _loadingCourseSearch = false;
     });
+  }
+
+  List<CourseSearchHit> _hitsWithCoverageFromDetail(CourseDetailView d) {
+    final idx = _searchHits.indexWhere((h) => h.id == d.id);
+    if (idx < 0) return _searchHits;
+    final prev = _searchHits[idx];
+    if (prev.coverageLevel == d.coverageLevel) return _searchHits;
+    final next = prev.copyWith(coverageLevel: d.coverageLevel);
+    return [
+      ..._searchHits.sublist(0, idx),
+      next,
+      ..._searchHits.sublist(idx + 1),
+    ];
   }
 
   Future<void> _refreshCourseSearchForStep() async {
@@ -135,6 +150,9 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       if (_selectedCourseId == courseId) {
         _selectedDetail = d;
         _detailFetchSucceeded = d != null;
+        if (d != null) {
+          _searchHits = _hitsWithCoverageFromDetail(d);
+        }
       }
     });
   }
@@ -909,8 +927,25 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         if (_loadingCourseSearch) ...[
           const SizedBox(height: AppTheme.space3),
           const LinearProgressIndicator(minHeight: 2),
+          Padding(
+            padding: const EdgeInsets.only(top: AppTheme.space3),
+            child: Text(
+              'Searching catalog…',
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
         ],
         const SizedBox(height: AppTheme.space5),
+        if (!_loadingCourseSearch &&
+            _searchController.text.trim().isNotEmpty &&
+            _searchHits.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppTheme.space5),
+            child: Text(
+              'No courses matched. Try fewer words, check spelling, or add a course manually.',
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
         ..._searchHits.map((c) {
           final selected = _selectedCourseId == c.id;
           return Padding(
@@ -944,7 +979,18 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                               c.listSubtitle,
                               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                             ),
-                            if (selected && c.coverageLevel == CourseCoverageLevel.geoOnly)
+                            if (selected && _loadingCourseDetail)
+                              Padding(
+                                padding: const EdgeInsets.only(top: AppTheme.space2),
+                                child: Text(
+                                  'Loading scorecard…',
+                                  style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                                ),
+                              ),
+                            if (selected &&
+                                !_loadingCourseDetail &&
+                                c.coverageLevel == CourseCoverageLevel.geoOnly &&
+                                (_selectedDetail?.hasTeeMatrix != true))
                               Padding(
                                 padding: const EdgeInsets.only(top: AppTheme.space2),
                                 child: Text(

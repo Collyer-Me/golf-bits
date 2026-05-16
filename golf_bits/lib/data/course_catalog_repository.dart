@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
@@ -6,6 +8,24 @@ import '../models/course_catalog_models.dart';
 /// Hybrid catalog: Edge Functions when deployed, PostgREST fallback, offline seeds.
 abstract final class CourseCatalogRepository {
   static SupabaseClient get _client => Supabase.instance.client;
+
+  static const Duration _functionInvokeTimeout = Duration(seconds: 28);
+
+  static void _sortHitsByCoverage(List<CourseSearchHit> hits) {
+    int covRank(String l) {
+      if (l == CourseCoverageLevel.fullScorecard) return 4;
+      if (l == CourseCoverageLevel.partialScorecard) return 3;
+      if (l == CourseCoverageLevel.manual) return 2;
+      if (l == CourseCoverageLevel.geoOnly) return 1;
+      return 0;
+    }
+
+    hits.sort((a, b) {
+      final c = covRank(b.coverageLevel).compareTo(covRank(a.coverageLevel));
+      if (c != 0) return c;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+  }
 
   /// Fire-and-forget telemetry (RLS: own rows only).
   static Future<void> logTelemetry(String kind, Map<String, dynamic> payload) async {
@@ -30,14 +50,16 @@ abstract final class CourseCatalogRepository {
     }
 
     try {
-      final res = await _client.functions.invoke(
-        'search-courses',
-        body: {
-          'query': query,
-          'includeRemote': includeRemote,
-          'limit': 25,
-        },
-      );
+      final res = await _client.functions
+          .invoke(
+            'search-courses',
+            body: {
+              'query': query,
+              'includeRemote': includeRemote,
+              'limit': 25,
+            },
+          )
+          .timeout(_functionInvokeTimeout);
       final data = res.data;
       if (data is! Map) {
         await logTelemetry('provider_error', {'stage': 'search', 'reason': 'bad_response_shape'});
@@ -49,6 +71,7 @@ abstract final class CourseCatalogRepository {
       }
       final list = data['courses'] as List<dynamic>? ?? const [];
       final hits = list.map((e) => CourseSearchHit.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+      _sortHitsByCoverage(hits);
       if (hits.isEmpty && query.trim().isEmpty) {
         return await _searchDirect(query);
       }
@@ -56,6 +79,9 @@ abstract final class CourseCatalogRepository {
         await logTelemetry('search_miss', {'query': query, 'source': 'edge'});
       }
       return hits;
+    } on TimeoutException catch (_) {
+      await logTelemetry('provider_error', {'stage': 'search', 'reason': 'timeout'});
+      return await _searchDirect(query);
     } catch (e) {
       await logTelemetry('provider_error', {'stage': 'search', 'message': e.toString()});
       return await _searchDirect(query);
@@ -80,6 +106,7 @@ abstract final class CourseCatalogRepository {
       final list = (rows as List<dynamic>)
           .map((row) => _searchHitFromCourseRow(Map<String, dynamic>.from(row as Map)))
           .toList();
+      _sortHitsByCoverage(list);
       if (list.isEmpty && t.isEmpty) {
         return CourseSearchHit.offlineSeeds;
       }
@@ -125,14 +152,19 @@ abstract final class CourseCatalogRepository {
     }
 
     try {
-      final res = await _client.functions.invoke(
-        'get-course-detail',
-        body: {'courseId': courseId},
-      );
+      final res = await _client.functions
+          .invoke(
+            'get-course-detail',
+            body: {'courseId': courseId},
+          )
+          .timeout(_functionInvokeTimeout);
       final data = res.data;
       if (data is! Map) return await _getCourseDetailDirect(courseId);
       if (data['error'] != null) return await _getCourseDetailDirect(courseId);
       return CourseDetailView.fromDetailJson(Map<String, dynamic>.from(data));
+    } on TimeoutException catch (_) {
+      await logTelemetry('provider_error', {'stage': 'course_detail', 'reason': 'timeout'});
+      return await _getCourseDetailDirect(courseId);
     } catch (_) {
       return await _getCourseDetailDirect(courseId);
     }
