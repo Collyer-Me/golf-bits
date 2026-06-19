@@ -3,10 +3,20 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// Material 3 theme + layout/letterspacing tokens (style guide). Prefer these over literals in UI.
+/// Material 3 theme + layout/letterspacing tokens (style guide). Prefer these
+/// over literals in UI.
+///
+/// Ships a mirrored **dark** ("on course") and **light** ("in the clubhouse")
+/// pair built from one [_baseTheme] so a screen needs no per-theme branching —
+/// drive everything from `colorScheme` / `textTheme` / these tokens.
 abstract final class AppTheme {
   static const double stadiumRadius = 999;
-  static const double cardRadius = 20;
+
+  /// Cards, [OutlinedSurfaceCard], list tiles.
+  static const double cardRadius = 18;
+
+  /// Large feature / hero cards (winner spotlight, etc.).
+  static const double featureCardRadius = 22;
 
   /// Horizontal / vertical padding for full-width screen bodies.
   static const double pageHorizontal = 20;
@@ -16,8 +26,11 @@ abstract final class AppTheme {
 
   /// Text fields, small contained surfaces.
   static const double fieldRadius = 16;
-  static const double radiusSm = 4;
+  static const double radiusSm = 8;
   static const double radiusMd = 12;
+
+  /// Rounded-square avatars (initials).
+  static const double avatarRadius = 12;
 
   /// 4dp-ish spacing scale (prefer over raw `SizedBox` / `EdgeInsets` numbers).
   static const double space1 = 4;
@@ -44,6 +57,9 @@ abstract final class AppTheme {
   static const double letterBadge = 0.6;
   static const double letterSheetLabel = 1.1;
 
+  /// All-caps DM Mono "ledger" labels (e.g. `HOLE 7 · PAR 4`, `+5 BITS`).
+  static const double letterMonoCaps = 1.8;
+
   /// Shared opacity for borders / overlays (still tokenised).
   static const double opacityBorderEmphasis = 0.55;
   static const double opacitySecondaryFill = 0.18;
@@ -65,8 +81,10 @@ abstract final class AppTheme {
   /// Small trailing / chip icons.
   static const double iconDense = 18;
   static const double iconArrow = 20;
-  /// OAuth / large provider marks (e.g. Google “G”).
+
+  /// OAuth / large provider marks (e.g. Google "G").
   static const double iconOAuthGlyph = 28;
+
   /// [NavigationBar] icon size (matches M3 default, tokenised for consistency).
   static const double iconNavigation = 24;
   static const double chipOutlineWidth = 1.2;
@@ -87,6 +105,42 @@ abstract final class AppTheme {
   /// Filled button label tracking (matches [FilledButtonTheme]).
   static const double letterButton = 0.8;
 
+  // ── Semantic colour accessors (flip per brightness) ─────────────────────
+
+  /// Points won — birdies, sandies. [AppColors.fairway] on dark, deeper on light.
+  static Color bits(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? AppColors.fairway
+          : AppColors.bitsPositiveLight;
+
+  /// Points lost — three-putts, OB.
+  static Color junk(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? AppColors.junkPenalty
+          : AppColors.junkPenaltyText;
+
+  /// Leader / payouts / highlights.
+  static Color sand(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? AppColors.sandWinner
+          : AppColors.sandWinnerText;
+
+  /// All-caps "ledger" label in DM Mono (the global `labelSmall` family).
+  static TextStyle monoLabel(BuildContext context, {Color? color}) {
+    final base = Theme.of(context).textTheme.labelSmall ?? const TextStyle();
+    return color == null ? base : base.copyWith(color: color);
+  }
+
+  /// Big Bricolage 800 score numeral (e.g. `+8`, `−2`), coloured by the caller.
+  static TextStyle score(BuildContext context, {double size = 24, Color? color}) =>
+      GoogleFonts.bricolageGrotesque(
+        fontSize: size,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+        height: 1.0,
+        color: color ?? Theme.of(context).colorScheme.onSurface,
+      );
+
   /// Readable label on circular tee / brand fills (uses [ColorScheme]).
   static Color textOnFilledCircle(Color fill, ColorScheme scheme) {
     if (fill == scheme.tertiary) return scheme.onTertiary;
@@ -94,35 +148,131 @@ abstract final class AppTheme {
     return bright == Brightness.dark ? scheme.onSurface : scheme.surfaceContainerLowest;
   }
 
-  static ThemeData dark() {
+  // ── Themes ──────────────────────────────────────────────────────────────
+
+  static ThemeData dark() => _baseTheme(_darkScheme());
+
+  static ThemeData light() => _baseTheme(_lightScheme());
+
+  static ColorScheme _darkScheme() {
     final base = ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
+      seedColor: AppColors.ink,
       brightness: Brightness.dark,
-      primary: AppColors.primary,
-      secondary: AppColors.secondary,
-      onSecondary: AppColors.onSecondaryDark,
-      tertiary: AppColors.tertiary,
-      surface: AppColors.surface,
+    );
+    return base.copyWith(
+      primary: AppColors.fairway,
+      onPrimary: AppColors.ink,
+      primaryContainer: AppColors.pine,
+      onPrimaryContainer: AppColors.fairway,
+      secondary: AppColors.sandWinner,
+      onSecondary: AppColors.ink,
+      secondaryContainer: AppColors.darkRaised,
+      onSecondaryContainer: AppColors.parchment,
+      tertiary: AppColors.junkPenalty,
+      onTertiary: AppColors.parchment,
+      surface: AppColors.darkSurface,
+      onSurface: AppColors.darkText,
+      onSurfaceVariant: AppColors.darkMuted,
+      surfaceContainerLowest: AppColors.darkBg,
+      surfaceContainerLow: AppColors.darkSurface,
+      surfaceContainer: AppColors.darkRaised,
+      surfaceContainerHigh: AppColors.darkLine,
+      surfaceContainerHighest: AppColors.darkHi,
+      outline: AppColors.darkHi,
+      outlineVariant: AppColors.darkLine,
+      inverseSurface: AppColors.parchment,
+      onInverseSurface: AppColors.ink,
+      error: AppColors.junkPenalty,
+      onError: AppColors.parchment,
+      errorContainer: AppColors.darkErrorContainer,
+      onErrorContainer: AppColors.darkOnErrorContainer,
+    );
+  }
+
+  static ColorScheme _lightScheme() {
+    final base = ColorScheme.fromSeed(
+      seedColor: AppColors.ink,
+      brightness: Brightness.light,
+    );
+    return base.copyWith(
+      primary: AppColors.ink,
+      onPrimary: AppColors.parchment,
+      primaryContainer: AppColors.lightPrimaryContainer,
+      onPrimaryContainer: AppColors.lightOnPrimaryContainer,
+      secondary: AppColors.sandWinner,
+      onSecondary: AppColors.ink,
+      secondaryContainer: AppColors.lightSecondaryContainer,
+      onSecondaryContainer: AppColors.sandWinnerText,
+      tertiary: AppColors.junkPenalty,
+      onTertiary: AppColors.parchment,
+      surface: AppColors.lightSurface,
+      onSurface: AppColors.lightText,
+      onSurfaceVariant: AppColors.lightMuted,
+      surfaceContainerLowest: AppColors.lightBg,
+      surfaceContainerLow: AppColors.lightContainerLow,
+      surfaceContainer: AppColors.lightSurface,
+      surfaceContainerHigh: AppColors.lightRaised,
+      surfaceContainerHighest: AppColors.lightCard,
+      outline: AppColors.lightOutline,
+      outlineVariant: AppColors.lightLine,
+      inverseSurface: AppColors.ink,
+      onInverseSurface: AppColors.parchment,
+      error: AppColors.junkPenaltyText,
+      onError: AppColors.parchment,
+      errorContainer: AppColors.lightErrorContainer,
+      onErrorContainer: AppColors.lightOnErrorContainer,
+    );
+  }
+
+  /// Composes the tri-family text theme: Bricolage Grotesque for display /
+  /// headline, Hanken Grotesk for everything interface, and DM Mono for the
+  /// all-caps "ledger" `labelSmall`.
+  static TextTheme _textTheme(ColorScheme scheme) {
+    final base = ThemeData(brightness: scheme.brightness, useMaterial3: true).textTheme;
+    final hanken = GoogleFonts.hankenGroteskTextTheme(base);
+
+    TextStyle bric(double size, FontWeight weight, double height, double spacing) =>
+        GoogleFonts.bricolageGrotesque(
+          fontSize: size,
+          fontWeight: weight,
+          height: height,
+          letterSpacing: spacing,
+        );
+
+    final merged = hanken.copyWith(
+      displayLarge: bric(52, FontWeight.w800, 0.94, -1.0),
+      displayMedium: bric(44, FontWeight.w800, 0.96, -0.9),
+      displaySmall: bric(36, FontWeight.w800, 1.0, -0.7),
+      headlineLarge: bric(34, FontWeight.w700, 1.02, -0.5),
+      headlineMedium: bric(28, FontWeight.w700, 1.04, -0.4),
+      headlineSmall: bric(22, FontWeight.w800, 1.06, -0.2),
+      titleLarge: hanken.titleLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.w600),
+      titleMedium: hanken.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      bodyLarge: hanken.bodyLarge?.copyWith(height: bodyLineHeightRelaxed),
+      labelLarge: hanken.labelLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: letterButton,
+      ),
+      labelSmall: GoogleFonts.dmMono(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        letterSpacing: letterMonoCaps,
+        height: 1.2,
+      ),
     );
 
-    final scheme = base.copyWith(
-      surfaceContainerLowest: AppColors.surfaceContainerLowest,
-      surfaceContainerLow: AppColors.surfaceContainerLow,
-      surfaceContainer: AppColors.surfaceContainer,
-      surfaceContainerHigh: AppColors.surfaceContainerHigh,
-      surfaceContainerHighest: AppColors.surfaceContainerHighest,
-      primaryContainer: AppColors.primaryContainer,
-      onPrimaryContainer: AppColors.accentLime,
-      secondaryContainer: AppColors.secondaryContainer,
-      onSecondaryContainer: AppColors.onSecondaryContainer,
-    );
-
-    final rawText = ThemeData(brightness: Brightness.dark, useMaterial3: true).textTheme;
-    final textTheme = GoogleFonts.lexendTextTheme(rawText).apply(
+    return merged.apply(
       displayColor: scheme.onSurface,
       bodyColor: scheme.onSurfaceVariant,
     );
+  }
 
+  static ThemeData _baseTheme(ColorScheme scheme) {
+    final textTheme = _textTheme(scheme);
+    final isDark = scheme.brightness == Brightness.dark;
+    final navUnselected =
+        isDark ? AppColors.darkNavUnselected : AppColors.lightNavUnselected;
+    final link = isDark ? AppColors.fairway : AppColors.bitsPositiveLight;
     final stadiumShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(stadiumRadius),
     );
@@ -131,19 +281,26 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       textTheme: textTheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: scheme.surfaceContainerLowest,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: scheme.surfaceContainerHigh,
+        backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
-        titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+        titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         color: scheme.surfaceContainer,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(cardRadius)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(cardRadius),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        thickness: outlineBorderWidth,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -181,32 +338,45 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(48, 48),
-          foregroundColor: scheme.onSurfaceVariant,
+          foregroundColor: scheme.onSurface,
           side: BorderSide(color: scheme.outlineVariant),
           shape: stadiumShape,
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: letterButton,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: link,
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
       chipTheme: ChipThemeData(
         shape: stadiumShape,
-        side: BorderSide(color: scheme.outline),
+        side: BorderSide(color: scheme.outline, width: chipOutlineWidth),
+        backgroundColor: scheme.surfaceContainer,
+        selectedColor: scheme.primary,
         labelStyle: textTheme.labelLarge,
+        secondaryLabelStyle: textTheme.labelLarge?.copyWith(color: scheme.onPrimary),
         padding: const EdgeInsets.symmetric(horizontal: space3, vertical: space2),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
-        backgroundColor: scheme.surfaceContainer,
-        indicatorColor: scheme.primary,
+        backgroundColor: scheme.surface,
+        indicatorColor: scheme.primary.withValues(alpha: opacitySecondaryFill),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return textTheme.labelSmall?.copyWith(
+          return textTheme.labelMedium?.copyWith(
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+            color: selected ? scheme.primary : navUnselected,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? scheme.onPrimary : scheme.onSurfaceVariant,
+            color: selected ? scheme.primary : navUnselected,
             size: iconNavigation,
           );
         }),
@@ -217,6 +387,9 @@ abstract final class AppTheme {
         shape: WidgetStatePropertyAll(stadiumShape),
         side: WidgetStateProperty.resolveWith(
           (_) => BorderSide(color: scheme.outlineVariant),
+        ),
+        hintStyle: WidgetStatePropertyAll(
+          textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(

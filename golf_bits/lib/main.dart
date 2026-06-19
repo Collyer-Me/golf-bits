@@ -5,6 +5,7 @@ import 'auth/auth_root.dart';
 import 'auth/pending_auth_link.dart';
 import 'config/supabase_env.dart';
 import 'theme/app_theme.dart';
+import 'theme/theme_controller.dart';
 
 final RouteObserver<ModalRoute<void>> appRouteObserver = RouteObserver<ModalRoute<void>>();
 
@@ -27,18 +28,37 @@ Future<void> main() async {
   runApp(const GolfBitsApp());
 }
 
-/// Root app: Material 3, dark-first, Lexend + brand ColorScheme.
-class GolfBitsApp extends StatelessWidget {
+/// Root app: Material 3, Bits Dots Junk brand, dark ("on course") + light
+/// ("in the clubhouse") themes with a system-default [ThemeMode] toggle.
+class GolfBitsApp extends StatefulWidget {
   const GolfBitsApp({super.key});
 
   @override
+  State<GolfBitsApp> createState() => _GolfBitsAppState();
+}
+
+class _GolfBitsAppState extends State<GolfBitsApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  void _setThemeMode(ThemeMode mode) {
+    if (mode == _themeMode) return;
+    setState(() => _themeMode = mode);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Golf Bits',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
-      navigatorObservers: [appRouteObserver],
-      home: const AuthRoot(),
+    return ThemeController(
+      mode: _themeMode,
+      setMode: _setThemeMode,
+      child: MaterialApp(
+        title: 'Bits Dots Junk',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: _themeMode,
+        navigatorObservers: [appRouteObserver],
+        home: const AuthRoot(),
+      ),
     );
   }
 }
