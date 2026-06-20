@@ -13,6 +13,7 @@ import '../main.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
+import '../theme/theme_controller.dart';
 import '../widgets/guest_promotion_strip.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
@@ -769,6 +770,35 @@ class _ProfileTabState extends State<_ProfileTab> {
           ),
         ),
       );
+    }
+
+    final themeController = ThemeController.maybeOf(context);
+    if (themeController != null) {
+      children.addAll([
+        SizedBox(height: AppTheme.space6),
+        Text(
+          'APPEARANCE',
+          style: text.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+            letterSpacing: AppTheme.letterStepCaps,
+          ),
+        ),
+        SizedBox(height: AppTheme.space3),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.system, label: Text('System')),
+              ButtonSegment(value: ThemeMode.light, label: Text('Light')),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+            ],
+            selected: {themeController.mode},
+            onSelectionChanged: (selection) => themeController.setMode(selection.first),
+            showSelectedIcon: false,
+          ),
+        ),
+      ]);
     }
 
     children.addAll([
