@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/stroke_hole_counter.dart';
 
@@ -24,9 +25,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Style guide & components'),
-      ),
+      appBar: const BrandAppBar(),
       body: ListView(
         padding: AppTheme.screenPadding,
         children: [

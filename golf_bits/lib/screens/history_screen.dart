@@ -9,6 +9,7 @@ import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/history_round.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'guest_upgrade_screen.dart';
@@ -72,15 +73,7 @@ class HistoryScreenState extends State<HistoryScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).pop(),
-              )
-            : null,
-        automaticallyImplyLeading: false,
-        title: const Text('History'),
+      appBar: BrandAppBar(
         actions: [
           IconButton(
             tooltip: 'Refresh',

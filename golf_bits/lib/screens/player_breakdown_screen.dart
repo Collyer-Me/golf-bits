@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/brand_app_bar.dart';
+
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/stroke_tracking.dart';
@@ -162,13 +164,7 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
     final grossFooter = _grossFooterLabel();
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Player Breakdown'),
-      ),
+      appBar: const BrandAppBar(),
       body: FutureBuilder<List<_TimelineHole>>(
         future: _holesFuture,
         builder: (context, snapshot) {

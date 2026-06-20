@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+
+import '../widgets/brand_app_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
@@ -611,7 +613,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: BrandAppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -622,7 +624,6 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             Navigator.of(context).pop();
           },
         ),
-        title: const Text('New Round'),
         actions: [
           PopupMenuButton<String>(
             onSelected: (_) {

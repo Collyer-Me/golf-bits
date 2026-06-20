@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../widgets/brand_app_bar.dart';
+
 import '../data/user_preferences_repository.dart';
 import '../models/event_preferences.dart';
 import '../theme/app_theme.dart';
@@ -62,7 +64,7 @@ class _ProfileEventDefaultsScreenState extends State<ProfileEventDefaultsScreen>
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Default Event Settings')),
+      appBar: const BrandAppBar(),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
@@ -70,6 +72,11 @@ class _ProfileEventDefaultsScreenState extends State<ProfileEventDefaultsScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text(
+                    'Default bets & events',
+                    style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: AppTheme.space2),
                   Text(
                     'This uses the same event builder as New Round. Changes here are your defaults for future rounds.',
                     style: text.bodySmall?.copyWith(

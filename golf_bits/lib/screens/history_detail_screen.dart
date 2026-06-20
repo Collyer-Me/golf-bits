@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../widgets/brand_app_bar.dart';
+
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/history_round.dart';
@@ -51,26 +53,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _round.courseShortTitle,
-              overflow: TextOverflow.ellipsis,
-              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            Text(
-              _round.dateHeader,
-              style: text.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
-        centerTitle: true,
+      appBar: BrandAppBar(
         actions: [
           if (SupabaseEnv.isConfigured)
             IconButton(
@@ -95,6 +78,16 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
           padding: AppTheme.screenPadding,
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            SizedBox(height: AppTheme.space4),
+            Text(
+              '${_round.courseShortTitle} · ${_round.dateHeader}',
+              textAlign: TextAlign.center,
+              style: text.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: AppTheme.letterStepCaps,
+              ),
+            ),
             SizedBox(height: AppTheme.space4),
             Icon(Icons.emoji_events_outlined, size: AppTheme.iconLarge, color: scheme.secondary),
             SizedBox(height: AppTheme.space3),

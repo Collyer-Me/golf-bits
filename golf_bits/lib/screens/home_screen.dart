@@ -14,7 +14,7 @@ import '../models/history_round.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
-import '../widgets/brand_wordmark.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/guest_promotion_strip.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
@@ -224,8 +224,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const BrandWordmark(size: BrandWordmarkSize.compact),
+      appBar: BrandAppBar(
         actions: [
           PopupMenuButton<String>(
             onSelected: (v) async {
@@ -856,7 +855,7 @@ class _ProfileTabState extends State<_ProfileTab> {
     ]);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: const BrandAppBar(),
       body: ListView(
         padding: AppTheme.screenPadding,
         children: children,

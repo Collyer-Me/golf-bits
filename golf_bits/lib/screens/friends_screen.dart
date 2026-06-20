@@ -8,6 +8,7 @@ import '../config/supabase_env.dart';
 import '../data/friends_repository.dart';
 import '../models/friend_models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import 'log_in_screen.dart';
 import 'sign_up_screen.dart';
@@ -239,7 +240,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
 
     if (!configured || user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('People')),
+        appBar: const BrandAppBar(),
         body: _authGateBody(needsConfig: !configured),
       );
     }

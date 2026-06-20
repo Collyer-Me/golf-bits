@@ -8,6 +8,7 @@ import '../models/round_result.dart';
 import '../models/round_session_args.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/stroke_hole_counter.dart';
 import '../widgets/tally_marks.dart';
@@ -398,22 +399,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     final coursePar = courseParForHoles(_holePars, _holeOrder);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.flag, size: AppTheme.iconInline, color: scheme.primary),
-            SizedBox(width: AppTheme.space2),
-            Text(
-              'Golf Bits',
-              style: text.titleLarge?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w800,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
+      appBar: BrandAppBar(
         actions: [
           PopupMenuButton<String>(
             onSelected: (v) {
