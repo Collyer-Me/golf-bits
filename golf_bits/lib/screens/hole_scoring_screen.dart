@@ -10,6 +10,7 @@ import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/stroke_hole_counter.dart';
+import '../widgets/tally_marks.dart';
 import 'round_summary_screen.dart';
 
 class _HolePlayer {
@@ -534,6 +535,11 @@ class _TrackedPlayerRow extends StatelessWidget {
         : '—';
     final holeBitsStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
     final totalBitsStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
+    final scoreColor = totalBits > 0
+        ? AppTheme.bits(context)
+        : totalBits < 0
+            ? AppTheme.junk(context)
+            : scheme.onSurfaceVariant;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space3),
@@ -592,10 +598,32 @@ class _TrackedPlayerRow extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: AppTheme.space2),
-            Text(
-              'Bits: $holeBitsStr this hole · $totalBitsStr total',
-              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            SizedBox(height: AppTheme.space3),
+            Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: TallyMarks(
+                        count: totalBits,
+                        height: 22,
+                        variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
+                      ),
+                    ),
+                  ),
+                ),
+                if (holeBits != 0) ...[
+                  Text(
+                    '$holeBitsStr hole',
+                    style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                  SizedBox(width: AppTheme.space3),
+                ],
+                Text(totalBitsStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
+              ],
             ),
           ],
         ),
@@ -623,6 +651,11 @@ class _BitsOnlyPlayerRow extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final holeStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
     final totalStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
+    final scoreColor = totalBits > 0
+        ? AppTheme.bits(context)
+        : totalBits < 0
+            ? AppTheme.junk(context)
+            : scheme.onSurfaceVariant;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space3),
@@ -642,14 +675,32 @@ class _BitsOnlyPlayerRow extends StatelessWidget {
                     playerName,
                     style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
-                  SizedBox(height: AppTheme.space1),
-                  Text(
-                    'Bits: $holeStr this hole · $totalStr total',
-                    style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  SizedBox(height: AppTheme.space2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: TallyMarks(
+                      count: totalBits,
+                      height: 24,
+                      variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
+                    ),
                   ),
                 ],
               ),
             ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(totalStr, style: AppTheme.score(context, size: 30, color: scoreColor)),
+                if (holeBits != 0)
+                  Text(
+                    '$holeStr this hole',
+                    style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+              ],
+            ),
+            SizedBox(width: AppTheme.space3),
             FilledButton(
               onPressed: onAward,
               style: FilledButton.styleFrom(
