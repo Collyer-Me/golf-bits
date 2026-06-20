@@ -688,7 +688,12 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             ),
           ),
           Padding(
-            padding: AppTheme.screenPadding,
+            padding: EdgeInsets.fromLTRB(
+              AppTheme.pageHorizontal,
+              AppTheme.space4,
+              AppTheme.pageHorizontal,
+              MediaQuery.paddingOf(context).bottom + AppTheme.space4,
+            ),
             child: Row(
               children: [
                 if (_step > 0)
@@ -776,24 +781,14 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           children: [
             ..._players.map((p) {
               return InputChip(
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(p.name),
-                    if (p.isYou) ...[
-                      const SizedBox(width: AppTheme.spaceHalf),
-                      Text(
-                        'YOU',
-                        style: text.labelSmall?.copyWith(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ],
+                label: Text(p.name),
+                labelStyle: text.labelLarge?.copyWith(
+                  color: scheme.onPrimary,
+                  fontWeight: FontWeight.w700,
                 ),
                 onDeleted: p.isYou ? null : () => _removePlayer(p),
                 deleteIcon: p.isYou ? null : const Icon(Icons.close, size: AppTheme.iconDense),
+                deleteIconColor: scheme.onPrimary,
                 selected: true,
                 showCheckmark: false,
               );

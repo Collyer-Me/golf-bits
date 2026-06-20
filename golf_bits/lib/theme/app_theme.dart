@@ -337,7 +337,7 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(48, 52),
           padding: const EdgeInsets.symmetric(horizontal: space6, vertical: buttonPadV),
           shape: stadiumShape,
           textStyle: textTheme.labelLarge?.copyWith(
@@ -348,7 +348,7 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(48, 52),
           foregroundColor: scheme.onSurface,
           side: BorderSide(color: scheme.outlineVariant),
           shape: stadiumShape,
@@ -372,6 +372,27 @@ abstract final class AppTheme {
         labelStyle: textTheme.labelLarge,
         secondaryLabelStyle: textTheme.labelLarge?.copyWith(color: scheme.onPrimary),
         padding: const EdgeInsets.symmetric(horizontal: space3, vertical: space2),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected)
+            ? scheme.onPrimary
+            : scheme.onSurfaceVariant),
+        trackColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected)
+            ? scheme.primary
+            : scheme.surfaceContainerHigh),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected)
+            ? scheme.primary
+            : scheme.outline),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          backgroundColor: scheme.surfaceContainer,
+          foregroundColor: scheme.onSurfaceVariant,
+          selectedBackgroundColor: scheme.primary,
+          selectedForegroundColor: scheme.onPrimary,
+          side: BorderSide(color: scheme.outlineVariant),
+          shape: stadiumShape,
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 72,

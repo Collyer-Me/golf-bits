@@ -33,7 +33,7 @@ class StrokeHoleCounter extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton.filledTonal(
+        IconButton.outlined(
           onPressed: strokes > _min ? () => _bump(-1) : null,
           icon: const Icon(Icons.remove, size: AppTheme.iconDense),
           style: IconButton.styleFrom(
@@ -57,7 +57,7 @@ class StrokeHoleCounter extends StatelessWidget {
           ],
         ),
         SizedBox(width: AppTheme.space2),
-        IconButton.filledTonal(
+        IconButton.filled(
           onPressed: strokes < _max ? () => _bump(1) : null,
           icon: const Icon(Icons.add, size: AppTheme.iconDense),
           style: IconButton.styleFrom(
