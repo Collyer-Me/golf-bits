@@ -671,7 +671,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                 const SizedBox(height: AppTheme.space3),
                 Text(
                   _stepLabel,
-                  style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                  style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ],
             ),

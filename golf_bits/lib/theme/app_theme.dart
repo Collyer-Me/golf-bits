@@ -243,13 +243,14 @@ abstract final class AppTheme {
       displayLarge: bric(52, FontWeight.w800, 0.94, -1.0),
       displayMedium: bric(44, FontWeight.w800, 0.96, -0.9),
       displaySmall: bric(36, FontWeight.w800, 1.0, -0.7),
-      headlineLarge: bric(34, FontWeight.w700, 1.02, -0.5),
-      headlineMedium: bric(28, FontWeight.w700, 1.04, -0.4),
-      headlineSmall: bric(22, FontWeight.w800, 1.06, -0.2),
+      headlineLarge: bric(40, FontWeight.w700, 1.0, -0.8),
+      headlineMedium: bric(32, FontWeight.w700, 1.04, -0.5),
+      headlineSmall: bric(26, FontWeight.w700, 1.08, -0.3),
       titleLarge: hanken.titleLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.w600),
-      titleMedium: hanken.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      titleMedium: hanken.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
       bodyLarge: hanken.bodyLarge?.copyWith(height: bodyLineHeightRelaxed),
       labelLarge: hanken.labelLarge?.copyWith(
+        fontSize: 15,
         fontWeight: FontWeight.w700,
         letterSpacing: letterButton,
       ),
@@ -261,9 +262,19 @@ abstract final class AppTheme {
       ),
     );
 
-    return merged.apply(
+    final colored = merged.apply(
       displayColor: scheme.onSurface,
       bodyColor: scheme.onSurfaceVariant,
+    );
+    // Flutter's TextTheme.apply() routes headlineSmall + the title roles to
+    // bodyColor. Force all display/headline/title roles onto the bright
+    // onSurface so prominent headers and names don't render in the muted body
+    // colour (a screen can still opt a specific line down to onSurfaceVariant).
+    return colored.copyWith(
+      headlineSmall: colored.headlineSmall?.copyWith(color: scheme.onSurface),
+      titleLarge: colored.titleLarge?.copyWith(color: scheme.onSurface),
+      titleMedium: colored.titleMedium?.copyWith(color: scheme.onSurface),
+      titleSmall: colored.titleSmall?.copyWith(color: scheme.onSurface),
     );
   }
 
