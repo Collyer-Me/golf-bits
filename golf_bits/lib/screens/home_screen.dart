@@ -14,6 +14,7 @@ import '../models/history_round.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
+import '../widgets/brand_wordmark.dart';
 import '../widgets/guest_promotion_strip.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
@@ -224,21 +225,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.flag, size: AppTheme.iconInline, color: scheme.primary),
-            SizedBox(width: AppTheme.space2),
-            Text(
-              'Golf Bits',
-              style: text.titleLarge?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w800,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
+        title: const BrandWordmark(size: BrandWordmarkSize.compact),
         actions: [
           PopupMenuButton<String>(
             onSelected: (v) async {

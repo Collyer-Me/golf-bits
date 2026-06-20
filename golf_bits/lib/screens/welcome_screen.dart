@@ -56,10 +56,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: AppTheme.space6),
-              const BrandWordmark(size: BrandWordmarkSize.hero),
+              const Center(child: BrandWordmark(size: BrandWordmarkSize.hero)),
               SizedBox(height: AppTheme.space2),
               Text(
-                'Track the bits. Win the round.',
+                'Tally up. Settle up.',
                 textAlign: TextAlign.center,
                 style: text.titleMedium?.copyWith(
                   color: scheme.onSurfaceVariant,

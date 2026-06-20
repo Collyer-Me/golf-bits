@@ -766,8 +766,8 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     return ListView(
       children: [
         Text(
-          'Who’s playing?',
-          style: text.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
+          'Add everyone in your group.',
+          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: AppTheme.space4),
         Wrap(
