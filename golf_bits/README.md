@@ -102,7 +102,7 @@ flutter test
 ## Stack
 
 - UI: Flutter **Material 3** (`ThemeData`, `ColorScheme.fromSeed`, standard `Material` widgets)
-- Typography: **Lexend** via `google_fonts`
+- Typography: **Bricolage Grotesque** (display/headline) + **Hanken Grotesk** (interface) + **DM Mono** (scores / caps labels), via `google_fonts`
 - Design tokens: `lib/theme/app_colors.dart`, `lib/theme/app_theme.dart`
 - **Style guide / component gallery**: run the app → **Style guide & components** (preview for web via GitHub Pages too)
 - Backend: **Supabase** (schema already applied in your Supabase project; regenerate or maintain Dart models as you prefer)
@@ -115,10 +115,10 @@ Single style guide for humans and automation. **Do not scatter magic numbers or 
 
 | Concern | Source of truth |
 |--------|------------------|
-| All **hex colours** (brand + dark surface ramp) | [`lib/theme/app_colors.dart`](lib/theme/app_colors.dart) |
-| **`ThemeData`**, spacing scale, radii, opacities, icon sizes, letter-spacing, line heights, `inputDecorationTheme`, `searchBarTheme`, buttons, chips | [`lib/theme/app_theme.dart`](lib/theme/app_theme.dart) — **`AppTheme`** |
+| All **hex colours** (Bits Dots Junk palette + dark & light surface ramps) | [`lib/theme/app_colors.dart`](lib/theme/app_colors.dart) |
+| **`ThemeData`** (dark + light), spacing scale, radii, opacities, icon sizes, letter-spacing, line heights, `inputDecorationTheme`, `searchBarTheme`, buttons, chips, switches, segments, bottom sheets | [`lib/theme/app_theme.dart`](lib/theme/app_theme.dart) — **`AppTheme`** |
 | **Runtime semantic colours** in UI | `Theme.of(context).colorScheme` |
-| **Exception:** `AppColors.accentLime` | Only where `ColorScheme` has no matching role (see component gallery swatch) |
+| **Bits / Junk / Sand semantics** | `AppTheme.bits(context)` / `junk(context)` / `sand(context)` (flip per theme) |
 
 ### Spacing (`AppTheme`)
 
@@ -133,7 +133,7 @@ Use **`space1` … `space8`**, **`spaceHalf`**, **`space25`**, **`pageHorizontal
 
 ### Forms
 
-`AppTheme.dark()` sets **`inputDecorationTheme`**. In screens, use:
+`AppTheme` sets **`inputDecorationTheme`** (shared by `dark()` + `light()`). In screens, use:
 
 ```dart
 InputDecoration(
@@ -147,7 +147,7 @@ Do not repeat `filled: true`, `fillColor`, and border `OutlineInputBorder` per f
 
 ### Custom widgets policy
 
-Prefer **Material** primitives themed in `AppTheme`. The only extra widget shipped without a separate decision is **`OutlinedSurfaceCard`** (`lib/widgets/outlined_surface_card.dart`). **Add new shared widgets only after agreement** — then list them here and mirror usage in the component gallery when it makes sense.
+Prefer **Material** primitives themed in `AppTheme`. Approved shared widgets: **`OutlinedSurfaceCard`**, **`BrandAppBar`** (the one header on every screen — wordmark, titles go in the body), **`BrandWordmark`** / **`BrandMark`** (code-drawn logo), and **`TallyMarks`** (the signature tally motif). **Add further shared widgets only after agreement** — then list them here and mirror usage in the component gallery.
 
 ### Keeping docs in sync
 

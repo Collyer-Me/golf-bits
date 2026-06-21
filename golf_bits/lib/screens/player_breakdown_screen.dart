@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/brand_app_bar.dart';
+import '../widgets/tally_marks.dart';
 
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
@@ -191,10 +192,7 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
                     SizedBox(height: AppTheme.space2),
                     Text(
                       widget.playerName,
-                      style: text.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                      ),
+                      style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     Text(
                       course,
@@ -212,12 +210,25 @@ class _PlayerBreakdownScreenState extends State<PlayerBreakdownScreen> {
                         style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     Text(
-                      '${total >= 0 ? '+' : ''}$total BITS',
-                      style: text.headlineSmall?.copyWith(
-                        color: scheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w900,
+                      total >= 0 ? '+$total' : '$total',
+                      style: AppTheme.score(
+                        context,
+                        size: 40,
+                        color: total > 0
+                            ? AppTheme.bits(context)
+                            : total < 0
+                                ? AppTheme.junk(context)
+                                : scheme.onSurfaceVariant,
                       ),
                     ),
+                    SizedBox(height: AppTheme.space1),
+                    TallyMarks(
+                      count: total,
+                      height: 24,
+                      variant: total < 0 ? TallyVariant.penalty : TallyVariant.positive,
+                    ),
+                    SizedBox(height: AppTheme.space2),
+                    Text('BITS', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
                     SizedBox(height: AppTheme.space6),
                     if (holes.isEmpty)
                       Text(

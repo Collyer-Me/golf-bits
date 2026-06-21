@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
+import '../widgets/brand_wordmark.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/stroke_hole_counter.dart';
+import '../widgets/tally_marks.dart';
 
 /// Scrollable preview of **Material 3** primitives + one approved custom ([OutlinedSurfaceCard]).
 class ComponentGalleryScreen extends StatefulWidget {
@@ -37,29 +39,57 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
                 spacing: AppTheme.space3,
                 runSpacing: AppTheme.space3,
                 children: [
-                  _swatch(context, 'Primary', scheme.primary),
-                  _swatch(context, 'Secondary', scheme.secondary),
-                  _swatch(context, 'Tertiary', scheme.tertiary),
+                  _swatch(context, 'Fairway', scheme.primary),
+                  _swatch(context, 'Sand', scheme.secondary),
+                  _swatch(context, 'Junk', scheme.tertiary),
                   _swatch(context, 'Surface', scheme.surface),
-                  _swatch(context, 'onPrimaryContainer', scheme.onPrimaryContainer),
+                  _swatch(context, 'Raised', scheme.surfaceContainer),
+                  _swatch(context, 'Line', scheme.outlineVariant),
+                  _swatch(context, 'Bits', AppTheme.bits(context)),
+                  _swatch(context, 'Sand text', AppTheme.sand(context)),
                 ],
               ),
             ),
           ),
           const SizedBox(height: AppTheme.space6),
-          _sectionTitle(context, 'Typography (Lexend)', 'From google_fonts + ThemeData.textTheme.'),
+          _sectionTitle(context, 'Typography', 'Bricolage Grotesque · Hanken Grotesk · DM Mono.'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(AppTheme.space4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Headline', style: text.headlineMedium),
-                  Text('Title', style: text.titleMedium),
-                  Text('Body on variant', style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant)),
+                  Text('Display', style: text.displaySmall),
+                  Text('Headline — Bricolage', style: text.headlineMedium),
+                  Text('Title — Hanken', style: text.titleLarge),
                   Text(
-                    'LABEL · ALL CAPS',
-                    style: text.labelSmall?.copyWith(letterSpacing: AppTheme.letterStepCaps),
+                    'Body — Hanken interface copy.',
+                    style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: AppTheme.space2),
+                  Text('HOLE 7 · PAR 4 · +5 BITS', style: AppTheme.monoLabel(context)),
+                  const SizedBox(height: AppTheme.space2),
+                  Text('+8', style: AppTheme.score(context, size: 40, color: AppTheme.bits(context))),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space6),
+          _sectionTitle(context, 'Brand', 'Code-drawn mark + wordmark and the tally motif.'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.space4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const BrandWordmark(size: BrandWordmarkSize.screen),
+                  const SizedBox(height: AppTheme.space4),
+                  Row(
+                    children: [
+                      const TallyMarks(count: 7, height: 28),
+                      const SizedBox(width: AppTheme.space5),
+                      const TallyMarks(count: 3, height: 28, variant: TallyVariant.penalty),
+                    ],
                   ),
                 ],
               ),
@@ -260,11 +290,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
                   Expanded(
                     child: Text(
                       'Alex',
-                      style: text.headlineSmall?.copyWith(
-                        color: scheme.primary,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
                   FilledButton(
