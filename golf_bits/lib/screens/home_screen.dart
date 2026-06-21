@@ -15,6 +15,7 @@ import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/brand_app_bar.dart';
+import '../widgets/tally_marks.dart';
 import '../widgets/guest_promotion_strip.dart';
 import '../widgets/history_round_card.dart';
 import '../widgets/outlined_surface_card.dart';
@@ -403,6 +404,11 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final detailLine = '${round.holeCount} holes · ${round.whenRelative}';
+    final scoreTiles = (round.standings.isNotEmpty
+            ? round.standings.map((s) => (name: s.name, bits: s.bits))
+            : round.players.map((p) => (name: p, bits: 0)))
+        .take(4)
+        .toList();
 
     return [
       Row(
@@ -475,19 +481,16 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
               ),
             ),
             SizedBox(height: AppTheme.space4),
-            Wrap(
-              spacing: AppTheme.space2,
-              runSpacing: AppTheme.space2,
-              children: round.players
-                  .map(
-                    (p) => Chip(
-                      avatar: Icon(Icons.person_outline, size: AppTheme.iconDense, color: scheme.onSurfaceVariant),
-                      label: Text(p),
-                      side: BorderSide(color: scheme.outlineVariant),
-                      backgroundColor: scheme.surfaceContainerHigh,
-                    ),
-                  )
-                  .toList(),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < scoreTiles.length; i++) ...[
+                  if (i > 0) SizedBox(width: AppTheme.space2),
+                  Expanded(
+                    child: _ScoreTile(name: scoreTiles[i].name, bits: scoreTiles[i].bits),
+                  ),
+                ],
+              ],
             ),
             SizedBox(height: AppTheme.space6),
             FilledButton(
@@ -859,6 +862,59 @@ class _ProfileTabState extends State<_ProfileTab> {
       body: ListView(
         padding: AppTheme.screenPadding,
         children: children,
+      ),
+    );
+  }
+}
+
+/// Compact in-progress score tile: sign-coloured Bricolage total over the name
+/// with a small tally, for the Home active-round card.
+class _ScoreTile extends StatelessWidget {
+  const _ScoreTile({required this.name, required this.bits});
+
+  final String name;
+  final int bits;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final color = bits > 0
+        ? AppTheme.bits(context)
+        : bits < 0
+            ? AppTheme.junk(context)
+            : scheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppTheme.space3,
+        horizontal: AppTheme.space2,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(bits >= 0 ? '+$bits' : '$bits', style: AppTheme.score(context, size: 22, color: color)),
+          SizedBox(height: AppTheme.space1),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          SizedBox(height: AppTheme.spaceHalf),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: TallyMarks(
+              count: bits,
+              height: 12,
+              variant: bits < 0 ? TallyVariant.penalty : TallyVariant.positive,
+            ),
+          ),
+        ],
       ),
     );
   }

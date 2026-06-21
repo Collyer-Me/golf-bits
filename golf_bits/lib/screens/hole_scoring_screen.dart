@@ -784,11 +784,7 @@ class _EventAwardSheetState extends State<_EventAwardSheet> {
                   children: [
                     Text(
                       widget.playerName,
-                      style: text.headlineSmall?.copyWith(
-                        color: scheme.primary,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     Text(
                       'SELECT EVENTS TO AWARD BITS',
