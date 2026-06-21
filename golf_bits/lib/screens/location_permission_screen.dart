@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../navigation/auth_navigation.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 
 /// Post–sign-up prompt: explain location + CTA (stub — no platform permission call yet).
@@ -14,8 +15,7 @@ class LocationPermissionScreen extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
+      appBar: BrandAppBar(
         actions: [
           TextButton(
             onPressed: () => openAppHome(context),

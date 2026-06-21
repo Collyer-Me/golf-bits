@@ -8,7 +8,7 @@ import '../auth/auth_redirect.dart';
 import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
 import '../theme/app_theme.dart';
-import '../widgets/brand_wordmark.dart';
+import '../widgets/brand_app_bar.dart';
 import 'sign_up_screen.dart';
 
 /// Log in — email/password, password reset, and guest (anonymous when enabled in the Supabase project).
@@ -110,17 +110,10 @@ class _LogInScreenState extends State<LogInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Welcome back'),
-      ),
+      appBar: const BrandAppBar(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppTheme.screenPadding.copyWith(bottom: AppTheme.space6),
@@ -130,16 +123,9 @@ class _LogInScreenState extends State<LogInScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(height: AppTheme.space2),
-                const BrandWordmark(size: BrandWordmarkSize.screen),
-                SizedBox(height: AppTheme.space1),
                 Text(
-                  'THE MODERN CADDY',
-                  textAlign: TextAlign.center,
-                  style: text.labelLarge?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: AppTheme.letterTagline,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  'Welcome back',
+                  style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 SizedBox(height: AppTheme.space7),
                 TextFormField(

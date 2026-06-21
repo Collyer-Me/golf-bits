@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/brand_app_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_error_message.dart';
@@ -146,13 +148,7 @@ class _GuestUpgradeScreenState extends State<GuestUpgradeScreen> {
     final validGuest = user != null && isSupabaseGuestUser(user);
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Upgrade guest account'),
-      ),
+      appBar: const BrandAppBar(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppTheme.screenPadding.copyWith(bottom: AppTheme.space6),

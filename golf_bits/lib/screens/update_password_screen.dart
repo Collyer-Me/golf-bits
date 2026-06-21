@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/brand_app_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_error_message.dart';
@@ -58,9 +60,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Set new password'),
-      ),
+      appBar: const BrandAppBar(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppTheme.screenPadding,
@@ -69,6 +69,11 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text(
+                  'Set new password',
+                  style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: AppTheme.space2),
                 Text(
                   'Choose a new password for your account.',
                   style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),

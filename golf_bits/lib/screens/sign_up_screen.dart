@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/brand_app_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/auth_error_message.dart';
@@ -139,13 +141,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(_guestSessionSignup && !_riskSeparateSignup ? 'Create account' : 'Create Account'),
-      ),
+      appBar: const BrandAppBar(),
       body: SafeArea(
         child: _guestSessionSignup && !_riskSeparateSignup
             ? Padding(
