@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/guest_promotion.dart';
+import '../auth/guest_session.dart';
 import '../auth/guest_user.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
@@ -15,6 +16,7 @@ import '../widgets/outlined_surface_card.dart';
 import 'guest_upgrade_screen.dart';
 import 'history_detail_screen.dart';
 import 'round_setup_screen.dart';
+import 'sign_up_screen.dart';
 
 bool _isAnonymousSession() => isSupabaseGuestUser(Supabase.instance.client.auth.currentUser);
 
@@ -135,10 +137,14 @@ class HistoryScreenState extends State<HistoryScreen> {
           if (rounds.isEmpty) {
             final signedOut = SupabaseEnv.isConfigured && Supabase.instance.client.auth.currentSession == null;
             if (signedOut) {
-              return _HistoryNeedSignIn(
-                onOpenProfile: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Use the Profile tab to sign in.')),
+              return _HistoryGuestSyncUnavailable(
+                onRetryGuest: () async {
+                  final ok = await retryGuestCloudSignIn(context);
+                  if (ok && mounted) await _refresh();
+                },
+                onCreateAccount: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),
                   );
                 },
               );
@@ -248,10 +254,14 @@ class HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
-class _HistoryNeedSignIn extends StatelessWidget {
-  const _HistoryNeedSignIn({required this.onOpenProfile});
+class _HistoryGuestSyncUnavailable extends StatelessWidget {
+  const _HistoryGuestSyncUnavailable({
+    required this.onRetryGuest,
+    required this.onCreateAccount,
+  });
 
-  final VoidCallback onOpenProfile;
+  final Future<void> Function() onRetryGuest;
+  final VoidCallback onCreateAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -263,22 +273,28 @@ class _HistoryNeedSignIn extends StatelessWidget {
       child: Column(
         children: [
           const Spacer(flex: 2),
-          Icon(Icons.lock_outline, size: AppTheme.iconLarge, color: scheme.onSurfaceVariant),
+          Icon(Icons.cloud_off_outlined, size: AppTheme.iconLarge, color: scheme.onSurfaceVariant),
           SizedBox(height: AppTheme.space6),
           Text(
-            'Sign in to see history',
+            'Guest sync is not active',
             style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           SizedBox(height: AppTheme.space2),
           Text(
-            'Your finished rounds are saved to your account. Open Profile to sign in or create an account.',
+            'Rounds only appear here after guest cloud sync succeeds, or when you sign in with an account. '
+            'If you played as a guest, try syncing again or create a free account.',
             textAlign: TextAlign.center,
             style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const Spacer(flex: 3),
+          FilledButton(
+            onPressed: onRetryGuest,
+            child: const Text('Try guest sync'),
+          ),
+          SizedBox(height: AppTheme.space3),
           OutlinedButton(
-            onPressed: onOpenProfile,
-            child: const Text('How to sign in'),
+            onPressed: onCreateAccount,
+            child: const Text('Create free account'),
           ),
           SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
         ],

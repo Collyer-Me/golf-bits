@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'guest_user.dart';
+import 'guest_cloud_auth.dart';
+import 'profile_bootstrap.dart';
 import '../config/supabase_env.dart';
 import '../navigation/auth_navigation.dart';
 import '../screens/guest_play_sheet.dart';
 import '../screens/sign_up_screen.dart';
+import '../theme/app_theme.dart';
 
 /// Bottom sheet: continue as guest, then [openAppHome] (same as Log in flow).
 void showGuestPlayBottomSheet(
@@ -18,23 +19,11 @@ void showGuestPlayBottomSheet(
     onContinueGuest: () async {
       Navigator.of(context).pop();
       if (SupabaseEnv.isConfigured) {
-        final auth = Supabase.instance.client.auth;
-        try {
-          final current = auth.currentUser;
-          if (current != null && !isSupabaseGuestUser(current)) {
-            await auth.signOut();
-          }
-          await auth.signInAnonymously();
-        } on AuthException {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Anonymous sign-in is disabled in the project. You can still play on this device.',
-                ),
-              ),
-            );
-          }
+        final result = await GuestCloudAuth.ensureAnonymousSession();
+        if (result.ok) {
+          await ProfileBootstrap.ensureCurrentUserProfile();
+        } else if (result.errorMessage != null && context.mounted) {
+          await _showGuestSyncFailedDialog(context, result.errorMessage!);
         }
       }
       if (context.mounted) openAppHome(context);
@@ -49,4 +38,53 @@ void showGuestPlayBottomSheet(
       }
     },
   );
+}
+
+Future<void> _showGuestSyncFailedDialog(BuildContext context, String message) {
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) {
+      final text = Theme.of(ctx).textTheme;
+      final scheme = Theme.of(ctx).colorScheme;
+      return AlertDialog(
+        title: const Text('Guest sync unavailable'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(message, style: text.bodyMedium),
+            SizedBox(height: AppTheme.space4),
+            Text(
+              'You can still play on this device, but finished rounds will not appear in History until guest sync works or you create an account.',
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Play anyway'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// Retries anonymous sign-in from Profile or History when the user has no session.
+Future<bool> retryGuestCloudSignIn(BuildContext context) async {
+  if (!SupabaseEnv.isConfigured) return false;
+  final result = await GuestCloudAuth.ensureAnonymousSession();
+  if (!context.mounted) return result.ok;
+  if (result.ok) {
+    await ProfileBootstrap.ensureCurrentUserProfile();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Guest profile ready — new rounds will save to History.')),
+    );
+    return true;
+  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(result.errorMessage ?? 'Guest sign-in failed.')),
+  );
+  return false;
 }

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/guest_promotion.dart';
 import '../auth/guest_user.dart';
 import '../config/supabase_env.dart';
+import '../auth/guest_session.dart';
 import '../navigation/auth_navigation.dart';
 import '../data/history_repository.dart';
 import '../data/user_preferences_repository.dart';
@@ -647,16 +648,24 @@ class _ProfileTabState extends State<_ProfileTab> {
               Text('Account', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
               SizedBox(height: AppTheme.space3),
               Text(
-                'Not signed in',
+                'Guest sync not active',
                 style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
               ),
               SizedBox(height: AppTheme.space2),
               Text(
-                'Create an account to sync rounds and use People features.',
+                'Rounds are not being saved to the cloud. Try guest sync below, or create an account.',
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
               SizedBox(height: AppTheme.space6),
               FilledButton(
+                onPressed: () async {
+                  await retryGuestCloudSignIn(context);
+                  if (mounted) setState(() {});
+                },
+                child: const Text('Try guest sync'),
+              ),
+              SizedBox(height: AppTheme.space3),
+              OutlinedButton(
                 onPressed: () {
                   Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(builder: (_) => const SignUpScreen()),

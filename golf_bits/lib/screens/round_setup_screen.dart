@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../widgets/brand_app_bar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/guest_cloud_auth.dart';
+import '../auth/profile_bootstrap.dart';
 import '../config/supabase_env.dart';
 import '../data/course_catalog_repository.dart';
 import '../data/friends_repository.dart';
@@ -499,11 +501,14 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           }
           if (allowGuestCloud) {
             attemptedAnonymousCloud = true;
-            try {
-              await Supabase.instance.client.auth.signInAnonymously();
-              user = Supabase.instance.client.auth.currentUser;
-            } catch (_) {
-              user = null;
+            final guestResult = await GuestCloudAuth.ensureAnonymousSession();
+            user = Supabase.instance.client.auth.currentUser;
+            if (!guestResult.ok && mounted && guestResult.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(guestResult.errorMessage!)),
+              );
+            } else if (guestResult.ok) {
+              await ProfileBootstrap.ensureCurrentUserProfile();
             }
           }
         }

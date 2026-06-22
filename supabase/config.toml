@@ -1,5 +1,11 @@
 # Minimal Supabase CLI config — extend as needed for local development.
 
+[auth]
+enabled = true
+# Required for "Continue as guest" / anonymous round history. Also enable in the
+# hosted project: Dashboard → Authentication → Providers → Anonymous sign-ins.
+enable_anonymous_sign_ins = true
+
 [api]
 enabled = true
 

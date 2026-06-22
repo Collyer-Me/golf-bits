@@ -12,7 +12,70 @@ abstract final class RoundCoplayers {
     return (rows as List<dynamic>).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  static const _roundSelectColumns = 'players,participants,ended_at,completed_at,created_at';
+  static const _preferredSelectColumns = <String>[
+    'players',
+    'participants',
+    'ended_at',
+    'completed_at',
+    'created_at',
+  ];
+
+  static String? _missingColumn(Object error) {
+    if (error is! PostgrestException) return null;
+    final m = error.message;
+    final pgrst = RegExp(r"Could not find the '([^']+)' column").firstMatch(m);
+    if (pgrst != null) return pgrst.group(1);
+    final pg = RegExp(r'column\s+rounds\.([a-zA-Z0-9_]+)\s+does not exist').firstMatch(m);
+    if (pg != null) return pg.group(1);
+    return null;
+  }
+
+  static bool _isMissingFilterColumn(Object error, String filterColumn) {
+    return _missingColumn(error) == filterColumn;
+  }
+
+  /// Result of probing one owner column (`created_by`, legacy `user_id`, etc.).
+  static Future<({List<Map<String, dynamic>> rows, bool ownerColumnExists})> _fetchRowsByOwnerColumn(
+    SupabaseClient client,
+    String userId,
+    String ownerColumn,
+  ) async {
+    var columns = [..._preferredSelectColumns];
+    for (var i = 0; i < 12; i++) {
+      if (columns.isEmpty) {
+        return (rows: const [], ownerColumnExists: true);
+      }
+      try {
+        final rows = await client.from('rounds').select(columns.join(',')).eq(ownerColumn, userId).limit(200);
+        return (rows: _roundMaps(rows), ownerColumnExists: true);
+      } catch (e) {
+        if (_isMissingFilterColumn(e, ownerColumn)) {
+          return (rows: const [], ownerColumnExists: false);
+        }
+        final col = _missingColumn(e);
+        if (col != null && columns.remove(col)) {
+          continue;
+        }
+        return (rows: const [], ownerColumnExists: true);
+      }
+    }
+    return (rows: const [], ownerColumnExists: true);
+  }
+
+  /// Loads round rows for co-player parsing; stops after the first usable owner column.
+  static Future<List<Map<String, dynamic>>> _fetchRowsForCurrentUser(
+    SupabaseClient client,
+    String userId,
+  ) async {
+    final primary = await _fetchRowsByOwnerColumn(client, userId, 'created_by');
+    if (primary.ownerColumnExists) return primary.rows;
+
+    for (final legacyColumn in ['user_id', 'owner_id']) {
+      final legacy = await _fetchRowsByOwnerColumn(client, userId, legacyColumn);
+      if (legacy.ownerColumnExists) return legacy.rows;
+    }
+    return const [];
+  }
 
   static String? _readString(Map<String, dynamic> m, List<String> keys) {
     for (final key in keys) {
@@ -53,51 +116,6 @@ abstract final class RoundCoplayers {
 
   static void _sortRowsNewestFirst(List<Map<String, dynamic>> rows) {
     rows.sort((a, b) => _rowTimestampUtc(b).compareTo(_rowTimestampUtc(a)));
-  }
-
-  static Future<List<Map<String, dynamic>>> _fetchRowsByOwnerColumn(
-    SupabaseClient client,
-    String userId,
-    String ownerColumn,
-  ) async {
-    try {
-      final rows = await client.from('rounds').select(_roundSelectColumns).eq(ownerColumn, userId).limit(200);
-      return _roundMaps(rows);
-    } catch (_) {
-      try {
-        // Legacy schema may not have `participants` yet.
-        final rows = await client.from('rounds').select('players,ended_at,completed_at,created_at').eq(ownerColumn, userId).limit(200);
-        return _roundMaps(rows);
-      } catch (_) {
-        return const [];
-      }
-    }
-  }
-
-  static List<Map<String, dynamic>> _mergeDistinctRowsByContent(List<List<Map<String, dynamic>>> groups) {
-    final merged = <Map<String, dynamic>>[];
-    final seen = <String>{};
-    for (final group in groups) {
-      for (final row in group) {
-        final sig = '${row['players']}|${row['participants']}';
-        if (seen.add(sig)) merged.add(row);
-      }
-    }
-    return merged;
-  }
-
-  static Future<List<Map<String, dynamic>>> _fetchRowsUnfiltered(SupabaseClient client) async {
-    try {
-      final rows = await client.from('rounds').select(_roundSelectColumns).limit(200);
-      return _roundMaps(rows);
-    } catch (_) {
-      try {
-        final rows = await client.from('rounds').select('players,ended_at,completed_at,created_at').limit(200);
-        return _roundMaps(rows);
-      } catch (_) {
-        return const [];
-      }
-    }
   }
 
   /// Decodes legacy `players` arrays that may be strings or small maps.
@@ -268,11 +286,7 @@ abstract final class RoundCoplayers {
     }
 
     try {
-      final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
-      final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
-      final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
-      final unfilteredRows = await _fetchRowsUnfiltered(client);
-      final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows, unfilteredRows]);
+      final rows = await _fetchRowsForCurrentUser(client, user.id);
       if (rows.isEmpty) return {};
       return mergeCountsFromRoundRows(rows, displayName, user.id);
     } catch (_) {
@@ -328,11 +342,7 @@ abstract final class RoundCoplayers {
     }
 
     try {
-      final createdByRows = await _fetchRowsByOwnerColumn(client, user.id, 'created_by');
-      final userIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'user_id');
-      final ownerIdRows = await _fetchRowsByOwnerColumn(client, user.id, 'owner_id');
-      final unfilteredRows = await _fetchRowsUnfiltered(client);
-      final rows = _mergeDistinctRowsByContent([createdByRows, userIdRows, ownerIdRows, unfilteredRows]);
+      final rows = await _fetchRowsForCurrentUser(client, user.id);
       if (rows.isEmpty) return const [];
       return recentUniqueNamesFromRoundRows(
         rows,

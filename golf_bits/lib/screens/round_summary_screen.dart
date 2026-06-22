@@ -67,6 +67,15 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
       }
     }
     if (mounted && mayNavigateHome) {
+      if (live != null && SupabaseEnv.isConfigured && loggedInUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Round not saved — guest cloud sync is not active. Try guest sync from History, or create an account.',
+            ),
+          ),
+        );
+      }
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
@@ -76,12 +85,36 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final r = _r;
+    final liveResult = widget.result;
+    final unsavedGuestRound = liveResult != null &&
+        SupabaseEnv.isConfigured &&
+        Supabase.instance.client.auth.currentSession == null;
 
     return Scaffold(
       appBar: const BrandAppBar(),
       body: ListView(
         padding: AppTheme.screenPadding,
         children: [
+          if (unsavedGuestRound) ...[
+            OutlinedSurfaceCard(
+              borderColor: scheme.outlineVariant,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.cloud_off_outlined, color: scheme.onSurfaceVariant, size: AppTheme.iconInline),
+                  SizedBox(width: AppTheme.space3),
+                  Expanded(
+                    child: Text(
+                      'Guest cloud sync is off, so this round will not appear in History. '
+                      'Try guest sync from the History tab, or create an account.',
+                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: AppTheme.space4),
+          ],
           Text(
               '${r.courseShortTitle} · ${r.holeCount} HOLES',
               textAlign: TextAlign.center,
