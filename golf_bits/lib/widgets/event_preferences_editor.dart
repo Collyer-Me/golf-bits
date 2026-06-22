@@ -303,6 +303,7 @@ class _EventPreferenceCard extends StatelessWidget {
                   child: Row(
                     children: [
                       IconButton(
+                        tooltip: 'Decrease points',
                         onPressed: stepperEnabled ? onDecrementPoints : null,
                         visualDensity: VisualDensity.compact,
                         icon: Icon(
@@ -318,6 +319,7 @@ class _EventPreferenceCard extends StatelessWidget {
                         ),
                       ),
                       IconButton(
+                        tooltip: 'Increase points',
                         onPressed: stepperEnabled ? onIncrementPoints : null,
                         visualDensity: VisualDensity.compact,
                         icon: Icon(

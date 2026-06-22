@@ -249,13 +249,22 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
     final accepted = _connections.where((f) => f.isAccepted).toList();
     final incoming = _connections.where((f) => f.isIncomingFor(uid)).toList();
     final outgoing = _connections.where((f) => f.isOutgoingFor(uid)).toList();
+    final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('People')),
+      appBar: const BrandAppBar(),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Padding(
+                  padding: AppTheme.screenPadding.copyWith(bottom: AppTheme.space3),
+                  child: Text(
+                    'People',
+                    style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
                 TabBar(
                   controller: _tabController,
                   tabs: const [
@@ -594,6 +603,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
           trailing: [
             if (_searchController.text.isNotEmpty)
               IconButton(
+                tooltip: 'Clear search',
                 onPressed: () {
                   _searchController.clear();
                   setState(() => _searchResults = const []);

@@ -19,7 +19,7 @@ Future<void> main() async {
     PendingAuthLink.captureFromUriBeforeSupabaseInit(Uri.base);
     await Supabase.initialize(
       url: SupabaseEnv.url,
-      anonKey: SupabaseEnv.anonKey,
+      publishableKey: SupabaseEnv.anonKey,
       authOptions: const FlutterAuthClientOptions(
         detectSessionInUri: true,
       ),

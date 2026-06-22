@@ -55,6 +55,7 @@ class GuestPromotionStrip extends StatelessWidget {
               ),
             ),
             IconButton(
+              tooltip: 'Dismiss',
               onPressed: onDismiss,
               icon: Icon(Icons.close, color: scheme.onSurfaceVariant),
               visualDensity: VisualDensity.compact,

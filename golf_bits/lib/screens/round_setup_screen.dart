@@ -615,6 +615,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     return Scaffold(
       appBar: BrandAppBar(
         leading: IconButton(
+          tooltip: 'Back',
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (_step > 0) {
@@ -626,6 +627,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         ),
         actions: [
           PopupMenuButton<String>(
+            tooltip: 'Round options',
             onSelected: (_) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Round menu — coming soon')),
@@ -911,6 +913,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           trailing: [
             if (_searchController.text.isNotEmpty)
               IconButton(
+                tooltip: 'Clear search',
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   _searchController.clear();

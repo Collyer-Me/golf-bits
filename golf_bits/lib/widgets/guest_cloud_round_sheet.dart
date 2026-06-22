@@ -60,6 +60,7 @@ class GuestCloudRoundSheet extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Close',
                 onPressed: () => Navigator.of(context).pop(false),
                 icon: const Icon(Icons.close),
               ),

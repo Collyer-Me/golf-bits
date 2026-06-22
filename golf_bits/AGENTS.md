@@ -37,12 +37,18 @@ Flutter app under this folder. Use this file plus [`README.md`](README.md) to st
 
 6. **Header**
    - Every screen uses **`BrandAppBar`** (centered wordmark, automatic back, optional `actions` / custom `leading`). Never put a screen title in the app bar — put it in the body.
+   - **Exception:** **`WelcomeScreen`** only — no app bar; the hero wordmark lives in the body.
 
 7. **Themes**
    - Dark + light are built as a mirrored pair from one token set; `main.dart` wires `theme` (light) + `darkTheme` (dark) + `themeMode` via `ThemeController` (System/Light/Dark toggle in Profile, default System). **Every screen must read correctly in both themes** — drive everything from `colorScheme` / `textTheme`.
 
 8. **Preview**
    - **Style guide & components** in the app mirrors tokens and patterns; keep it updated when you add new categories of UI.
+
+9. **Accessibility**
+   - Icon-only controls (`IconButton`, etc.) must include a **`tooltip:`**.
+   - Custom tappable surfaces (e.g. `InkWell` on cards) should wrap with **`Semantics(button: true, label: …)`** when the label is not obvious from child text alone.
+   - Prefer Material controls (they expose roles/labels by default) over bespoke hit targets.
 
 ## Key files
 

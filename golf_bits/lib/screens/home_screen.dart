@@ -228,6 +228,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
       appBar: BrandAppBar(
         actions: [
           PopupMenuButton<String>(
+            tooltip: 'Account menu',
             onSelected: (v) async {
               switch (v) {
                 case 'logout':

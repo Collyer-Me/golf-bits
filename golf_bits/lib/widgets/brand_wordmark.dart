@@ -73,9 +73,14 @@ class BrandWordmark extends StatelessWidget {
     };
 
     final mark = BrandMark(size: markSize);
-    if (markOnly) return mark;
+    if (markOnly) {
+      return Semantics(label: 'Bits Dots Junk', image: true, child: mark);
+    }
 
-    return Row(
+    return Semantics(
+      label: 'Bits Dots Junk',
+      header: true,
+      child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         mark,
@@ -95,6 +100,7 @@ class BrandWordmark extends StatelessWidget {
           ),
         ),
       ],
+    ),
     );
   }
 }

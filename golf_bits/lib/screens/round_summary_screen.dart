@@ -6,6 +6,7 @@ import '../data/history_repository.dart';
 import '../models/round_result.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/tally_marks.dart';
 import 'player_breakdown_screen.dart';
@@ -77,12 +78,11 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
     final r = _r;
 
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: AppTheme.screenPadding,
-          children: [
-            SizedBox(height: AppTheme.space4),
-            Text(
+      appBar: const BrandAppBar(),
+      body: ListView(
+        padding: AppTheme.screenPadding,
+        children: [
+          Text(
               '${r.courseShortTitle} · ${r.holeCount} HOLES',
               textAlign: TextAlign.center,
               style: text.labelSmall?.copyWith(
@@ -124,9 +124,13 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                   : s.bits < 0
                       ? AppTheme.junk(context)
                       : scheme.onSurfaceVariant;
+              final bitsLabel = s.bits >= 0 ? '+${s.bits}' : '${s.bits}';
               return Padding(
                 padding: const EdgeInsets.only(bottom: AppTheme.space2),
-                child: InkWell(
+                child: Semantics(
+                  button: true,
+                  label: '${s.name}, rank ${s.rank}, $bitsLabel bits. Tap for breakdown.',
+                  child: InkWell(
                   borderRadius: BorderRadius.circular(AppTheme.cardRadius),
                   onTap: () {
                     Navigator.of(context).push(
@@ -201,6 +205,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                     ),
                   ),
                 ),
+                ),
               );
             }),
             if (r.leftEarly.isNotEmpty) ...[
@@ -248,14 +253,18 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
               ),
             ],
             SizedBox(height: AppTheme.space8),
-            FilledButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Share sheet — coming soon')),
-                );
-              },
-              icon: const Icon(Icons.share_outlined),
-              label: const Text('Share Results'),
+            Semantics(
+              button: true,
+              label: 'Share results',
+              child: FilledButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Share sheet — coming soon')),
+                  );
+                },
+                icon: const Icon(Icons.share_outlined),
+                label: const Text('Share Results'),
+              ),
             ),
             SizedBox(height: AppTheme.space3),
             OutlinedButton(
@@ -271,8 +280,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                     )
                   : const Text('Back to Home'),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -289,7 +297,9 @@ class _WinnerHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    return OutlinedSurfaceCard(
+    return Semantics(
+      label: 'Winner, ${result.winnerName}, plus ${result.winnerBits} bits',
+      child: OutlinedSurfaceCard(
       borderColor: scheme.primary,
       child: Column(
         children: [
@@ -310,6 +320,7 @@ class _WinnerHero extends StatelessWidget {
           Text('BITS', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
         ],
       ),
+    ),
     );
   }
 }

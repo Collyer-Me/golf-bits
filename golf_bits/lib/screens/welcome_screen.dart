@@ -106,7 +106,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(_slides.length, (i) {
                   final active = i == _page;
-                  return AnimatedContainer(
+                  return Semantics(
+                    label: 'Slide ${i + 1} of ${_slides.length}',
+                    selected: active,
+                    child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.symmetric(horizontal: AppTheme.space1),
                     width: active ? AppTheme.pageIndicatorSelected : AppTheme.pageIndicator,
@@ -115,6 +118,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       shape: BoxShape.circle,
                       color: active ? scheme.primary : scheme.outlineVariant,
                     ),
+                  ),
                   );
                 }),
               ),

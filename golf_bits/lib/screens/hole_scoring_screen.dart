@@ -402,6 +402,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       appBar: BrandAppBar(
         actions: [
           PopupMenuButton<String>(
+            tooltip: 'Round options',
             onSelected: (v) {
               if (v == 'end') _endRound();
             },

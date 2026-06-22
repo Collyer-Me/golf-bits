@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  google_fonts: ^6.2.1
+  google_fonts: ^8.1.0
   # Cap below 2.15.0: that release adds the `passkeys` feature, pulling in the
   # `passkeys_web` plugin. Its web registration calls
   # `window['PasskeyAuthenticator'].init()`, which is undefined unless a passkeys
@@ -24,7 +24,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.1
 
 flutter:

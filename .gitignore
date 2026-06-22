@@ -1,3 +1,6 @@
+# Local design handoff / reference docs (not part of the shipped app)
+docs/
+
 # OS
 .DS_Store
 Thumbs.db

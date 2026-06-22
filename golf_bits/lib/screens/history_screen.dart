@@ -84,6 +84,7 @@ class HistoryScreenState extends State<HistoryScreen> {
             icon: const Icon(Icons.refresh),
           ),
           IconButton(
+            tooltip: 'Share history',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Share history — coming soon')),

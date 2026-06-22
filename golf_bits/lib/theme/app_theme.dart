@@ -99,6 +99,7 @@ abstract final class AppTheme {
   static const double locationGlowSpread = 4;
   static const double opacityHeroGlow = 0.45;
   static const double opacityMutedPrimary = 0.7;
+  static const double opacityAlertFill = 0.35;
   static const double pageIndicator = 8;
   static const double pageIndicatorSelected = 10;
 

@@ -53,6 +53,7 @@ class GuestPlaySheet extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: 'Close',
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close),
               ),

@@ -181,7 +181,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       if (_guestSessionSignup && _riskSeparateSignup) ...[
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color: scheme.errorContainer.withValues(alpha: 0.35),
+                            color: scheme.errorContainer.withValues(alpha: AppTheme.opacityAlertFill),
                             borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                             border: Border.all(color: scheme.outlineVariant),
                           ),
@@ -263,6 +263,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     hint: 'Password',
                     icon: Icons.lock_outline,
                     suffixIcon: IconButton(
+                      tooltip: _obscure ? 'Show password' : 'Hide password',
                       onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
                         _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,

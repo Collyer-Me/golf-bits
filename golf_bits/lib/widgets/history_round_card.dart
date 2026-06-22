@@ -37,7 +37,11 @@ class HistoryRoundCard extends StatelessWidget {
       }
     }
 
-    return Material(
+    final status = round.completed ? 'completed' : 'in progress';
+    return Semantics(
+      button: true,
+      label: '${round.courseName}, $status. ${round.holesLine}',
+      child: Material(
       color: scheme.surface.withValues(alpha: 0),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.cardRadius),
@@ -130,6 +134,7 @@ class HistoryRoundCard extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

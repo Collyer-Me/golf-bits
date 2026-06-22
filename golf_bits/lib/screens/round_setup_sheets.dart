@@ -487,6 +487,7 @@ class _AddCustomEventSheetState extends State<_AddCustomEventSheet> {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Close',
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close),
                 ),

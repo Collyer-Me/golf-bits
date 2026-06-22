@@ -200,6 +200,7 @@ class _GuestUpgradeScreenState extends State<GuestUpgradeScreen> {
                       hint: 'Choose a password',
                       icon: Icons.lock_outline,
                       suffixIcon: IconButton(
+                        tooltip: _obscure ? 'Show password' : 'Hide password',
                         onPressed: () => setState(() => _obscure = !_obscure),
                         icon: Icon(
                           _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
