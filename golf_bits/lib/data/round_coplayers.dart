@@ -351,7 +351,7 @@ abstract final class RoundCoplayers {
         limit: limit,
       );
     } catch (_) {
-      return const <Map<String, dynamic>>[];
+      return const <String>[];
     }
   }
 }
