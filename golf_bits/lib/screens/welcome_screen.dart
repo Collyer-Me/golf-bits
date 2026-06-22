@@ -85,12 +85,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             color: scheme.primary,
                           ),
                           SizedBox(height: AppTheme.space5),
-                          Text(
-                            s.body,
-                            textAlign: TextAlign.center,
-                            style: text.bodyLarge?.copyWith(
-                              color: scheme.onSurface,
-                              height: AppTheme.bodyLineHeightRelaxed,
+                          Flexible(
+                            child: Text(
+                              s.body,
+                              textAlign: TextAlign.center,
+                              style: text.bodyLarge?.copyWith(
+                                color: scheme.onSurface,
+                                height: AppTheme.bodyLineHeightRelaxed,
+                              ),
                             ),
                           ),
                         ],
