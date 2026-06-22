@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth/auth_root.dart';
@@ -38,11 +39,34 @@ class GolfBitsApp extends StatefulWidget {
 }
 
 class _GolfBitsAppState extends State<GolfBitsApp> {
+  static const _themePrefKey = 'theme_mode';
   ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeMode();
+  }
+
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final mode = switch (prefs.getString(_themePrefKey)) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+    if (mounted && mode != _themeMode) setState(() => _themeMode = mode);
+  }
 
   void _setThemeMode(ThemeMode mode) {
     if (mode == _themeMode) return;
     setState(() => _themeMode = mode);
+    _persistThemeMode(mode);
+  }
+
+  Future<void> _persistThemeMode(ThemeMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themePrefKey, mode.name);
   }
 
   @override

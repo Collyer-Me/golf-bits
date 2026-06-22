@@ -19,11 +19,26 @@ dependencies:
   # registration and blanks the whole app. This app uses email/password + guest
   # auth only (no passkeys). Revisit when we add a committed pubspec.lock.
   supabase_flutter: '>=2.8.0 <2.15.0'
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+
+# Native launcher icons. Web favicon + PWA icons are committed under web/ and
+# need no build step. For Android/iOS, after `flutter create` generates those
+# platform folders, run: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/brand/app-icon.png"
+  adaptive_icon_background: "#0D2B1C"
+  adaptive_icon_foreground: "assets/brand/app-icon.png"
+  web:
+    generate: false
