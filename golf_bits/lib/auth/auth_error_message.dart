@@ -12,7 +12,7 @@ String authErrorMessage(Object error) {
     if (m.contains('anonymous') && (m.contains('disabled') || m.contains('not enabled'))) {
       return GuestCloudAuth.anonymousDisabledMessage;
     }
-    if (error.statusCode == '422' || error.statusCode == 422) {
+    if (error.statusCode == '422') {
       return GuestCloudAuth.anonymousDisabledMessage;
     }
     if (m.contains('password')) return error.message;

@@ -43,23 +43,23 @@ abstract final class RoundCoplayers {
     var columns = [..._preferredSelectColumns];
     for (var i = 0; i < 12; i++) {
       if (columns.isEmpty) {
-        return (rows: const [], ownerColumnExists: true);
+        return (rows: const <Map<String, dynamic>>[], ownerColumnExists: true);
       }
       try {
         final rows = await client.from('rounds').select(columns.join(',')).eq(ownerColumn, userId).limit(200);
         return (rows: _roundMaps(rows), ownerColumnExists: true);
       } catch (e) {
         if (_isMissingFilterColumn(e, ownerColumn)) {
-          return (rows: const [], ownerColumnExists: false);
+          return (rows: const <Map<String, dynamic>>[], ownerColumnExists: false);
         }
         final col = _missingColumn(e);
         if (col != null && columns.remove(col)) {
           continue;
         }
-        return (rows: const [], ownerColumnExists: true);
+        return (rows: const <Map<String, dynamic>>[], ownerColumnExists: true);
       }
     }
-    return (rows: const [], ownerColumnExists: true);
+    return (rows: const <Map<String, dynamic>>[], ownerColumnExists: true);
   }
 
   /// Loads round rows for co-player parsing; stops after the first usable owner column.
@@ -74,7 +74,7 @@ abstract final class RoundCoplayers {
       final legacy = await _fetchRowsByOwnerColumn(client, userId, legacyColumn);
       if (legacy.ownerColumnExists) return legacy.rows;
     }
-    return const [];
+    return const <Map<String, dynamic>>[];
   }
 
   static String? _readString(Map<String, dynamic> m, List<String> keys) {
@@ -351,7 +351,7 @@ abstract final class RoundCoplayers {
         limit: limit,
       );
     } catch (_) {
-      return const [];
+      return const <Map<String, dynamic>>[];
     }
   }
 }

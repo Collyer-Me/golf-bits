@@ -28,7 +28,7 @@ abstract final class GuestCloudAuth {
       if (m.contains('anonymous') && (m.contains('disabled') || m.contains('not enabled'))) {
         return anonymousDisabledMessage;
       }
-      if (error.statusCode == '422' || error.statusCode == 422) {
+      if (error.statusCode == '422') {
         return anonymousDisabledMessage;
       }
       return error.message;

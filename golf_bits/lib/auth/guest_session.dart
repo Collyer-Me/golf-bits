@@ -78,6 +78,7 @@ Future<bool> retryGuestCloudSignIn(BuildContext context) async {
   if (!context.mounted) return result.ok;
   if (result.ok) {
     await ProfileBootstrap.ensureCurrentUserProfile();
+    if (!context.mounted) return true;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Guest profile ready — new rounds will save to History.')),
     );
