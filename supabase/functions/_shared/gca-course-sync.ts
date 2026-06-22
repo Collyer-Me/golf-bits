@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { filterProviderTeesForStorage } from './tee-label-normalize.ts';
 
 export type GcaSearchRow = Record<string, unknown>;
 export type GcaDetail = Record<string, unknown>;
@@ -186,7 +187,7 @@ export function normalizeTees(detail: GcaDetail): TeePayload[] {
       holes,
     });
   }
-  return finalizeTeePayloads(tees.filter((t) => t.holes.length > 0));
+  return filterProviderTeesForStorage(finalizeTeePayloads(tees.filter((t) => t.holes.length > 0)));
 }
 
 export function coverageFromTees(tees: TeePayload[]): string {

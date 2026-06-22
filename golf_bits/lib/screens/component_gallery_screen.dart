@@ -6,6 +6,7 @@ import '../widgets/brand_wordmark.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/stroke_hole_counter.dart';
 import '../widgets/tally_marks.dart';
+import '../widgets/welcome_preview_cards.dart';
 
 /// Scrollable preview of **Material 3** primitives + one approved custom ([OutlinedSurfaceCard]).
 class ComponentGalleryScreen extends StatefulWidget {
@@ -91,6 +92,27 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
                       const TallyMarks(count: 3, height: 28, variant: TallyVariant.penalty),
                     ],
                   ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppTheme.space6),
+          _sectionTitle(
+            context,
+            'Welcome previews',
+            'Decorative onboarding cards — always on a parchment surface.',
+          ),
+          DecoratedBox(
+            decoration: AppTheme.welcomeBackgroundDecoration(),
+            child: Padding(
+              padding: const EdgeInsets.all(AppTheme.space4),
+              child: Column(
+                children: const [
+                  WelcomeScorecardPreview(),
+                  SizedBox(height: AppTheme.space4),
+                  WelcomeAwardChipsPreview(),
+                  SizedBox(height: AppTheme.space4),
+                  WelcomeSettleUpPreview(),
                 ],
               ),
             ),

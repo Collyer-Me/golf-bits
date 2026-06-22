@@ -35,6 +35,14 @@ node search.mjs --detail "b1111111-1111-4111-8111-111111111101"
 
 Loads that course with **nested** `course_tees` → `course_tee_holes` (par, stroke index, yardage per tee) so you can judge **data quality** (coverage_level, par grid by tee, ratings_json).
 
+### Catalog audit (counts, tee sprawl, label samples)
+
+```powershell
+node audit.mjs
+```
+
+Summarises all courses: source/coverage/country breakdown, courses with no tees despite scorecard coverage, and the worst **tee sprawl** (many tees / odd labels). Use before changing ingest or display logic.
+
 ### Options
 
 | Flag | Meaning |

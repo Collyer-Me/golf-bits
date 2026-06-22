@@ -1,6 +1,20 @@
 # Course catalog — audit checklist
 
-Use this during Phase 0 research. Replace placeholders with findings.
+Use this before changing providers or ingest. Replace placeholders with findings.
+
+## Quick audit (local)
+
+From `tools/course-catalog-search` with `.env` set (see [README](../tools/course-catalog-search/README.md)):
+
+```powershell
+node audit.mjs
+node search.mjs "" --limit 100
+node search.mjs --detail <course-uuid>
+```
+
+## Quick audit (Supabase SQL Editor)
+
+Run these in the Dashboard → SQL Editor.
 
 ## Ops (Supabase Dashboard)
 
@@ -21,6 +35,15 @@ order by created_at desc
 limit 50;
 ```
 
+Catalog summary:
+
+```sql
+select source, coverage_level, country_code, count(*) as n
+from courses
+group by 1, 2, 3
+order by n desc;
+```
+
 Hole coverage for a course name:
 
 ```sql
@@ -34,11 +57,60 @@ where c.name ilike '%YOUR_QUERY%'
 group by c.id;
 ```
 
+Tee sprawl (courses with many tee rows):
+
+```sql
+select c.name, c.coverage_level, c.source,
+       count(t.id) as tee_count,
+       string_agg(t.label, ' | ' order by t.sort_order) as tee_labels
+from courses c
+join course_tees t on t.course_id = c.id
+group by c.id, c.name, c.coverage_level, c.source
+having count(t.id) >= 7
+order by tee_count desc, c.name;
+```
+
+Scorecard rows but zero tees (hydrate failed or bad ingest):
+
+```sql
+select c.id, c.name, c.coverage_level, c.source, c.external_ids
+from courses c
+where c.coverage_level in ('full_scorecard', 'partial_scorecard')
+  and not exists (select 1 from course_tees t where t.course_id = c.id);
+```
+
 ## Target courses (spot-check 10–15)
 
-| Course searched | Result coverage | Tees in setup | Par on hole 1 |
-|-----------------|-----------------|---------------|---------------|
-| | | | |
+| Course searched | Coverage | Tees in DB | Tees shown in app | Tee labels OK? | Par on hole 1 |
+|-----------------|----------|------------|-------------------|----------------|---------------|
+| | | | | | |
+
+## Tee display review
+
+**Symptom:** Some courses show many tee options with cryptic names.
+
+**Root cause (ingest):** `normalizeTees` in `gca-course-sync.ts` merges **all** `tees.male` + `tees.female` (and legacy group keys) into one flat list. GolfCourseAPI often returns 8–16+ variants: men's/women's, 9-hole combos, multiple colors, duplicate names with different ratings.
+
+**Root cause (display):** `prepareTeesForDisplay` only dedupes exact `label|colorHint` matches and drops empty tees. It does **not** cap count, merge by color family, or map to friendly names. The tee picker shows raw `CourseTeeOption.label`.
+
+**What to log during spot-check:**
+
+- Tee count in DB vs after `prepareTeesForDisplay` (usually same unless exact dupes)
+- Labels like numeric IDs, "Combination", "Front 9", very long strings
+- Whether men's standard tees (Blue/White/Red) are buried below obscure rows
+
+**Fix options (after audit — pick one):**
+
+Implemented: **`tee_label_normalize.dart`** + **`tee-label-normalize.ts`** (keep in sync). Rules apply at **ingest** (new GCA syncs) and **display** (existing DB rows).
+
+| Rule | Effect |
+|------|--------|
+| One tee per color + gender family | Drops NOV21 / TEMP / 9-hole SP duplicates |
+| Friendly label | `Blue (Men)` only when men + women both shown |
+| OSM fallback | Off for user search (`allowOsmFallback` service-role only) |
+| `countryHint: AU` | Sent from Flutter on every search |
+
+Legacy options if gaps remain:
 
 ## Failure modes (top 5 after audit)
 

@@ -49,7 +49,7 @@ class _BrandMarkPainter extends CustomPainter {
   bool shouldRepaint(_BrandMarkPainter oldDelegate) => false;
 }
 
-enum BrandWordmarkSize { hero, screen, compact }
+enum BrandWordmarkSize { hero, screen, compact, welcome }
 
 /// Logo mark paired with the "Bits Dots Junk" wordmark in Bricolage Grotesque.
 /// Pass [markOnly] for a compact brand cue (e.g. a secondary app bar).
@@ -66,10 +66,11 @@ class BrandWordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.onSurface;
-    final (double markSize, double fontSize) = switch (size) {
-      BrandWordmarkSize.hero => (56.0, 30.0),
-      BrandWordmarkSize.screen => (34.0, 22.0),
-      BrandWordmarkSize.compact => (26.0, 18.0),
+    final (double markSize, double fontSize, double letterSpacing) = switch (size) {
+      BrandWordmarkSize.hero => (56.0, 30.0, -0.4),
+      BrandWordmarkSize.screen => (34.0, 22.0, -0.3),
+      BrandWordmarkSize.compact => (26.0, 18.0, -0.2),
+      BrandWordmarkSize.welcome => (38.0, 17.0, -0.17),
     };
 
     final mark = BrandMark(size: markSize);
@@ -93,7 +94,7 @@ class BrandWordmark extends StatelessWidget {
             style: GoogleFonts.bricolageGrotesque(
               fontSize: fontSize,
               fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
+              letterSpacing: letterSpacing,
               height: 1.0,
               color: color,
             ),

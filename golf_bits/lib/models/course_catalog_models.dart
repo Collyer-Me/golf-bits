@@ -1,5 +1,7 @@
 // Stable client models for course catalog search + detail (matches Edge Function JSON).
 
+import 'tee_label_normalize.dart';
+
 class CourseAddress {
   const CourseAddress({
     this.street,
@@ -172,6 +174,7 @@ class CourseTeeOption {
   const CourseTeeOption({
     required this.id,
     required this.label,
+    this.displayLabelOverride,
     this.colorHint,
     this.courseRating,
     this.slopeRating,
@@ -181,6 +184,7 @@ class CourseTeeOption {
 
   final String id;
   final String label;
+  final String? displayLabelOverride;
   final String? colorHint;
   final double? courseRating;
   final int? slopeRating;
@@ -219,48 +223,86 @@ class CourseTeeOption {
   /// At least 18 distinct hole indices (handles sparse provider data better than holes.length alone).
   bool get hasEighteenDistinctHoles =>
       {...holes.map((h) => h.holeNumber)}.length >= 18;
+
+  /// Normalized label for UI (falls back to [label]).
+  String get displayLabel => displayLabelOverride ?? label;
+
+  CourseTeeOption copyWith({
+    String? label,
+    String? displayLabelOverride,
+    String? colorHint,
+    List<CourseTeeHoleRow>? holes,
+  }) {
+    return CourseTeeOption(
+      id: id,
+      label: label ?? this.label,
+      displayLabelOverride: displayLabelOverride ?? this.displayLabelOverride,
+      colorHint: colorHint ?? this.colorHint,
+      courseRating: courseRating,
+      slopeRating: slopeRating,
+      ratings: ratings,
+      holes: holes ?? this.holes,
+    );
+  }
 }
 
-/// Drop tees with no holes, dedupe similar labels/colors, then sort: full 18 first, then total yardage, then label.
+/// Provider-aware tee list: drop empty rows, one tee per color/gender family, friendly labels.
 List<CourseTeeOption> prepareTeesForDisplay(List<CourseTeeOption> raw) {
   final nonempty = raw.where((t) => t.holes.isNotEmpty).toList();
   if (nonempty.isEmpty) return const [];
 
-  String dedupeKey(CourseTeeOption t) {
-    final ln = t.label.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-    final ch = (t.colorHint ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-    return '$ln|$ch';
+  final metas = nonempty.map((t) => parseProviderTeeLabel(t.label)).toList();
+  final byFamily = <String, ({CourseTeeOption tee, ParsedTeeMetadata meta})>{};
+
+  for (var i = 0; i < nonempty.length; i++) {
+    final tee = nonempty[i];
+    final meta = metas[i];
+    final prev = byFamily[meta.familyKey];
+    if (prev == null) {
+      byFamily[meta.familyKey] = (tee: tee, meta: meta);
+      continue;
+    }
+    if (preferTeeCandidate(
+      incumbentHas18: prev.tee.hasEighteenDistinctHoles,
+      candidateHas18: tee.hasEighteenDistinctHoles,
+      incumbentMeta: prev.meta,
+      candidateMeta: meta,
+      incumbentYardage: prev.tee.totalYardageYds,
+      candidateYardage: tee.totalYardageYds,
+      incumbentHoleRows: prev.tee.holes.length,
+      candidateHoleRows: tee.holes.length,
+    )) {
+      byFamily[meta.familyKey] = (tee: tee, meta: meta);
+    }
   }
 
-  bool betterDuplicate(CourseTeeOption a, CourseTeeOption b) {
-    if (a.hasEighteenDistinctHoles != b.hasEighteenDistinctHoles) {
-      return a.hasEighteenDistinctHoles ? true : false;
-    }
-    if (a.totalYardageYds != b.totalYardageYds) {
-      return a.totalYardageYds > b.totalYardageYds;
-    }
-    if (a.holes.length != b.holes.length) {
-      return a.holes.length > b.holes.length;
-    }
-    return true;
-  }
+  final gendersInList = byFamily.values
+      .map((e) => e.meta.gender)
+      .whereType<String>()
+      .toSet();
+  final showGenderSuffix = gendersInList.length > 1;
 
-  final byKey = <String, CourseTeeOption>{};
-  for (final t in nonempty) {
-    final k = dedupeKey(t);
-    final prev = byKey[k];
-    byKey[k] = prev == null ? t : (betterDuplicate(prev, t) ? prev : t);
-  }
-
-  final list = byKey.values.toList()
+  final list = byFamily.values
+      .map(
+        (e) => e.tee.copyWith(
+          displayLabelOverride: teeDisplayLabel(e.meta, showGenderSuffix: showGenderSuffix),
+          colorHint: teeColorHintFromMetadata(e.meta, e.tee.colorHint),
+        ),
+      )
+      .toList()
     ..sort((a, b) {
+      final ma = parseProviderTeeLabel(a.label);
+      final mb = parseProviderTeeLabel(b.label);
       final a18 = a.hasEighteenDistinctHoles;
       final b18 = b.hasEighteenDistinctHoles;
       if (a18 != b18) return a18 ? -1 : 1;
+      final metaCmp = compareTeeMetadataForDisplay(ma, mb);
+      if (metaCmp != 0) return metaCmp;
       final yd = b.totalYardageYds.compareTo(a.totalYardageYds);
       if (yd != 0) return yd;
-      return a.label.toLowerCase().compareTo(b.label.toLowerCase());
+      return a.displayLabel.toLowerCase().compareTo(b.displayLabel.toLowerCase());
     });
+
   return list;
 }
 

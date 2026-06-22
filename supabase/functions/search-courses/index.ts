@@ -126,7 +126,14 @@ Deno.serve(async (req) => {
   }
   const readClient = isServiceRoleInvocation ? svcClient : (userClient as ReturnType<typeof createClient>);
 
-  let body: { query?: string; includeRemote?: boolean; limit?: number; countryHint?: string; strictCountry?: boolean };
+  let body: {
+    query?: string;
+    includeRemote?: boolean;
+    limit?: number;
+    countryHint?: string;
+    strictCountry?: boolean;
+    allowOsmFallback?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
@@ -243,7 +250,11 @@ Deno.serve(async (req) => {
 
   if (!hasBudget()) timedOut = true;
 
-  if (includeRemote && raw.length >= 2 && serviceKey && rows.length < 8 && hasBudget()) {
+  // OSM/Nominatim fallback disabled for user search — it created geo_only noise (UK mini-golf, etc.).
+  // Re-enable only for explicit service-role tooling via `allowOsmFallback: true`.
+  const allowOsmFallback = body.allowOsmFallback === true && isServiceRoleInvocation;
+
+  if (allowOsmFallback && includeRemote && raw.length >= 2 && serviceKey && rows.length < 8 && hasBudget()) {
     const svc = svcClient;
     const nomUrl = new URL('https://nominatim.openstreetmap.org/search');
     nomUrl.searchParams.set('format', 'json');

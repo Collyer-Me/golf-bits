@@ -100,11 +100,70 @@ abstract final class AppTheme {
   static const double opacityHeroGlow = 0.45;
   static const double opacityMutedPrimary = 0.7;
   static const double opacityAlertFill = 0.35;
+  /// Inactive carousel dot (width and height).
   static const double pageIndicator = 8;
-  static const double pageIndicatorSelected = 10;
+
+  /// Active carousel pill width (height is [pageIndicatorHeight]).
+  static const double pageIndicatorActiveWidth = 24;
+
+  static const double pageIndicatorHeight = 8;
+
+  /// Welcome / onboarding layout.
+  static const double welcomeHorizontal = 26;
+  static const double welcomePreviewRadius = 20;
+  static const double welcomePrimaryButtonHeight = 56;
+  static const double welcomeSecondaryButtonHeight = 54;
+  static const double opacityWelcomeParchmentBorder = 0.26;
+  static const double opacityWelcomeParchmentDot = 0.22;
+  static const double opacityWelcomeInkHairline = 0.08;
+  static const double opacityFairwayChipFill = 0.15;
+  static const double opacityFairwayChipBorder = 0.4;
+  static const double opacityJunkChipFill = 0.13;
+  static const double opacityJunkChipBorder = 0.4;
+  static const double opacityInkDashedBorder = 0.28;
+  static const double welcomePrimaryGlowBlur = 28;
+  static const double welcomePrimaryGlowSpread = -12;
+  static const double opacityWelcomePrimaryGlow = 0.7;
+  static const double welcomePreviewShadowBlur = 46;
+  static const double welcomePreviewShadowSpread = -18;
+  static const double opacityWelcomePreviewShadow = 0.7;
 
   /// Filled button label tracking (matches [FilledButtonTheme]).
   static const double letterButton = 0.8;
+
+  /// Radial background for the welcome screen (always dark).
+  static BoxDecoration welcomeBackgroundDecoration() => const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.85),
+          radius: 1.15,
+          colors: [
+            AppColors.welcomeGradientTop,
+            AppColors.darkSurface,
+            AppColors.darkBg,
+          ],
+          stops: [0.0, 0.42, 1.0],
+        ),
+      );
+
+  /// Fairway glow behind the welcome primary CTA.
+  static List<BoxShadow> welcomePrimaryButtonShadow() => [
+        BoxShadow(
+          color: AppColors.fairway.withValues(alpha: opacityWelcomePrimaryGlow),
+          blurRadius: welcomePrimaryGlowBlur,
+          spreadRadius: welcomePrimaryGlowSpread,
+          offset: const Offset(0, 14),
+        ),
+      ];
+
+  /// Elevated shadow for onboarding preview cards.
+  static List<BoxShadow> welcomePreviewCardShadow() => [
+        BoxShadow(
+          color: AppColors.ink.withValues(alpha: opacityWelcomePreviewShadow),
+          blurRadius: welcomePreviewShadowBlur,
+          spreadRadius: welcomePreviewShadowSpread,
+          offset: const Offset(0, 26),
+        ),
+      ];
 
   // ── Semantic colour accessors (flip per brightness) ─────────────────────
 

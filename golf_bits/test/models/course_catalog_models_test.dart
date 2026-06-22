@@ -20,6 +20,18 @@ void main() {
       expect(result.single.label, 'White');
     });
 
+    test('sorts full 18-hole tees before partial tees', () {
+      final partial = CourseTeeOption(
+        id: 'p',
+        label: 'Front',
+        holes: List.generate(9, (i) => _hole(i + 1)),
+      );
+      final full = CourseTeeOption(id: 'f', label: 'Championship', holes: _eighteen());
+      final result = prepareTeesForDisplay([partial, full]);
+      expect(result.first.hasEighteenDistinctHoles, isTrue);
+      expect(result.last.hasEighteenDistinctHoles, isFalse);
+    });
+
     test('dedupes by label and color, keeping fuller 18-hole tee', () {
       final short = CourseTeeOption(
         id: 'a',
@@ -36,19 +48,6 @@ void main() {
       final result = prepareTeesForDisplay([short, full]);
       expect(result, hasLength(1));
       expect(result.single.id, 'b');
-      expect(result.single.hasEighteenDistinctHoles, isTrue);
-    });
-
-    test('sorts full 18-hole tees before partial tees', () {
-      final partial = CourseTeeOption(
-        id: 'p',
-        label: 'Front',
-        holes: List.generate(9, (i) => _hole(i + 1)),
-      );
-      final full = CourseTeeOption(id: 'f', label: 'Championship', holes: _eighteen());
-      final result = prepareTeesForDisplay([partial, full]);
-      expect(result.first.hasEighteenDistinctHoles, isTrue);
-      expect(result.last.hasEighteenDistinctHoles, isFalse);
     });
   });
 }

@@ -164,7 +164,7 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
     return [
       for (final o in widget.teeOptions)
         _TeePickRow(
-          o.label,
+          o.displayLabel,
           o.id,
           _teeColor(scheme, o.colorHint),
           subtitle: _teeSubtitle(o),

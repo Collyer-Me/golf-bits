@@ -57,6 +57,7 @@ abstract final class CourseCatalogRepository {
               'query': query,
               'includeRemote': includeRemote,
               'limit': 25,
+              'countryHint': 'AU',
             },
           )
           .timeout(_functionInvokeTimeout);

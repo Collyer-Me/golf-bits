@@ -69,4 +69,14 @@ abstract final class AppColors {
   static const Color darkOnErrorContainer = Color(0xFFF3C9BC);
   static const Color lightErrorContainer = Color(0xFFF3DDD3);
   static const Color lightOnErrorContainer = Color(0xFF7A2E18);
+
+  // ── Welcome / onboarding (always dark "on course") ───────────────────────
+  /// Radial gradient top stop on the welcome screen.
+  static const Color welcomeGradientTop = Color(0xFF15402A);
+
+  /// DM Mono eyebrow accent on the welcome carousel.
+  static const Color welcomeEyebrow = Color(0xFF6FCB97);
+
+  /// Footer caption under the guest CTA.
+  static const Color welcomeCaption = Color(0xFF6A7E72);
 }
