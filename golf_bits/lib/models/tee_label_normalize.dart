@@ -93,7 +93,8 @@ ParsedTeeMetadata parseProviderTeeLabel(String rawLabel) {
   String? color;
 
   for (final part in parts) {
-    final pl = part.toLowerCase();
+    final cleaned = part.replaceAll(_historicalToken, '').trim();
+    final pl = cleaned.toLowerCase();
     if (_numericCourseCode.hasMatch(part) || _ratingSystem.hasMatch(part)) continue;
     if (pl == 'men' || pl == 'man' || pl == 'male' || pl == 'mens') {
       gender = 'men';
