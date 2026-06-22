@@ -52,6 +52,10 @@ jobs:
         working-directory: golf_bits
         run: flutter analyze --no-fatal-infos
 
+      - name: Test
+        working-directory: golf_bits
+        run: flutter test
+
       # Repository secrets: SUPABASE_URL, SUPABASE_ANON_KEY (Dashboard → Settings → API).
       # If unset, the app builds but auth shows “not configured” until you add secrets and redeploy.
       - name: Build web
