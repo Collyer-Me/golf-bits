@@ -49,13 +49,17 @@ class _GolfBitsAppState extends State<GolfBitsApp> {
   }
 
   Future<void> _loadThemeMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    final mode = switch (prefs.getString(_themePrefKey)) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
-    };
-    if (mounted && mode != _themeMode) setState(() => _themeMode = mode);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mode = switch (prefs.getString(_themePrefKey)) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+      if (mounted && mode != _themeMode) setState(() => _themeMode = mode);
+    } catch (_) {
+      // Preferences unavailable (e.g. first run / tests) — keep system default.
+    }
   }
 
   void _setThemeMode(ThemeMode mode) {
@@ -65,8 +69,12 @@ class _GolfBitsAppState extends State<GolfBitsApp> {
   }
 
   Future<void> _persistThemeMode(ThemeMode mode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themePrefKey, mode.name);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_themePrefKey, mode.name);
+    } catch (_) {
+      // Best-effort; a failed save just means the choice isn't remembered.
+    }
   }
 
   @override
