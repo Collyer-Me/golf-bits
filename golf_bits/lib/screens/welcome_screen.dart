@@ -24,7 +24,6 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   static const _slideCount = 3;
-  static const _autoAdvance = Duration(milliseconds: 4200);
 
   final PageController _pageController = PageController();
   Timer? _autoAdvanceTimer;
@@ -37,6 +36,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       subcopy:
           'Award bits for birdies, chip-ins and sandies. Track every hole with your mates.',
       preview: WelcomeScorecardPreview(),
+      previewTilt: AppTheme.welcomePreviewTilt,
+      previewFloat: AppTheme.welcomePreviewFloat,
     ),
     _WelcomeSlide(
       eyebrow: 'One tap to score',
@@ -44,6 +45,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       subcopy:
           'Birdies, sandies, greenies, three-putts — tag any side bet with a single tap.',
       preview: WelcomeAwardChipsPreview(),
+      previewTilt: AppTheme.welcomePreviewTiltAlt,
+      previewFloat: AppTheme.welcomePreviewFloatAlt,
     ),
     _WelcomeSlide(
       eyebrow: 'No maths required',
@@ -51,6 +54,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       subcopy:
           'When the round ends, we tally the damage and split the pot automatically.',
       preview: WelcomeSettleUpPreview(),
+      previewTilt: AppTheme.welcomePreviewTilt,
+      previewFloat: AppTheme.welcomePreviewFloat,
     ),
   ];
 
@@ -70,7 +75,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void _startAutoAdvance() {
     _autoAdvanceTimer?.cancel();
     if (!mounted || MediaQuery.disableAnimationsOf(context)) return;
-    _autoAdvanceTimer = Timer.periodic(_autoAdvance, (_) {
+    _autoAdvanceTimer = Timer.periodic(AppTheme.welcomeCarouselAutoAdvance, (_) {
       if (!mounted) return;
       final next = (_page + 1) % _slideCount;
       _pageController.animateToPage(
@@ -171,12 +176,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         ),
                         child: const Text('I already have an account'),
                       ),
-                      const SizedBox(height: AppTheme.space1),
+                      const SizedBox(height: AppTheme.welcomeGuestSpacingAbove),
                       TextButton.icon(
                         onPressed: () => showGuestPlayBottomSheet(context),
                         style: TextButton.styleFrom(
                           minimumSize: const Size.fromHeight(30),
                           foregroundColor: scheme.onSurfaceVariant,
+                          padding: const EdgeInsets.symmetric(vertical: AppTheme.space2),
                           textStyle: text.labelLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
@@ -185,7 +191,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         icon: const Icon(Icons.person_outline, size: 15),
                         label: const Text('Continue as guest'),
                       ),
-                      const SizedBox(height: AppTheme.space1),
+                      const SizedBox(height: AppTheme.welcomeGuestSpacingBelow),
                       Text(
                         'No account needed to try the app.',
                         textAlign: TextAlign.center,
@@ -213,12 +219,16 @@ class _WelcomeSlide {
     required this.headline,
     required this.subcopy,
     required this.preview,
+    this.previewTilt = AppTheme.welcomePreviewTilt,
+    this.previewFloat = AppTheme.welcomePreviewFloat,
   });
 
   final String eyebrow;
   final String headline;
   final String subcopy;
   final Widget preview;
+  final double previewTilt;
+  final double previewFloat;
 }
 
 class _WelcomeSlideView extends StatelessWidget {
@@ -283,7 +293,11 @@ class _WelcomeSlideView extends StatelessWidget {
               child: Center(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: slide.preview,
+                  child: WelcomeFloatingPreview(
+                    tiltDegrees: slide.previewTilt,
+                    floatAmplitude: slide.previewFloat,
+                    child: slide.preview,
+                  ),
                 ),
               ),
             ),

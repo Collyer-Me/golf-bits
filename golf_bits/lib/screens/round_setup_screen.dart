@@ -591,6 +591,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         .toList();
 
     final holePars = detail?.holeParsForTeeSync(setup.courseTeeId) ?? const <String, int>{};
+    final holeYardages = detail?.holeYardagesForTeeSync(setup.courseTeeId) ?? const <String, int>{};
 
     final args = RoundSessionArgs(
       courseName: courseName,
@@ -605,6 +606,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       participants: participants,
       strokeTrackingMode: _resolvedStrokeMode,
       holePars: holePars,
+      holeYardages: holeYardages,
     );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(

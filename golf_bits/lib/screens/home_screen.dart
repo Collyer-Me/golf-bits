@@ -788,9 +788,8 @@ class _ProfileTabState extends State<_ProfileTab> {
           width: double.infinity,
           child: SegmentedButton<ThemeMode>(
             segments: const [
-              ButtonSegment(value: ThemeMode.system, label: Text('System')),
-              ButtonSegment(value: ThemeMode.light, label: Text('Light')),
               ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+              ButtonSegment(value: ThemeMode.light, label: Text('Light')),
             ],
             selected: {themeController.mode},
             onSelectionChanged: (selection) => themeController.setMode(selection.first),

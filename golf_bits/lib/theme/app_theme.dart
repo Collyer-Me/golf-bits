@@ -32,6 +32,21 @@ abstract final class AppTheme {
   /// Rounded-square avatars (initials).
   static const double avatarRadius = 12;
 
+  /// In-round player avatar (hole scoring cards).
+  static const double avatarSizeMd = 38;
+
+  /// Circular award (+) control on player cards.
+  static const double awardButtonSize = 44;
+
+  /// Hole-progress pip bar — upcoming segments.
+  static const double opacityProgressPipUpcoming = 0.12;
+
+  /// Leader card emphasis ring.
+  static const double opacityLeaderRing = 0.45;
+
+  /// Current-hole progress pip width multiplier vs completed pips.
+  static const double progressPipCurrentFlex = 2.5;
+
   /// 4dp-ish spacing scale (prefer over raw `SizedBox` / `EdgeInsets` numbers).
   static const double space1 = 4;
   static const double spaceHalf = 6;
@@ -127,6 +142,18 @@ abstract final class AppTheme {
   static const double welcomePreviewShadowBlur = 46;
   static const double welcomePreviewShadowSpread = -18;
   static const double opacityWelcomePreviewShadow = 0.7;
+
+  /// Preview card idle float (matches design reference `bdjFloat`).
+  static const double welcomePreviewTilt = -2;
+  static const double welcomePreviewTiltAlt = -5;
+  static const double welcomePreviewFloat = 8;
+  static const double welcomePreviewFloatAlt = 6;
+  static const Duration welcomePreviewFloatDuration = Duration(seconds: 7);
+  static const Duration welcomeCarouselAutoAdvance = Duration(milliseconds: 6200);
+
+  /// Vertical breathing room around the guest CTA.
+  static const double welcomeGuestSpacingAbove = space4;
+  static const double welcomeGuestSpacingBelow = space3;
 
   /// Filled button label tracking (matches [FilledButtonTheme]).
   static const double letterButton = 0.8;

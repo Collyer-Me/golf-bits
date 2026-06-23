@@ -100,7 +100,7 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
           _sectionTitle(
             context,
             'Welcome previews',
-            'Decorative onboarding cards — always on a parchment surface.',
+            'Decorative onboarding cards — tilted with a gentle float.',
           ),
           DecoratedBox(
             decoration: AppTheme.welcomeBackgroundDecoration(),
@@ -108,11 +108,15 @@ class _ComponentGalleryScreenState extends State<ComponentGalleryScreen> {
               padding: const EdgeInsets.all(AppTheme.space4),
               child: Column(
                 children: const [
-                  WelcomeScorecardPreview(),
-                  SizedBox(height: AppTheme.space4),
-                  WelcomeAwardChipsPreview(),
-                  SizedBox(height: AppTheme.space4),
-                  WelcomeSettleUpPreview(),
+                  WelcomeFloatingPreview(child: WelcomeScorecardPreview()),
+                  SizedBox(height: AppTheme.space8),
+                  WelcomeFloatingPreview(
+                    tiltDegrees: AppTheme.welcomePreviewTiltAlt,
+                    floatAmplitude: AppTheme.welcomePreviewFloatAlt,
+                    child: WelcomeAwardChipsPreview(),
+                  ),
+                  SizedBox(height: AppTheme.space8),
+                  WelcomeFloatingPreview(child: WelcomeSettleUpPreview()),
                 ],
               ),
             ),

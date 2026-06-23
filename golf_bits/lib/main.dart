@@ -30,7 +30,7 @@ Future<void> main() async {
 }
 
 /// Root app: Material 3, Bits Dots Junk brand, dark ("on course") + light
-/// ("in the clubhouse") themes with a system-default [ThemeMode] toggle.
+/// ("in the clubhouse") themes. Defaults to dark; light only when chosen in Profile.
 class GolfBitsApp extends StatefulWidget {
   const GolfBitsApp({super.key});
 
@@ -40,7 +40,7 @@ class GolfBitsApp extends StatefulWidget {
 
 class _GolfBitsAppState extends State<GolfBitsApp> {
   static const _themePrefKey = 'theme_mode';
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   @override
   void initState() {
@@ -51,27 +51,31 @@ class _GolfBitsAppState extends State<GolfBitsApp> {
   Future<void> _loadThemeMode() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mode = switch (prefs.getString(_themePrefKey)) {
-        'light' => ThemeMode.light,
-        'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
-      };
+      final stored = prefs.getString(_themePrefKey);
+      final mode = stored == 'light' ? ThemeMode.light : ThemeMode.dark;
+      if (stored == 'system') {
+        await prefs.setString(_themePrefKey, 'dark');
+      }
       if (mounted && mode != _themeMode) setState(() => _themeMode = mode);
     } catch (_) {
-      // Preferences unavailable (e.g. first run / tests) — keep system default.
+      // Preferences unavailable (e.g. first run / tests) — keep dark default.
     }
   }
 
   void _setThemeMode(ThemeMode mode) {
-    if (mode == _themeMode) return;
-    setState(() => _themeMode = mode);
-    _persistThemeMode(mode);
+    final resolved = mode == ThemeMode.light ? ThemeMode.light : ThemeMode.dark;
+    if (resolved == _themeMode) return;
+    setState(() => _themeMode = resolved);
+    _persistThemeMode(resolved);
   }
 
   Future<void> _persistThemeMode(ThemeMode mode) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_themePrefKey, mode.name);
+      await prefs.setString(
+        _themePrefKey,
+        mode == ThemeMode.light ? 'light' : 'dark',
+      );
     } catch (_) {
       // Best-effort; a failed save just means the choice isn't remembered.
     }

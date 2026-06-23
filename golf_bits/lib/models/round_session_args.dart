@@ -67,6 +67,7 @@ class RoundSessionArgs {
     this.participants = const [],
     this.strokeTrackingMode = StrokeTrackingMode.off,
     this.holePars = const {},
+    this.holeYardages = const {},
     this.initialStrokeByHole = const {},
     this.initialGrossByPlayer = const {},
   });
@@ -83,6 +84,7 @@ class RoundSessionArgs {
   final List<RoundParticipant> participants;
   final StrokeTrackingMode strokeTrackingMode;
   final Map<String, int> holePars;
+  final Map<String, int> holeYardages;
   final Map<String, Map<int, int>> initialStrokeByHole;
   final Map<String, int> initialGrossByPlayer;
 

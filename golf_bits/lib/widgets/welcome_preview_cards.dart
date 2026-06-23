@@ -1,9 +1,91 @@
+import 'dart:math' show pi;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'tally_marks.dart';
+
+/// Gentle tilt + vertical bob for welcome preview cards (design `bdjFloat`).
+class WelcomeFloatingPreview extends StatefulWidget {
+  const WelcomeFloatingPreview({
+    super.key,
+    required this.child,
+    this.tiltDegrees = AppTheme.welcomePreviewTilt,
+    this.floatAmplitude = AppTheme.welcomePreviewFloat,
+    this.duration = AppTheme.welcomePreviewFloatDuration,
+  });
+
+  final Widget child;
+  final double tiltDegrees;
+  final double floatAmplitude;
+  final Duration duration;
+
+  @override
+  State<WelcomeFloatingPreview> createState() => _WelcomeFloatingPreviewState();
+}
+
+class _WelcomeFloatingPreviewState extends State<WelcomeFloatingPreview>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late Animation<double> _offsetY;
+  bool _animating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+    _offsetY = _buildOffsetAnimation();
+  }
+
+  Animation<double> _buildOffsetAnimation() => Tween<double>(
+        begin: 0,
+        end: -widget.floatAmplitude,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_animating || MediaQuery.disableAnimationsOf(context)) return;
+    _animating = true;
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(WelcomeFloatingPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.duration != widget.duration) {
+      _controller.duration = widget.duration;
+    }
+    if (oldWidget.floatAmplitude != widget.floatAmplitude) {
+      _offsetY = _buildOffsetAnimation();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tilt = widget.tiltDegrees * pi / 180;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return Transform.rotate(angle: tilt, child: widget.child);
+    }
+
+    return AnimatedBuilder(
+      animation: _offsetY,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, _offsetY.value),
+        child: Transform.rotate(angle: tilt, child: child),
+      ),
+      child: widget.child,
+    );
+  }
+}
 
 /// Decorative onboarding previews — not interactive. Built from the same tokens
 /// as production UI so the welcome carousel stays in sync with the design system.
@@ -122,13 +204,10 @@ class WelcomeAwardChipsPreview extends StatelessWidget {
             spacing: 9,
             runSpacing: 9,
             children: const [
-              _EventPreviewChip(label: 'Birdie', delta: '+2', style: _EventChipStyle.positive),
               _EventPreviewChip(label: 'Sandie', delta: '+2', style: _EventChipStyle.subtlePositive),
               _EventPreviewChip(label: 'Greenie', delta: '+1', style: _EventChipStyle.subtlePositive),
               _EventPreviewChip(label: 'Eagle', delta: '+5', style: _EventChipStyle.sand),
               _EventPreviewChip(label: 'Three-putt', delta: '−1', style: _EventChipStyle.penalty),
-              _EventPreviewChip(label: 'OB', delta: '−1', style: _EventChipStyle.penalty),
-              _EventPreviewChip(label: '+ Custom', style: _EventChipStyle.dashed),
             ],
           ),
         ],

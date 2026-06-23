@@ -91,6 +91,11 @@ int? parForHole(Map<String, int> holePars, int hole) {
   return holePars['$hole'] ?? holePars[hole.toString()];
 }
 
+/// Yardage for a hole from `hole_yardages` snapshot (`"7"` → 412).
+int? yardageForHole(Map<String, int> holeYardages, int hole) {
+  return holeYardages['$hole'] ?? holeYardages[hole.toString()];
+}
+
 /// Course par total for holes in [holeOrder] when pars known.
 int? courseParForHoles(Map<String, int> holePars, List<int> holeOrder) {
   var sum = 0;

@@ -10,8 +10,11 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: WelcomeScreen(),
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: const WelcomeScreen(),
+        ),
       ),
     );
     await tester.pump();
@@ -55,7 +58,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
-        home: const WelcomeScreen(),
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: const WelcomeScreen(),
+        ),
       ),
     );
     await tester.pump();

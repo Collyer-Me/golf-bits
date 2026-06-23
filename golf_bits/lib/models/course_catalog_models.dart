@@ -350,6 +350,28 @@ class CourseDetailView {
     return {for (final h in tee.holes) '${h.holeNumber}': h.par};
   }
 
+  /// Yardage map for the selected tee (`"7"` → 412), omitting holes without data.
+  Map<String, int>? holeYardagesForTeeSync(String? courseTeeId) {
+    if (tees.isEmpty) return null;
+    CourseTeeOption? tee;
+    if (courseTeeId != null) {
+      for (final t in tees) {
+        if (t.id == courseTeeId) {
+          tee = t;
+          break;
+        }
+      }
+    }
+    tee ??= tees.first;
+    if (tee.holes.isEmpty) return null;
+    final out = <String, int>{};
+    for (final h in tee.holes) {
+      final yds = h.yardageYds;
+      if (yds != null) out['${h.holeNumber}'] = yds;
+    }
+    return out.isEmpty ? null : out;
+  }
+
   factory CourseDetailView.fromDetailJson(Map<String, dynamic> j) {
     final c = j['course'] as Map<String, dynamic>? ?? const {};
     final teeList = prepareTeesForDisplay(

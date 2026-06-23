@@ -40,7 +40,7 @@ Flutter app under this folder. Use this file plus [`README.md`](README.md) to st
    - **Exception:** **`WelcomeScreen`** only — no app bar; the hero wordmark lives in the body.
 
 7. **Themes**
-   - Dark + light are built as a mirrored pair from one token set; `main.dart` wires `theme` (light) + `darkTheme` (dark) + `themeMode` via `ThemeController` (System/Light/Dark toggle in Profile, default System). **Every screen must read correctly in both themes** — drive everything from `colorScheme` / `textTheme`.
+   - Dark + light are built as a mirrored pair from one token set; `main.dart` wires `theme` (light) + `darkTheme` (dark) + `themeMode` via `ThemeController` (Dark/Light toggle in Profile, **default dark**). **Every screen must read correctly in both themes** — drive everything from `colorScheme` / `textTheme`.
 
 8. **Preview**
    - **Style guide & components** in the app mirrors tokens and patterns; keep it updated when you add new categories of UI.

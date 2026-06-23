@@ -45,11 +45,13 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   late final List<int> _holeOrder;
   int _holeIndex = 0;
   late final List<_HolePlayer> _players;
+  late final Map<String, int> _playerColorIndex;
   final List<RoundBitEventDraft> _bitLog = [];
   final Map<String, Map<int, int>> _holeBits = {};
   final Map<String, Map<int, int>> _strokeByHole = {};
   late final StrokeTrackingMode _strokeMode;
   late final Map<String, int> _holePars;
+  late final Map<String, int> _holeYardages;
 
   int get _hole => _holeOrder[_holeIndex];
 
@@ -59,6 +61,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     final s = widget.session;
     _strokeMode = s?.strokeTrackingMode ?? StrokeTrackingMode.off;
     _holePars = s?.holePars ?? const {};
+    _holeYardages = s?.holeYardages ?? const {};
     if (s != null) {
       if (s.holeCount == 9) {
         _holeOrder = List<int>.generate(9, (i) => s.startHole + i);
@@ -95,6 +98,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         _HolePlayer(id: '3', name: 'Chris', totalBits: 0),
       ];
     }
+    _playerColorIndex = {for (var i = 0; i < _players.length; i++) _players[i].id: i};
     for (final p in _players) {
       _holeBits[p.id] = <int, int>{};
     }
@@ -107,6 +111,16 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       _seedDefaultStrokesForCurrentHole();
       unawaited(_hydrateFromCloud());
     }
+  }
+
+  List<_HolePlayer> get _sortedPlayers {
+    final copy = [..._players];
+    copy.sort((a, b) => b.totalBits.compareTo(a.totalBits));
+    return copy;
+  }
+
+  List<int> get _bitsTiers {
+    return _sortedPlayers.map((p) => p.totalBits).toSet().toList()..sort((a, b) => b.compareTo(a));
   }
 
   Future<void> _hydrateFromCloud() async {
@@ -249,6 +263,15 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
 
   int _holeBitsFor(_HolePlayer player) => _holeBits[player.id]?[_hole] ?? 0;
 
+  Color _playerFill(BuildContext context, _HolePlayer player) {
+    final scheme = Theme.of(context).colorScheme;
+    if (player.isYou) return scheme.primaryContainer;
+    final idx = _playerColorIndex[player.id] ?? 0;
+    if (idx == 0) return scheme.primary;
+    if (idx == 1) return scheme.secondary;
+    return scheme.primaryContainer;
+  }
+
   void _openEventSheet(_HolePlayer player) {
     final rules = widget.session?.eventRules ?? const <RoundEventRule>[];
     String eventKey(String label, int delta) => '$label::$delta';
@@ -262,6 +285,8 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       isScrollControlled: true,
       builder: (ctx) => _EventAwardSheet(
         playerName: player.name,
+        hole: _hole,
+        par: _parForHole(_hole),
         rules: rules,
         initialSelectedKeys: selectedForPlayerHole,
         onAward: (label, delta, iconKey) {
@@ -391,12 +416,23 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     } catch (_) {}
   }
 
+  String _headerEyebrow(int? par, int? yardage, int? coursePar) {
+    if (par == null) return 'PAR —';
+    final parPart = 'PAR $par';
+    if (yardage != null) return '$parPart · $yardage YDS';
+    if (coursePar != null) return '$parPart · COURSE $coursePar';
+    return parPart;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final par = _parForHole(_hole);
+    final yardage = yardageForHole(_holeYardages, _hole);
     final coursePar = courseParForHoles(_holePars, _holeOrder);
+    final sorted = _sortedPlayers;
+    final tiers = _bitsTiers;
 
     return Scaffold(
       appBar: BrandAppBar(
@@ -413,78 +449,172 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: AppTheme.screenPadding,
+      body: Column(
         children: [
-          Row(
-            children: [
-              IconButton.filledTonal(
-                onPressed: _holeIndex > 0 ? _prevHole : null,
-                icon: const Icon(Icons.chevron_left),
-              ),
-              Expanded(
-                child: Column(
+          Expanded(
+            child: ListView(
+              padding: AppTheme.screenPadding.copyWith(bottom: AppTheme.space3),
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Hole $_hole',
-                      textAlign: TextAlign.center,
-                      style: text.headlineMedium?.copyWith(
-                        color: scheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _headerEyebrow(par, yardage, coursePar).toUpperCase(),
+                            style: AppTheme.monoLabel(
+                              context,
+                              color: AppTheme.bits(context),
+                            ),
+                          ),
+                          SizedBox(height: AppTheme.space1),
+                          Text(
+                            'Hole $_hole',
+                            style: text.headlineMedium?.copyWith(color: scheme.onSurface),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: AppTheme.space1),
-                    Text(
-                      par != null
-                          ? 'PAR $par${coursePar != null ? ' · Course $coursePar' : ''}'
-                          : 'PAR —',
-                      style: text.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
+                    if (_holeIndex > 0)
+                      Text(
+                        'THRU $_holeIndex',
+                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                      ),
                   ],
                 ),
-              ),
-              IconButton.filledTonal(
-                onPressed: _nextHole,
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
+                SizedBox(height: AppTheme.space3),
+                _HoleProgressBar(
+                  holeCount: _holeOrder.length,
+                  currentIndex: _holeIndex,
+                ),
+                SizedBox(height: AppTheme.space6),
+                ...sorted.map(
+                  (p) => _PlayerCard(
+                    player: p,
+                    fillColor: _playerFill(context, p),
+                    standingLabel: _standingLabel(p, tiers),
+                    isLeader: tiers.isNotEmpty && p.totalBits == tiers.first,
+                    holeBits: _holeBitsFor(p),
+                    totalBits: p.totalBits,
+                    tracksStrokes: _tracksStrokes(p),
+                    strokes: _strokesOnHole(p),
+                    par: par,
+                    gross: _grossFor(p),
+                    holePars: _holePars,
+                    holeOrder: _holeOrder,
+                    playerHoles: _strokeByHole[p.id] ?? const {},
+                    onStrokesChanged: (n) => _setStrokes(p, n),
+                    onAward: () => _openEventSheet(p),
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: AppTheme.space6),
-          ..._players.map((p) {
-            if (_tracksStrokes(p)) {
-              return _TrackedPlayerRow(
-                player: p,
-                holeBits: _holeBitsFor(p),
-                totalBits: p.totalBits,
-                strokes: _strokesOnHole(p),
-                par: par,
-                gross: _grossFor(p),
-                holePars: _holePars,
-                holeOrder: _holeOrder,
-                playerHoles: _strokeByHole[p.id] ?? const {},
-                onStrokesChanged: (n) => _setStrokes(p, n),
-                onAward: () => _openEventSheet(p),
-              );
-            }
-            return _BitsOnlyPlayerRow(
-              playerName: p.name,
-              holeBits: _holeBitsFor(p),
-              totalBits: p.totalBits,
-              onAward: () => _openEventSheet(p),
-            );
-          }),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.pageHorizontal,
+                AppTheme.space2,
+                AppTheme.pageHorizontal,
+                AppTheme.space3,
+              ),
+              child: Row(
+                children: [
+                  Tooltip(
+                    message: 'Previous hole',
+                    child: OutlinedButton(
+                      onPressed: _holeIndex > 0 ? _prevHole : null,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(52, AppTheme.awardButtonSize),
+                      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3),
+                    ),
+                    child: const Icon(Icons.chevron_left),
+                    ),
+                  ),
+                  SizedBox(width: AppTheme.space3),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _nextHole,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Next hole'),
+                          SizedBox(width: AppTheme.space2),
+                          Icon(Icons.arrow_forward, size: AppTheme.iconDense),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _TrackedPlayerRow extends StatelessWidget {
-  const _TrackedPlayerRow({
+String _standingLabel(_HolePlayer player, List<int> tiers) {
+  if (tiers.isEmpty) return '';
+  final rank = tiers.indexOf(player.totalBits);
+  if (rank == 0) return '★ LEADING';
+  return switch (rank) {
+    1 => '2ND',
+    2 => '3RD',
+    _ => '${rank + 1}TH',
+  };
+}
+
+class _HoleProgressBar extends StatelessWidget {
+  const _HoleProgressBar({
+    required this.holeCount,
+    required this.currentIndex,
+  });
+
+  final int holeCount;
+  final int currentIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        for (var i = 0; i < holeCount; i++) ...[
+          if (i > 0) SizedBox(width: AppTheme.space1),
+          Expanded(
+            flex: i == currentIndex ? 25 : 10,
+            child: Container(
+              height: AppTheme.space1,
+              decoration: BoxDecoration(
+                color: i < currentIndex
+                    ? scheme.surfaceContainerHigh
+                    : i == currentIndex
+                        ? scheme.primary
+                        : scheme.onSurface.withValues(alpha: AppTheme.opacityProgressPipUpcoming),
+                borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PlayerCard extends StatelessWidget {
+  const _PlayerCard({
     required this.player,
+    required this.fillColor,
+    required this.standingLabel,
+    required this.isLeader,
     required this.holeBits,
     required this.totalBits,
+    required this.tracksStrokes,
     required this.strokes,
     required this.par,
     required this.gross,
@@ -496,8 +626,12 @@ class _TrackedPlayerRow extends StatelessWidget {
   });
 
   final _HolePlayer player;
+  final Color fillColor;
+  final String standingLabel;
+  final bool isLeader;
   final int holeBits;
   final int totalBits;
+  final bool tracksStrokes;
   final int strokes;
   final int? par;
   final int gross;
@@ -511,43 +645,88 @@ class _TrackedPlayerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final holeToPar = scoreToParLabel(strokes: strokes, par: par);
-    final grossLabel = gross > 0
-        ? formatGrossWithToPar(
-            gross: gross,
-            holePars: holePars,
-            holeOrder: holeOrder,
-            playerHoles: playerHoles,
-          )
-        : '—';
-    final holeBitsStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
-    final totalBitsStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
+    final onFill = AppTheme.textOnFilledCircle(fillColor, scheme);
+    final totalStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
+    final holeStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
     final scoreColor = totalBits > 0
         ? AppTheme.bits(context)
         : totalBits < 0
             ? AppTheme.junk(context)
             : scheme.onSurfaceVariant;
+    final leaderBorder = isLeader
+        ? AppTheme.sand(context).withValues(alpha: AppTheme.opacityLeaderRing)
+        : scheme.outlineVariant;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space3),
       child: OutlinedSurfaceCard(
-        borderColor: scheme.outlineVariant,
+        borderColor: leaderBorder,
         padding: const EdgeInsets.all(AppTheme.space3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
+                _PlayerAvatar(initial: _initialFor(player.name), fill: fillColor, onFill: onFill),
+                SizedBox(width: AppTheme.space3),
                 Expanded(
-                  child: Text(
-                    player.name,
-                    style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        player.name,
+                        style: text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      if (standingLabel.isNotEmpty)
+                        Text(
+                          standingLabel,
+                          style: AppTheme.monoLabel(
+                            context,
+                            color: isLeader ? AppTheme.sand(context) : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
+              ],
+            ),
+            SizedBox(height: AppTheme.space3),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: TallyMarks(
+                      count: totalBits,
+                      height: 22,
+                      variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(totalStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
+                    if (holeBits != 0)
+                      Text(
+                        '$holeStr this hole',
+                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                      ),
+                  ],
+                ),
+                SizedBox(width: AppTheme.space3),
                 FilledButton(
                   onPressed: onAward,
+                  tooltip: 'Award bits',
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size(48, 48),
+                    minimumSize: const Size(AppTheme.awardButtonSize, AppTheme.awardButtonSize),
                     padding: EdgeInsets.zero,
                     shape: const CircleBorder(),
                   ),
@@ -555,151 +734,121 @@ class _TrackedPlayerRow extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: AppTheme.space3),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Score · hole',
-                        style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                      Text(
-                        '$strokes ($holeToPar)',
-                        style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      SizedBox(height: AppTheme.spaceHalf),
-                      Text(
-                        'Score total: $grossLabel',
-                        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ],
+            if (tracksStrokes) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
+                child: Divider(height: 1, color: scheme.outlineVariant),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: _GrossTotalRow(gross: gross, holePars: holePars, holeOrder: holeOrder, playerHoles: playerHoles)),
+                  StrokeHoleCounter(
+                    strokes: strokes,
+                    par: par,
+                    onChanged: onStrokesChanged,
                   ),
-                ),
-                StrokeHoleCounter(
-                  strokes: strokes,
-                  par: par,
-                  onChanged: onStrokesChanged,
-                ),
-              ],
-            ),
-            SizedBox(height: AppTheme.space3),
-            Row(
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: TallyMarks(
-                        count: totalBits,
-                        height: 22,
-                        variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
-                      ),
-                    ),
-                  ),
-                ),
-                if (holeBits != 0) ...[
-                  Text(
-                    '$holeBitsStr hole',
-                    style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                  SizedBox(width: AppTheme.space3),
                 ],
-                Text(totalBitsStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
-              ],
-            ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
+  static String _initialFor(String name) {
+    final trimmed = name.trim();
+    return trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?';
+  }
 }
 
-class _BitsOnlyPlayerRow extends StatelessWidget {
-  const _BitsOnlyPlayerRow({
-    required this.playerName,
-    required this.holeBits,
-    required this.totalBits,
-    required this.onAward,
+class _PlayerAvatar extends StatelessWidget {
+  const _PlayerAvatar({
+    required this.initial,
+    required this.fill,
+    required this.onFill,
   });
 
-  final String playerName;
-  final int holeBits;
-  final int totalBits;
-  final VoidCallback onAward;
+  final String initial;
+  final Color fill;
+  final Color onFill;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: AppTheme.avatarSizeMd,
+      height: AppTheme.avatarSizeMd,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AppTheme.avatarRadius),
+      ),
+      child: Text(
+        initial,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: onFill,
+              fontWeight: FontWeight.w800,
+            ),
+      ),
+    );
+  }
+}
+
+class _GrossTotalRow extends StatelessWidget {
+  const _GrossTotalRow({
+    required this.gross,
+    required this.holePars,
+    required this.holeOrder,
+    required this.playerHoles,
+  });
+
+  final int gross;
+  final Map<String, int> holePars;
+  final List<int> holeOrder;
+  final Map<int, int> playerHoles;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final holeStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
-    final totalStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
-    final scoreColor = totalBits > 0
-        ? AppTheme.bits(context)
-        : totalBits < 0
-            ? AppTheme.junk(context)
-            : scheme.onSurfaceVariant;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.space3),
-      child: OutlinedSurfaceCard(
-        borderColor: scheme.outlineVariant,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.space4,
-          vertical: AppTheme.space3,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    playerName,
-                    style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: AppTheme.space2),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: TallyMarks(
-                      count: totalBits,
-                      height: 24,
-                      variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(totalStr, style: AppTheme.score(context, size: 30, color: scoreColor)),
-                if (holeBits != 0)
-                  Text(
-                    '$holeStr this hole',
-                    style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-              ],
-            ),
-            SizedBox(width: AppTheme.space3),
-            FilledButton(
-              onPressed: onAward,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(48, 48),
-                padding: EdgeInsets.zero,
-                shape: const CircleBorder(),
-              ),
-              child: const Icon(Icons.add, size: AppTheme.iconDense),
-            ),
-          ],
-        ),
-      ),
+    if (gross <= 0) {
+      return Row(
+        children: [
+          Text('TOTAL', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
+          SizedBox(width: AppTheme.space2),
+          Text('—', style: AppTheme.score(context, size: 16, color: scheme.onSurfaceVariant)),
+        ],
+      );
+    }
+
+    final formatted = formatGrossWithToPar(
+      gross: gross,
+      holePars: holePars,
+      holeOrder: holeOrder,
+      playerHoles: playerHoles,
+    );
+    final paren = formatted.indexOf(' (');
+    if (paren >= 0 && formatted.endsWith(')')) {
+      final grossNum = formatted.substring(0, paren);
+      final toPar = formatted.substring(paren + 2, formatted.length - 1);
+      return Row(
+        children: [
+          Text('TOTAL', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
+          SizedBox(width: AppTheme.space2),
+          Text(grossNum, style: AppTheme.score(context, size: 16)),
+          SizedBox(width: AppTheme.space1),
+          Text(toPar, style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Text('TOTAL', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
+        SizedBox(width: AppTheme.space2),
+        Text(formatted, style: AppTheme.score(context, size: 16)),
+      ],
     );
   }
 }
@@ -709,12 +858,16 @@ typedef _AwardCallback = void Function(String label, int delta, String iconKey);
 class _EventAwardSheet extends StatefulWidget {
   const _EventAwardSheet({
     required this.playerName,
+    required this.hole,
+    required this.par,
     required this.rules,
     required this.initialSelectedKeys,
     required this.onAward,
   });
 
   final String playerName;
+  final int hole;
+  final int? par;
   final List<RoundEventRule> rules;
   final Set<String> initialSelectedKeys;
   final _AwardCallback onAward;
@@ -761,10 +914,14 @@ class _EventAwardSheetState extends State<_EventAwardSheet> {
                 const RoundEventRule(label: 'Water Hazard', delta: -1, iconKey: 'waves_outlined'),
               ]
             : widget.rules)
-        .map((r) => _EventDef(r.label, _bitText(r.delta), r.delta, r.iconKey))
+        .map((r) => _EventDef(r.label, r.delta, r.iconKey))
         .toList();
-    final positive = mapped.where((e) => e.delta >= 0).toList();
-    final negative = mapped.where((e) => e.delta < 0).toList();
+    final positive = mapped.where((e) => e.delta >= 0).toList()
+      ..sort((a, b) => b.delta.compareTo(a.delta));
+    final negative = mapped.where((e) => e.delta < 0).toList()
+      ..sort((a, b) => a.delta.compareTo(b.delta));
+
+    final positiveTiers = positive.map((e) => e.delta).toSet().toList()..sort((a, b) => b.compareTo(a));
 
     return Padding(
       padding: EdgeInsets.only(
@@ -778,28 +935,28 @@ class _EventAwardSheetState extends State<_EventAwardSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.playerName,
+                      'Award to ${widget.playerName}',
                       style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     Text(
-                      'SELECT EVENTS TO AWARD BITS',
-                      style: text.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        letterSpacing: AppTheme.letterSheetLabel,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      widget.par != null
+                          ? 'HOLE ${widget.hole} · PAR ${widget.par}'.toUpperCase()
+                          : 'HOLE ${widget.hole}'.toUpperCase(),
+                      style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Done',
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(48, 48),
                   padding: EdgeInsets.zero,
@@ -809,74 +966,159 @@ class _EventAwardSheetState extends State<_EventAwardSheet> {
               ),
             ],
           ),
-          SizedBox(height: AppTheme.space4),
-          _eventGrid(context, positive, false),
-          SizedBox(height: AppTheme.space3),
-          if (negative.isNotEmpty) _eventGrid(context, negative, true),
+          SizedBox(height: AppTheme.space5),
+          if (positive.isNotEmpty) ...[
+            Text('BITS WON', style: AppTheme.monoLabel(context, color: AppTheme.bits(context))),
+            SizedBox(height: AppTheme.space2),
+            Wrap(
+              spacing: AppTheme.space2,
+              runSpacing: AppTheme.space2,
+              children: [
+                for (final e in positive)
+                  _AwardEventChip(
+                    event: e,
+                    selected: _selectedKeys.contains(_eventKey(e.label, e.delta)),
+                    visual: _chipVisualForPositive(e, positiveTiers),
+                    onTap: () => _toggle(e),
+                  ),
+              ],
+            ),
+          ],
+          if (negative.isNotEmpty) ...[
+            SizedBox(height: AppTheme.space4),
+            Text(
+              'JUNK · BITS LOST',
+              style: AppTheme.monoLabel(context, color: AppTheme.junk(context)),
+            ),
+            SizedBox(height: AppTheme.space2),
+            Wrap(
+              spacing: AppTheme.space2,
+              runSpacing: AppTheme.space2,
+              children: [
+                for (final e in negative)
+                  _AwardEventChip(
+                    event: e,
+                    selected: _selectedKeys.contains(_eventKey(e.label, e.delta)),
+                    visual: _AwardChipVisual.junk,
+                    onTap: () => _toggle(e),
+                  ),
+              ],
+            ),
+          ],
+          SizedBox(height: AppTheme.space5),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Done'),
+          ),
         ],
       ),
     );
   }
+}
 
-  static String _bitText(int delta) {
-    final abs = delta.abs();
-    final noun = abs == 1 ? 'BIT' : 'BITS';
-    if (delta < 0) return '−$abs $noun';
-    return '+$abs $noun';
-  }
+enum _AwardChipVisual { sand, fairwayFilled, fairwayOutline, junk }
 
-  Widget _eventGrid(BuildContext context, List<_EventDef> items, bool negative) {
+_AwardChipVisual _chipVisualForPositive(_EventDef event, List<int> tiers) {
+  final rank = tiers.indexOf(event.delta);
+  if (rank == 0) return _AwardChipVisual.sand;
+  if (rank == 1) return _AwardChipVisual.fairwayFilled;
+  return _AwardChipVisual.fairwayOutline;
+}
+
+class _AwardEventChip extends StatelessWidget {
+  const _AwardEventChip({
+    required this.event,
+    required this.selected,
+    required this.visual,
+    required this.onTap,
+  });
+
+  final _EventDef event;
+  final bool selected;
+  final _AwardChipVisual visual;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final deltaStr = event.delta >= 0 ? '+${event.delta}' : '${event.delta}';
+    final radius = BorderRadius.circular(AppTheme.stadiumRadius);
 
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: AppTheme.space2,
-      crossAxisSpacing: AppTheme.space2,
-      childAspectRatio: 2.35,
-      children: items.map((e) {
-        final selected = _selectedKeys.contains(_eventKey(e.label, e.delta));
-        if (!selected) {
-          return OutlinedButton(
-            onPressed: () => _toggle(e),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: negative ? scheme.error : scheme.onSurface,
-              side: BorderSide(
-                color: negative
-                    ? scheme.error.withValues(alpha: AppTheme.opacityBorderEmphasis)
-                    : scheme.outlineVariant,
-              ),
-            ),
-            child: Text(
-              '${e.label.toUpperCase()} ${e.sublabel}',
-              textAlign: TextAlign.center,
-              style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
+    late final Color bg;
+    late final Color fg;
+    BorderSide? border;
+
+    switch (visual) {
+      case _AwardChipVisual.sand:
+        bg = scheme.secondary;
+        fg = scheme.onSecondary;
+      case _AwardChipVisual.fairwayFilled:
+        bg = scheme.primary;
+        fg = scheme.onPrimary;
+      case _AwardChipVisual.fairwayOutline:
+        if (selected) {
+          bg = scheme.primary;
+          fg = scheme.onPrimary;
+        } else {
+          bg = scheme.primary.withValues(alpha: AppTheme.opacityFairwayChipFill);
+          fg = scheme.primary;
+          border = BorderSide(
+            color: scheme.primary.withValues(alpha: AppTheme.opacityFairwayChipBorder),
+            width: AppTheme.chipOutlineWidth,
           );
         }
-        return FilledButton(
-          onPressed: () => _toggle(e),
-          style: FilledButton.styleFrom(
-            backgroundColor: negative ? scheme.error : scheme.primary,
-            foregroundColor: negative ? scheme.onError : scheme.onPrimary,
+      case _AwardChipVisual.junk:
+        if (selected) {
+          bg = scheme.error;
+          fg = scheme.onError;
+        } else {
+          bg = scheme.error.withValues(alpha: AppTheme.opacityJunkChipFill);
+          fg = scheme.error;
+          border = BorderSide(
+            color: scheme.error.withValues(alpha: AppTheme.opacityJunkChipBorder),
+            width: AppTheme.chipOutlineWidth,
+          );
+        }
+    }
+
+    return Material(
+      color: bg,
+      shape: RoundedRectangleBorder(borderRadius: radius, side: border ?? BorderSide.none),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTheme.space4,
+            vertical: AppTheme.space2,
           ),
-          child: Text(
-            '${e.label.toUpperCase()} ${e.sublabel}',
-            textAlign: TextAlign.center,
-            style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                event.label,
+                style: text.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
+              ),
+              SizedBox(width: AppTheme.spaceHalf),
+              Text(
+                deltaStr,
+                style: AppTheme.monoLabel(context, color: fg),
+              ),
+            ],
           ),
-        );
-      }).toList(),
+        ),
+      ),
     );
   }
 }
 
 class _EventDef {
-  const _EventDef(this.label, this.sublabel, this.delta, this.iconKey);
+  const _EventDef(this.label, this.delta, this.iconKey);
   final String label;
-  final String sublabel;
   final int delta;
   final String iconKey;
 }
