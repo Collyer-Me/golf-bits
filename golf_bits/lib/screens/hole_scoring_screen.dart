@@ -722,15 +722,17 @@ class _PlayerCard extends StatelessWidget {
                   ],
                 ),
                 SizedBox(width: AppTheme.space3),
-                FilledButton(
-                  onPressed: onAward,
-                  tooltip: 'Award bits',
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(AppTheme.awardButtonSize, AppTheme.awardButtonSize),
-                    padding: EdgeInsets.zero,
-                    shape: const CircleBorder(),
+                Tooltip(
+                  message: 'Award bits',
+                  child: FilledButton(
+                    onPressed: onAward,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(AppTheme.awardButtonSize, AppTheme.awardButtonSize),
+                      padding: EdgeInsets.zero,
+                      shape: const CircleBorder(),
+                    ),
+                    child: const Icon(Icons.add, size: AppTheme.iconDense),
                   ),
-                  child: const Icon(Icons.add, size: AppTheme.iconDense),
                 ),
               ],
             ),
@@ -954,15 +956,17 @@ class _EventAwardSheetState extends State<_EventAwardSheet> {
                   ],
                 ),
               ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                tooltip: 'Done',
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: EdgeInsets.zero,
-                  shape: const CircleBorder(),
+              Tooltip(
+                message: 'Done',
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    padding: EdgeInsets.zero,
+                    shape: const CircleBorder(),
+                  ),
+                  child: const Icon(Icons.check),
                 ),
-                child: const Icon(Icons.check),
               ),
             ],
           ),
