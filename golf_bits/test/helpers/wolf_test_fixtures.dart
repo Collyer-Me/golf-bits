@@ -1,7 +1,6 @@
 import 'package:golf_bits/models/round_game_config.dart';
 import 'package:golf_bits/models/round_session_args.dart';
 import 'package:golf_bits/models/wolf_round_state.dart';
-import 'package:golf_bits/models/wolf_scoring.dart';
 
 /// Shared Wolf in-round state for widget tests.
 WolfRoundState testWolfRoundState({
@@ -10,7 +9,7 @@ WolfRoundState testWolfRoundState({
   Map<String, int> bitsByPlayer = const {},
 }) {
   const teeOrder = ['you', 'sam', 'alex', 'jordan'];
-  final participants = const [
+  const participants = [
     RoundParticipant(key: 'you', displayName: 'You', isYou: true, handicap: 10),
     RoundParticipant(key: 'sam', displayName: 'Sam', handicap: 12),
     RoundParticipant(key: 'alex', displayName: 'Alex', handicap: 8),

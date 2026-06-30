@@ -53,7 +53,7 @@ void main() {
     });
 
     test('holes 17-18 use trailing player on 18-hole round', () {
-      final points = const {
+      const points = {
         'you': 6,
         'sam': 5,
         'alex': 4,

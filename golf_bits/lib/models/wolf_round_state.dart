@@ -8,7 +8,7 @@ import 'wolf_scoring.dart' as wolf_engine show resolveWolfPlayerId, isTrailingPl
 /// In-round Wolf + optional Bits state carried across call/score screens.
 @immutable
 class WolfRoundState {
-  WolfRoundState({
+  const WolfRoundState({
     required this.session,
     required this.gameConfig,
     required this.holeOrder,
