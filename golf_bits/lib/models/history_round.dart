@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../data/round_coplayers.dart';
+import 'round_game_config.dart';
 import 'round_session_args.dart';
 import 'stroke_tracking.dart';
+import 'wolf_round_state.dart';
+import 'wolf_scoring.dart';
 
 /// One row on the history detail standings table.
 @immutable
@@ -96,6 +99,15 @@ class HistoryRound {
     this.holePars = const {},
     this.strokeByHole = const {},
     this.grossByPlayer = const {},
+    this.startHole = 1,
+    this.holeYardages = const {},
+    this.holeStrokeIndexes = const {},
+    this.gameConfig = const RoundGameConfig(),
+    this.wolfPointsByPlayer = const {},
+    this.wolfHoleResults = const {},
+    this.wolfHolePhase = WolfInRoundPhase.call,
+    this.pendingWolfCall,
+    this.opponentsTeedCount = 0,
   });
 
   final String id;
@@ -120,14 +132,53 @@ class HistoryRound {
   final Map<String, int> holePars;
   final Map<String, Map<int, int>> strokeByHole;
   final Map<String, int> grossByPlayer;
+  final int startHole;
+  final Map<String, int> holeYardages;
+  final Map<String, int> holeStrokeIndexes;
+  final RoundGameConfig gameConfig;
+  final Map<String, int> wolfPointsByPlayer;
+  final Map<int, WolfHoleResult> wolfHoleResults;
+  final WolfInRoundPhase wolfHolePhase;
+  final WolfCall? pendingWolfCall;
+  final int opponentsTeedCount;
+
+  bool get hasWolf => gameConfig.hasWolf;
+  bool get hasBits => gameConfig.hasBits;
+
+  String displayNameForKey(String key) {
+    for (final p in participants) {
+      if (p.key == key) return p.displayName;
+    }
+    return key;
+  }
+
+  String? get wolfWinnerName {
+    if (!hasWolf || wolfPointsByPlayer.isEmpty) return null;
+    var top = -999999;
+    String? name;
+    for (final e in wolfPointsByPlayer.entries) {
+      if (e.value > top) {
+        top = e.value;
+        name = displayNameForKey(e.key);
+      }
+    }
+    return name;
+  }
+
+  String get formatLabel {
+    if (hasWolf && hasBits) return 'Wolf + Bits';
+    if (hasWolf) return 'Wolf';
+    return 'Bits';
+  }
 
   String get holesLine => '$holeCount holes · $whenRelative';
 
   bool get tracksStrokes => strokeTrackingMode.tracksStrokes;
 
-  List<int> holeOrderFromStart({int startHole = 1}) {
+  List<int> holeOrderFromStart({int? startHole}) {
+    final start = startHole ?? this.startHole;
     if (holeCount == 9) {
-      return List<int>.generate(9, (i) => startHole + i);
+      return List<int>.generate(9, (i) => start + i);
     }
     return List<int>.generate(holeCount, (i) => i + 1);
   }
@@ -318,6 +369,25 @@ class HistoryRound {
       holePars = const {};
     }
 
+    final gameConfigRaw =
+        row['game_config'] is Map ? Map<String, dynamic>.from(row['game_config'] as Map) : null;
+    final gameConfig = RoundGameConfig.fromJson(gameConfigRaw);
+    final formatsRaw = row['round_formats'];
+    final formats = formatsRaw != null ? parseRoundFormats(formatsRaw) : gameConfig.formats;
+    final resolvedConfig = gameConfig.formats == formats
+        ? gameConfig
+        : RoundGameConfig(
+            formats: formats.isEmpty ? gameConfig.formats : formats,
+            scoringBasis: gameConfig.scoringBasis,
+            teeOrder: gameConfig.teeOrder,
+            handicaps: gameConfig.handicaps,
+            wolfPointValue: gameConfig.wolfPointValue,
+            bitsPointValue: gameConfig.bitsPointValue,
+            eventRules: gameConfig.eventRules,
+          );
+
+    final startHole = (row['start_hole'] as num?)?.toInt() ?? 1;
+
     return HistoryRound(
       id: id,
       courseName: (row['course_name'] as String?) ?? 'Course',
@@ -338,6 +408,15 @@ class HistoryRound {
       holePars: holePars,
       strokeByHole: parseStrokeByHole(row['stroke_by_hole']),
       grossByPlayer: parseGrossByPlayer(row['gross_by_player']),
+      startHole: startHole,
+      holeYardages: parseHoleStrokeIndexes(row['hole_yardages']),
+      holeStrokeIndexes: parseHoleStrokeIndexes(row['hole_stroke_indexes']),
+      gameConfig: resolvedConfig,
+      wolfPointsByPlayer: parseWolfPointsByPlayer(row['wolf_points_by_player']),
+      wolfHoleResults: parseWolfHoleResults(row['wolf_hole_results']),
+      wolfHolePhase: WolfInRoundPhase.fromDb(row['wolf_hole_phase'] as String?),
+      pendingWolfCall: parsePendingWolfCall(gameConfigRaw?['pending_wolf_call']),
+      opponentsTeedCount: (gameConfigRaw?['opponents_teed_count'] as num?)?.toInt() ?? 0,
     );
   }
 

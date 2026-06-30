@@ -3,8 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_env.dart';
 import '../models/history_round.dart';
 import '../models/round_bit_event_draft.dart';
+import '../models/round_game_config.dart';
 import '../models/round_session_args.dart';
 import '../models/stroke_tracking.dart';
+import '../models/wolf_round_state.dart';
 
 class HistoryRepository {
   HistoryRepository._();
@@ -191,10 +193,14 @@ class HistoryRepository {
     required List<String> players,
     required List<RoundParticipant> participants,
     required int currentHole,
+    int startHole = 1,
     String? courseCatalogId,
     String? courseCoverageLevel,
     Map<String, int>? holePars,
+    Map<String, int>? holeYardages,
+    Map<String, int>? holeStrokeIndexes,
     StrokeTrackingMode strokeTrackingMode = StrokeTrackingMode.off,
+    RoundGameConfig? gameConfig,
   }) async {
     if (!SupabaseEnv.isConfigured) {
       throw StateError('Supabase is not configured');
@@ -203,6 +209,7 @@ class HistoryRepository {
     if (uid == null) {
       throw StateError('Must be signed in to start a synced round');
     }
+    final config = gameConfig ?? const RoundGameConfig();
     final res = await _insertRoundWithFallback({
       'created_by': uid,
       // Legacy schema compatibility: some projects still require these owner columns.
@@ -212,6 +219,7 @@ class HistoryRepository {
       'course_short_title': courseShortTitle,
       'holes': holeCount,
       'hole_count': holeCount,
+      'start_hole': startHole,
       'status': 'in_progress',
       'completed': false,
       'completed_at': null,
@@ -223,9 +231,16 @@ class HistoryRepository {
       'left_early': const <Map<String, dynamic>>[],
       'current_hole': currentHole,
       'score_by_player': <String, int>{for (final p in participants) p.key: 0},
+      'round_formats': roundFormatsToDb(config.formats),
+      'game_config': config.toJson(),
+      'wolf_points_by_player': <String, int>{for (final p in participants) p.key: 0},
+      'wolf_hole_results': <String, dynamic>{},
+      'wolf_hole_phase': WolfInRoundPhase.call.toDb(),
       if (courseCatalogId != null) 'course_catalog_id': courseCatalogId,
       if (courseCoverageLevel != null) 'course_coverage_level': courseCoverageLevel,
       if (holePars != null) 'hole_pars': holePars,
+      if (holeYardages != null) 'hole_yardages': holeYardages,
+      if (holeStrokeIndexes != null) 'hole_stroke_indexes': holeStrokeIndexes,
       'stroke_tracking_mode': strokeTrackingMode.toDb(),
       'stroke_by_hole': <String, dynamic>{},
       'gross_by_player': <String, int>{},
@@ -240,6 +255,10 @@ class HistoryRepository {
     required Map<String, int> scoreByPlayer,
     Map<String, Map<int, int>>? strokeByHole,
     Map<String, int>? grossByPlayer,
+    Map<String, int>? wolfPointsByPlayer,
+    Map<int, WolfHoleResult>? wolfHoleResults,
+    WolfInRoundPhase? wolfHolePhase,
+    Map<String, dynamic>? gameConfig,
   }) async {
     if (!SupabaseEnv.isConfigured) return;
     final payload = <String, dynamic>{
@@ -254,7 +273,57 @@ class HistoryRepository {
     if (grossByPlayer != null) {
       payload['gross_by_player'] = grossByPlayer;
     }
+    if (wolfPointsByPlayer != null) {
+      payload['wolf_points_by_player'] = wolfPointsByPlayer;
+    }
+    if (wolfHoleResults != null) {
+      payload['wolf_hole_results'] = wolfHoleResultsToJson(wolfHoleResults);
+    }
+    if (wolfHolePhase != null) {
+      payload['wolf_hole_phase'] = wolfHolePhase.toDb();
+    }
+    if (gameConfig != null) {
+      payload['game_config'] = gameConfig;
+    }
     await _updateRoundWithFallback(roundId: roundId, payload: payload);
+  }
+
+  /// Writes round handicaps back to linked player profiles.
+  static Future<void> syncHandicapsToProfiles({
+    required List<RoundParticipant> participants,
+    required Map<String, int> handicaps,
+  }) async {
+    if (!SupabaseEnv.isConfigured) return;
+    for (final p in participants) {
+      final userId = p.userId;
+      final hc = handicaps[p.key];
+      if (userId == null || userId.isEmpty || hc == null) continue;
+      try {
+        await _client.from('profiles').update({'handicap': hc}).eq('id', userId);
+      } catch (_) {
+        // Column may not exist until migration applied.
+      }
+    }
+  }
+
+  /// Fetch handicaps for profile pre-fill at setup.
+  static Future<Map<String, int>> fetchHandicapsForUserIds(Iterable<String?> userIds) async {
+    if (!SupabaseEnv.isConfigured) return {};
+    final ids = userIds.whereType<String>().where((id) => id.isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return {};
+    try {
+      final rows = await _client.from('profiles').select('id, handicap').inFilter('id', ids);
+      final out = <String, int>{};
+      for (final row in rows as List<dynamic>) {
+        final m = Map<String, dynamic>.from(row as Map);
+        final id = m['id'] as String?;
+        final hc = (m['handicap'] as num?)?.toInt();
+        if (id != null && hc != null) out[id] = hc;
+      }
+      return out;
+    } catch (_) {
+      return {};
+    }
   }
 
   /// All bit events for a round (resume hydration).

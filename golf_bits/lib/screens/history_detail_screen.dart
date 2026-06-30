@@ -88,6 +88,29 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 letterSpacing: AppTheme.letterStepCaps,
               ),
             ),
+            if (_round.hasWolf) ...[
+              SizedBox(height: AppTheme.space2),
+              Center(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppTheme.sand(context).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
+                    border: Border.all(color: AppTheme.sand(context).withValues(alpha: 0.45)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space1),
+                    child: Text(
+                      _round.formatLabel.toUpperCase(),
+                      style: text.labelSmall?.copyWith(
+                        color: AppTheme.sand(context),
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: AppTheme.letterStepCaps,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             SizedBox(height: AppTheme.space4),
             Icon(Icons.emoji_events_outlined, size: AppTheme.iconLarge, color: scheme.secondary),
             SizedBox(height: AppTheme.space3),
@@ -107,6 +130,32 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 fontWeight: FontWeight.w900,
               ),
             ),
+            if (_round.hasWolf && _round.wolfPointsByPlayer.isNotEmpty) ...[
+              SizedBox(height: AppTheme.space4),
+              Text(
+                'WOLF · ${_round.wolfWinnerName ?? '—'}',
+                textAlign: TextAlign.center,
+                style: text.titleMedium?.copyWith(
+                  color: AppTheme.sand(context),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: AppTheme.space2),
+              ...(() {
+                final wolfEntries = _round.wolfPointsByPlayer.entries.toList()
+                  ..sort((a, b) => b.value.compareTo(a.value));
+                return wolfEntries.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppTheme.space1),
+                    child: Text(
+                      '${_round.displayNameForKey(e.key)} · ${e.value} pts',
+                      textAlign: TextAlign.center,
+                      style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                );
+              })(),
+            ],
             SizedBox(height: AppTheme.space3),
             Center(
               child: DecoratedBox(

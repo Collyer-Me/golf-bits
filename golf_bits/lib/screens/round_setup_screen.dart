@@ -18,14 +18,21 @@ import '../data/user_preferences_repository.dart';
 import '../models/course_catalog_models.dart';
 import '../models/friend_models.dart';
 import '../models/event_preferences.dart';
+import '../models/round_game_config.dart';
 import '../models/round_session_args.dart';
 import '../models/stroke_tracking.dart';
+import '../models/wolf_round_state.dart';
+import '../models/wolf_scoring.dart';
 import '../theme/app_theme.dart';
 import '../widgets/event_preferences_editor.dart';
 import '../widgets/guest_cloud_round_sheet.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/player_avatar.dart';
+import '../widgets/setup_step_progress.dart';
+import '../widgets/stroke_hole_counter.dart';
 import 'hole_scoring_screen.dart';
 import 'round_setup_sheets.dart';
+import 'wolf_call_screen.dart';
 
 class _Player {
   _Player({
@@ -49,7 +56,7 @@ class _Recent {
   final int rounds;
 }
 
-/// Four-step new round: players → course (+ setup sheet) → events → review → [HoleScoringScreen].
+/// Five-step new round: format → players → course → handicaps → stakes.
 class RoundSetupScreen extends StatefulWidget {
   const RoundSetupScreen({super.key});
 
@@ -80,9 +87,17 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   /// When false, `hit.id` is not a row in `public.courses` (e.g. offline manual draft).
   bool _roundShouldReferenceCatalog = true;
 
+  static const _totalSteps = 5;
+
   late List<EventPreference> _events;
   bool _trackHoleScores = false;
   StrokeTrackingMode _strokeScope = StrokeTrackingMode.self;
+
+  final Set<RoundFormat> _formats = {RoundFormat.bits};
+  WolfScoringBasis _scoringBasis = WolfScoringBasis.net;
+  final Map<String, int> _handicaps = {};
+  double _wolfPointValue = 2;
+  double _bitsPointValue = 2;
 
   StrokeTrackingMode get _resolvedStrokeMode {
     if (!_trackHoleScores) return StrokeTrackingMode.off;
@@ -99,7 +114,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   }
 
   void _onSearchTextChanged() {
-    if (_step != 1) return;
+    if (_step != 2) return;
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 400), () {
       unawaited(_runCourseSearch());
@@ -108,7 +123,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   }
 
   Future<void> _runCourseSearch() async {
-    if (!mounted || _step != 1) return;
+    if (!mounted || _step != 2) return;
     final gen = ++_courseSearchGeneration;
     setState(() => _loadingCourseSearch = true);
     final q = _searchController.text.trim();
@@ -137,7 +152,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   }
 
   Future<void> _refreshCourseSearchForStep() async {
-    if (_step != 1) return;
+    if (_step != 2) return;
     await _runCourseSearch();
   }
 
@@ -180,11 +195,15 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   }
 
   String get _stepLabel => switch (_step) {
-        0 => "WHO'S PLAYING?",
-        1 => 'COURSE SELECTION',
-        2 => 'GAME EVENTS',
-        _ => 'REVIEW',
+        0 => 'PICK YOUR GAMES',
+        1 => "WHO'S PLAYING?",
+        2 => 'COURSE SELECTION',
+        3 => 'SET HANDICAPS',
+        _ => 'STAKES & EVENTS',
       };
+
+  bool get _hasWolf => _formats.contains(RoundFormat.wolf);
+  bool get _hasBits => _formats.contains(RoundFormat.bits);
 
   CourseSearchHit? get _selectedCourseHit {
     if (_selectedCourseId == null) return null;
@@ -408,7 +427,21 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     if (!mounted || result == null) return;
     setState(() {
       _courseSetup = result;
-      _step = 2;
+      _step = 3;
+    });
+    unawaited(_loadHandicapsForPlayers());
+  }
+
+  Future<void> _loadHandicapsForPlayers() async {
+    final userIds = _players.map((p) => p.userId).toList();
+    final fromProfiles = await HistoryRepository.fetchHandicapsForUserIds(userIds);
+    if (!mounted) return;
+    setState(() {
+      for (final p in _players) {
+        final key = (p.userId != null && p.userId!.isNotEmpty) ? 'u_${p.userId}' : p.id;
+        final hc = fromProfiles[p.userId ?? ''];
+        if (hc != null) _handicaps[key] = hc;
+      }
     });
   }
 
@@ -471,8 +504,20 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     return 'star_outline';
   }
 
-  Future<void> _goHoleScoring() async {
+  Future<void> _startRound() async {
     if (_startingRound) return;
+    if (_formats.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one game format')),
+      );
+      return;
+    }
+    if (_hasWolf && _players.length != 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wolf requires exactly 4 players')),
+      );
+      return;
+    }
     final hit = _selectedCourseHit!;
     final detail = _selectedDetail;
     final setup = _courseSetup!;
@@ -486,8 +531,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           email: p.email,
           userId: p.userId,
           isYou: p.isYou,
+          handicap: _handicaps[(p.userId != null && p.userId!.isNotEmpty) ? 'u_${p.userId}' : p.id],
         ),
     ];
+    final teeOrder = participants.map((p) => p.key).toList();
     String? roundId;
     if (SupabaseEnv.isConfigured) {
       setState(() => _startingRound = true);
@@ -529,6 +576,28 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             );
           }
           final holePars = detail?.holeParsForTeeSync(setup.courseTeeId);
+          final holeYardages = detail?.holeYardagesForTeeSync(setup.courseTeeId);
+          final holeStrokeIndexes = detail?.holeStrokeIndexesForTeeSync(setup.courseTeeId);
+          final enabledRules = _events
+              .where((e) => e.enabled)
+              .map(
+                (e) => RoundEventRule(
+                  label: e.displayLabel,
+                  delta: e.points,
+                  iconKey: _iconKeyForEventName(e.displayLabel),
+                ),
+              )
+              .toList();
+          final gameConfig = RoundGameConfig(
+            formats: _formats.toList(),
+            scoringBasis: _scoringBasis,
+            teeOrder: teeOrder,
+            handicaps: Map<String, int>.from(_handicaps),
+            wolfPointValue: _wolfPointValue,
+            bitsPointValue: _bitsPointValue,
+            eventRules: enabledRules,
+          );
+          final strokeMode = _hasWolf ? StrokeTrackingMode.all : _resolvedStrokeMode;
           roundId = await HistoryRepository.createInProgressRound(
             courseName: courseName,
             courseShortTitle: _shortCourseTitle(courseName),
@@ -536,11 +605,15 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             players: _players.map((p) => p.name).toList(),
             participants: participants,
             currentHole: startHole,
+            startHole: startHole,
             courseCatalogId:
                 _roundShouldReferenceCatalog && _looksLikeUuid(hit.id) ? hit.id : null,
             courseCoverageLevel: setup.coverageLevel,
             holePars: holePars,
-            strokeTrackingMode: _resolvedStrokeMode,
+            holeYardages: holeYardages,
+            holeStrokeIndexes: holeStrokeIndexes,
+            strokeTrackingMode: strokeMode,
+            gameConfig: gameConfig,
           );
           await HistoryRepository.sendRoundInvites(
             roundId: roundId,
@@ -592,6 +665,20 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
 
     final holePars = detail?.holeParsForTeeSync(setup.courseTeeId) ?? const <String, int>{};
     final holeYardages = detail?.holeYardagesForTeeSync(setup.courseTeeId) ?? const <String, int>{};
+    final holeStrokeIndexes =
+        detail?.holeStrokeIndexesForTeeSync(setup.courseTeeId) ?? const <String, int>{};
+
+    final gameConfig = RoundGameConfig(
+      formats: _formats.toList(),
+      scoringBasis: _scoringBasis,
+      teeOrder: teeOrder,
+      handicaps: Map<String, int>.from(_handicaps),
+      wolfPointValue: _wolfPointValue,
+      bitsPointValue: _bitsPointValue,
+      eventRules: enabledRules,
+    );
+
+    final strokeMode = _hasWolf ? StrokeTrackingMode.all : _resolvedStrokeMode;
 
     final args = RoundSessionArgs(
       courseName: courseName,
@@ -604,14 +691,23 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       initialScoreByPlayer: {for (final p in participants) p.key: 0},
       eventRules: enabledRules,
       participants: participants,
-      strokeTrackingMode: _resolvedStrokeMode,
+      strokeTrackingMode: strokeMode,
       holePars: holePars,
       holeYardages: holeYardages,
+      holeStrokeIndexes: holeStrokeIndexes,
+      gameConfig: gameConfig,
     );
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => HoleScoringScreen(session: args)),
-    );
+    if (_hasWolf) {
+      final wolfState = WolfRoundState.fromSession(args);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => WolfCallScreen(state: wolfState)),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => HoleScoringScreen(session: args)),
+      );
+    }
   }
 
   @override
@@ -661,7 +757,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'STEP ${_step + 1} OF 4',
+                  'STEP ${_step + 1} OF $_totalSteps',
                   style: text.labelSmall?.copyWith(
                     color: scheme.primary,
                     fontWeight: FontWeight.w800,
@@ -669,14 +765,10 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                   ),
                 ),
                 const SizedBox(height: AppTheme.spaceHalf),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  child: LinearProgressIndicator(
-                    value: (_step + 1) / 4,
-                    minHeight: AppTheme.radiusSm,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    color: scheme.primary,
-                  ),
+                SetupStepProgress(
+                  currentStep: _step + 1,
+                  totalSteps: _totalSteps,
+                  labels: const ['FORMAT', 'PLAYERS', 'COURSE', 'HANDICAPS', 'STAKES'],
                 ),
                 const SizedBox(height: AppTheme.space3),
                 Text(
@@ -690,10 +782,11 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             child: Padding(
               padding: AppTheme.screenPadding.copyWith(top: 0),
               child: switch (_step) {
-                0 => _buildPlayersStep(context),
-                1 => _buildCourseStep(context),
-                2 => _buildEventsStep(context),
-                _ => _buildReviewStep(context),
+                0 => _buildFormatStep(context),
+                1 => _buildPlayersStep(context),
+                2 => _buildCourseStep(context),
+                3 => _buildHandicapsStep(context),
+                _ => _buildStakesStep(context),
               },
             ),
           ),
@@ -717,10 +810,29 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                 Expanded(
                   child: switch (_step) {
                     0 => FilledButton(
+                        onPressed: _formats.isEmpty
+                            ? null
+                            : () => setState(() => _step = 1),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Continue'),
+                            SizedBox(width: AppTheme.space2),
+                            Icon(Icons.arrow_forward, size: AppTheme.iconArrow),
+                          ],
+                        ),
+                      ),
+                    1 => FilledButton(
                         onPressed: _loadingPlayers || _players.isEmpty
                             ? null
                             : () {
-                                setState(() => _step = 1);
+                                if (_hasWolf && _players.length != 4) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Wolf needs exactly 4 players')),
+                                  );
+                                  return;
+                                }
+                                setState(() => _step = 2);
                                 unawaited(_refreshCourseSearchForStep());
                               },
                         child: const Row(
@@ -732,7 +844,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                           ],
                         ),
                       ),
-                    1 => FilledButton(
+                    2 => FilledButton(
                         onPressed: _nextFromCourseStep,
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -743,12 +855,12 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
                           ],
                         ),
                       ),
-                    2 => FilledButton(
-                        onPressed: () => setState(() => _step = 3),
-                        child: const Text('Next'),
+                    3 => FilledButton(
+                        onPressed: () => setState(() => _step = 4),
+                        child: const Text('Continue'),
                       ),
                     _ => FilledButton(
-                        onPressed: _startingRound ? null : _goHoleScoring,
+                        onPressed: _startingRound ? null : _startRound,
                         child: _startingRound
                             ? SizedBox(
                                 height: AppTheme.iconInline,
@@ -767,6 +879,189 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFormatStep(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    void toggleFormat(RoundFormat format) {
+      setState(() {
+        if (_formats.contains(format)) {
+          if (_formats.length > 1) _formats.remove(format);
+        } else {
+          _formats.add(format);
+        }
+      });
+    }
+
+    return ListView(
+      children: [
+        Text(
+          'Play just Wolf, or run it alongside bits — pick one or both.',
+          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        SizedBox(height: AppTheme.space3),
+        _FormatCard(
+          title: 'Bits · Dots · Junk',
+          subtitle: 'Free-for-all side game. Award points for birdies, sandies & junk.',
+          selected: _hasBits,
+          onTap: () => toggleFormat(RoundFormat.bits),
+        ),
+        SizedBox(height: AppTheme.space2),
+        _FormatCard(
+          title: 'Wolf',
+          subtitle: 'Rotating teams. One Wolf per hole picks a partner — or takes on the group solo.',
+          selected: _hasWolf,
+          onTap: () => toggleFormat(RoundFormat.wolf),
+          showWolfRules: _hasWolf,
+        ),
+        if (_hasWolf && _hasBits) ...[
+          SizedBox(height: AppTheme.space3),
+          OutlinedSurfaceCard(
+            child: Text(
+              'Playing both — Wolf decides the match, bits run alongside as a side game.',
+              style: text.bodySmall,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildHandicapsStep(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final dimHandicaps = _scoringBasis == WolfScoringBasis.gross;
+
+    return ListView(
+      children: [
+        Text('SCORING BASIS', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
+        SizedBox(height: AppTheme.space2),
+        SegmentedButton<WolfScoringBasis>(
+          segments: const [
+            ButtonSegment(value: WolfScoringBasis.net, label: Text('Net')),
+            ButtonSegment(value: WolfScoringBasis.gross, label: Text('Gross')),
+          ],
+          selected: {_scoringBasis},
+          onSelectionChanged: (s) => setState(() => _scoringBasis = s.first),
+        ),
+        SizedBox(height: AppTheme.space2),
+        Text(
+          'Strokes apply per hole by stroke index. Switch to Gross to play off scratch.',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        SizedBox(height: AppTheme.space4),
+        Text(
+          'PLAYERS · ${_players.length}',
+          style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+        ),
+        SizedBox(height: AppTheme.space2),
+        for (var i = 0; i < _players.length; i++) ...[
+          _HandicapRow(
+            name: _players[i].name,
+            colorIndex: i,
+            handicap: _handicaps[
+                    (_players[i].userId != null && _players[i].userId!.isNotEmpty)
+                        ? 'u_${_players[i].userId}'
+                        : _players[i].id] ??
+                0,
+            dimmed: dimHandicaps,
+            onChanged: (v) {
+              final key = (_players[i].userId != null && _players[i].userId!.isNotEmpty)
+                  ? 'u_${_players[i].userId}'
+                  : _players[i].id;
+              setState(() => _handicaps[key] = v);
+            },
+          ),
+          SizedBox(height: AppTheme.space2),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStakesStep(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_hasWolf) ...[
+          Text('Wolf stake (\$/point)', style: text.titleSmall),
+          Slider(
+            value: _wolfPointValue,
+            min: 1,
+            max: 10,
+            divisions: 9,
+            label: '\$${_wolfPointValue.toStringAsFixed(0)}',
+            onChanged: (v) => setState(() => _wolfPointValue = v),
+          ),
+        ],
+        if (_hasBits) ...[
+          Text('Bits stake (\$/bit)', style: text.titleSmall),
+          Slider(
+            value: _bitsPointValue,
+            min: 1,
+            max: 10,
+            divisions: 9,
+            label: '\$${_bitsPointValue.toStringAsFixed(0)}',
+            onChanged: (v) => setState(() => _bitsPointValue = v),
+          ),
+        ],
+        if (_hasBits && !_hasWolf) ...[
+          OutlinedSurfaceCard(
+            borderColor: scheme.outlineVariant,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Scorecard', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Track hole scores'),
+                  value: _trackHoleScores,
+                  onChanged: (v) => setState(() => _trackHoleScores = v),
+                ),
+                if (_trackHoleScores)
+                  SegmentedButton<StrokeTrackingMode>(
+                    segments: const [
+                      ButtonSegment(value: StrokeTrackingMode.self, label: Text('Just me')),
+                      ButtonSegment(value: StrokeTrackingMode.all, label: Text('Everyone')),
+                    ],
+                    selected: {_strokeScope},
+                    onSelectionChanged: (s) => setState(() => _strokeScope = s.first),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: AppTheme.space3),
+          Expanded(
+            child: EventPreferencesEditor(
+              events: _events,
+              onChanged: (next) => setState(() => _events = next),
+            ),
+          ),
+        ] else if (_hasBits) ...[
+          Expanded(
+            child: EventPreferencesEditor(
+              events: _events,
+              onChanged: (next) => setState(() => _events = next),
+            ),
+          ),
+        ] else
+          Expanded(
+            child: _buildReviewStep(context),
+          ),
+        if (_hasBits) ...[
+          SizedBox(height: AppTheme.space3),
+          FilledButton.tonalIcon(
+            onPressed: _saveCurrentSetupAsDefaults,
+            icon: const Icon(Icons.bookmark_add_outlined),
+            label: const Text('Save as my defaults'),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1085,83 +1380,6 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     );
   }
 
-  Widget _buildEventsStep(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        OutlinedSurfaceCard(
-          borderColor: scheme.outlineVariant,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Scorecard',
-                style: text.labelLarge?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700),
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Track hole scores',
-                          style: text.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          'Optional scorecard alongside Bits',
-                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: _trackHoleScores,
-                    onChanged: (v) => setState(() => _trackHoleScores = v),
-                  ),
-                ],
-              ),
-              if (_trackHoleScores) ...[
-                const SizedBox(height: AppTheme.space2),
-                SegmentedButton<StrokeTrackingMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: StrokeTrackingMode.self,
-                      label: Text('Just me'),
-                    ),
-                    ButtonSegment(
-                      value: StrokeTrackingMode.all,
-                      label: Text('Everyone'),
-                    ),
-                  ],
-                  selected: {_strokeScope},
-                  onSelectionChanged: (s) => setState(() => _strokeScope = s.first),
-                ),
-              ],
-            ],
-          ),
-        ),
-        SizedBox(height: AppTheme.space4),
-        Expanded(
-          child: EventPreferencesEditor(
-            events: _events,
-            onChanged: (next) => setState(() => _events = next),
-          ),
-        ),
-        SizedBox(height: AppTheme.space3),
-        FilledButton.tonalIcon(
-          onPressed: _saveCurrentSetupAsDefaults,
-          icon: const Icon(Icons.bookmark_add_outlined),
-          label: const Text('Save as my defaults'),
-        ),
-      ],
-    );
-  }
-
   Widget _buildReviewStep(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
@@ -1295,6 +1513,105 @@ class _CourseReadinessCallout extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FormatCard extends StatelessWidget {
+  const _FormatCard({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+    this.showWolfRules = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool showWolfRules;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return OutlinedSurfaceCard(
+      borderColor: selected ? scheme.primary : scheme.outlineVariant,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(subtitle, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                Icon(selected ? Icons.check_circle : Icons.circle_outlined, color: scheme.primary),
+              ],
+            ),
+            if (showWolfRules) ...[
+              Divider(color: scheme.outlineVariant, height: AppTheme.space4),
+              Text('+1 Win with partner', style: text.bodySmall),
+              Text('×2 Lone Wolf', style: text.bodySmall),
+              Text('×3 Blind Wolf', style: text.bodySmall),
+              Text('Needs exactly 4 players', style: AppTheme.monoLabel(context)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HandicapRow extends StatelessWidget {
+  const _HandicapRow({
+    required this.name,
+    required this.colorIndex,
+    required this.handicap,
+    required this.onChanged,
+    this.dimmed = false,
+  });
+
+  final String name;
+  final int colorIndex;
+  final int handicap;
+  final ValueChanged<int> onChanged;
+  final bool dimmed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Opacity(
+      opacity: dimmed ? 0.55 : 1,
+      child: OutlinedSurfaceCard(
+        child: Row(
+          children: [
+            PlayerAvatar(displayName: name, colorIndex: colorIndex),
+            SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text('FROM PROFILE', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            StrokeHoleCounter(
+              strokes: handicap.clamp(0, 54),
+              onChanged: dimmed ? (_) {} : (v) => onChanged(v),
+            ),
+          ],
+        ),
       ),
     );
   }

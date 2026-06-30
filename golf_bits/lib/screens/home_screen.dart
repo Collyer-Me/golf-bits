@@ -10,9 +10,11 @@ import '../auth/guest_session.dart';
 import '../navigation/auth_navigation.dart';
 import '../data/history_repository.dart';
 import '../data/user_preferences_repository.dart';
+import '../data/wolf_round_sync.dart';
 import '../main.dart';
 import '../models/history_round.dart';
 import '../models/round_session_args.dart';
+import '../models/wolf_round_state.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/brand_app_bar.dart';
@@ -24,6 +26,8 @@ import 'friends_screen.dart';
 import 'history_detail_screen.dart';
 import 'history_screen.dart';
 import 'hole_scoring_screen.dart';
+import 'wolf_call_screen.dart';
+import 'wolf_score_hole_screen.dart';
 import 'change_password_screen.dart';
 import 'guest_upgrade_screen.dart';
 import 'log_in_screen.dart';
@@ -497,10 +501,20 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
             SizedBox(height: AppTheme.space6),
             FilledButton(
               onPressed: () async {
+                final args = RoundSessionArgs.fromHistoryRound(round);
+                Widget screen;
+                if (round.hasWolf) {
+                  var state = WolfRoundState.fromSession(args);
+                  state = await WolfRoundSync.hydrateBitEvents(state);
+                  if (!context.mounted) return;
+                  screen = state.currentPhase == WolfInRoundPhase.score && state.pendingCall != null
+                      ? WolfScoreHoleScreen(state: state)
+                      : WolfCallScreen(state: state);
+                } else {
+                  screen = HoleScoringScreen(session: args);
+                }
                 await Navigator.of(context).push<void>(
-                  MaterialPageRoute<void>(
-                    builder: (_) => HoleScoringScreen(session: RoundSessionArgs.fromHistoryRound(round)),
-                  ),
+                  MaterialPageRoute<void>(builder: (_) => screen),
                 );
                 if (mounted) await _loadDashboard();
               },

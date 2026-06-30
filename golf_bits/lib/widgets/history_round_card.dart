@@ -87,6 +87,16 @@ class HistoryRoundCard extends StatelessWidget {
                 round.holesLine,
                 style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
+              if (round.hasWolf) ...[
+                SizedBox(height: AppTheme.space1),
+                Text(
+                  round.formatLabel,
+                  style: text.labelSmall?.copyWith(
+                    color: AppTheme.sand(context),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               SizedBox(height: AppTheme.space3),
               Wrap(
                 spacing: AppTheme.space2,

@@ -372,6 +372,28 @@ class CourseDetailView {
     return out.isEmpty ? null : out;
   }
 
+  /// Stroke index map for the selected tee (`"7"` → 5).
+  Map<String, int>? holeStrokeIndexesForTeeSync(String? courseTeeId) {
+    if (tees.isEmpty) return null;
+    CourseTeeOption? tee;
+    if (courseTeeId != null) {
+      for (final t in tees) {
+        if (t.id == courseTeeId) {
+          tee = t;
+          break;
+        }
+      }
+    }
+    tee ??= tees.first;
+    if (tee.holes.isEmpty) return null;
+    final out = <String, int>{};
+    for (final h in tee.holes) {
+      final si = h.strokeIndex;
+      if (si != null) out['${h.holeNumber}'] = si;
+    }
+    return out.isEmpty ? null : out;
+  }
+
   factory CourseDetailView.fromDetailJson(Map<String, dynamic> j) {
     final c = j['course'] as Map<String, dynamic>? ?? const {};
     final teeList = prepareTeesForDisplay(

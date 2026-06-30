@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import 'history_round.dart';
+import 'round_game_config.dart';
 import 'stroke_tracking.dart';
+import 'wolf_round_state.dart';
+import 'wolf_scoring.dart';
 
 @immutable
 class RoundEventRule {
@@ -24,6 +27,7 @@ class RoundParticipant {
     this.email,
     this.userId,
     this.isYou = false,
+    this.handicap,
   });
 
   final String key;
@@ -31,6 +35,7 @@ class RoundParticipant {
   final String? email;
   final String? userId;
   final bool isYou;
+  final int? handicap;
 
   Map<String, dynamic> toJson() => {
         'key': key,
@@ -38,6 +43,7 @@ class RoundParticipant {
         'email': email,
         'user_id': userId,
         'is_you': isYou,
+        if (handicap != null) 'handicap': handicap,
       };
 
   factory RoundParticipant.fromJson(Map<String, dynamic> m) {
@@ -47,11 +53,12 @@ class RoundParticipant {
       email: m['email'] as String?,
       userId: m['user_id'] as String?,
       isYou: m['is_you'] as bool? ?? false,
+      handicap: (m['handicap'] as num?)?.toInt(),
     );
   }
 }
 
-/// Carries course + players from [RoundSetupScreen] into [HoleScoringScreen].
+/// Carries course + players from [RoundSetupScreen] into scoring screens.
 @immutable
 class RoundSessionArgs {
   const RoundSessionArgs({
@@ -68,8 +75,15 @@ class RoundSessionArgs {
     this.strokeTrackingMode = StrokeTrackingMode.off,
     this.holePars = const {},
     this.holeYardages = const {},
+    this.holeStrokeIndexes = const {},
     this.initialStrokeByHole = const {},
     this.initialGrossByPlayer = const {},
+    this.gameConfig = const RoundGameConfig(),
+    this.initialWolfPointsByPlayer = const {},
+    this.initialWolfHoleResults = const {},
+    this.wolfHolePhase = WolfInRoundPhase.call,
+    this.pendingWolfCall,
+    this.opponentsTeedCount = 0,
   });
 
   final String courseName;
@@ -85,26 +99,46 @@ class RoundSessionArgs {
   final StrokeTrackingMode strokeTrackingMode;
   final Map<String, int> holePars;
   final Map<String, int> holeYardages;
+  final Map<String, int> holeStrokeIndexes;
   final Map<String, Map<int, int>> initialStrokeByHole;
   final Map<String, int> initialGrossByPlayer;
+  final RoundGameConfig gameConfig;
+  final Map<String, int> initialWolfPointsByPlayer;
+  final Map<int, WolfHoleResult> initialWolfHoleResults;
+  final WolfInRoundPhase wolfHolePhase;
+  final WolfCall? pendingWolfCall;
+  final int opponentsTeedCount;
 
-  /// Resume UI from a saved in-progress row (start hole defaults to 1).
+  bool get hasWolf => gameConfig.hasWolf;
+  bool get hasBits => gameConfig.hasBits;
+
+  /// Resume UI from a saved in-progress row.
   factory RoundSessionArgs.fromHistoryRound(HistoryRound round) {
+    final gameConfig = round.gameConfig;
+    final startHole = round.startHole;
     return RoundSessionArgs(
       courseName: round.courseName,
       courseShortTitle: round.courseShortTitle,
       holeCount: round.holeCount,
-      startHole: 1,
+      startHole: startHole,
       playerNames: round.players,
       roundId: round.id,
-      currentHole: round.currentHole ?? 1,
+      currentHole: round.currentHole ?? startHole,
       initialScoreByPlayer: round.scoreByPlayer,
-      eventRules: const [],
+      eventRules: gameConfig.eventRules,
       participants: round.participants,
       strokeTrackingMode: round.strokeTrackingMode,
       holePars: round.holePars,
+      holeYardages: round.holeYardages,
+      holeStrokeIndexes: round.holeStrokeIndexes,
       initialStrokeByHole: round.strokeByHole,
       initialGrossByPlayer: round.grossByPlayer,
+      gameConfig: gameConfig,
+      initialWolfPointsByPlayer: round.wolfPointsByPlayer,
+      initialWolfHoleResults: round.wolfHoleResults,
+      wolfHolePhase: round.wolfHolePhase,
+      pendingWolfCall: round.pendingWolfCall,
+      opponentsTeedCount: round.opponentsTeedCount,
     );
   }
 }

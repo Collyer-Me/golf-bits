@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
+import '../models/round_game_config.dart';
 import '../models/round_result.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
@@ -13,10 +14,19 @@ import 'player_breakdown_screen.dart';
 
 /// End of round: winner spotlight, standings, retired list, actions.
 class RoundSummaryScreen extends StatefulWidget {
-  const RoundSummaryScreen({super.key, this.result});
+  const RoundSummaryScreen({
+    super.key,
+    this.result,
+    this.wolfPointsByPlayer,
+    this.wolfWinnerName,
+    this.gameConfig,
+  });
 
   /// When null, shows [RoundResult.previewDemo] (resume / preview entry points).
   final RoundResult? result;
+  final Map<String, int>? wolfPointsByPlayer;
+  final String? wolfWinnerName;
+  final RoundGameConfig? gameConfig;
 
   @override
   State<RoundSummaryScreen> createState() => _RoundSummaryScreenState();
@@ -26,6 +36,25 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
   bool _saving = false;
 
   RoundResult get _r => widget.result ?? RoundResult.previewDemo();
+
+  Map<String, int>? get _wolfPoints =>
+      widget.wolfPointsByPlayer ?? (widget.result?.wolfPointsByPlayer.isNotEmpty == true
+          ? widget.result!.wolfPointsByPlayer
+          : null);
+
+  String? get _wolfWinnerName => widget.wolfWinnerName ?? widget.result?.wolfWinnerName;
+
+  RoundGameConfig? get _gameConfig => widget.gameConfig ?? widget.result?.gameConfig;
+
+  String _nameForKey(String key) {
+    for (final s in _r.standings) {
+      if (s.participantKey == key) return s.name;
+    }
+    for (final p in _r.participants) {
+      if (p.key == key) return p.displayName;
+    }
+    return key;
+  }
 
   Future<void> _backToHome() async {
     final live = widget.result;
@@ -40,6 +69,12 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
         final roundId = live.roundId;
         if (roundId != null && roundId.isNotEmpty) {
           await HistoryRepository.completeRound(roundId: roundId, row: row);
+        }
+        if (live.gameConfig.handicaps.isNotEmpty) {
+          await HistoryRepository.syncHandicapsToProfiles(
+            participants: live.participants,
+            handicaps: live.gameConfig.handicaps,
+          );
         }
         final savedRoundId = roundId ?? await HistoryRepository.saveCompletedRound(row);
         var bitLine = '';
@@ -132,6 +167,45 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
             ),
             SizedBox(height: AppTheme.space6),
             _WinnerHero(result: r),
+            if (_wolfPoints != null && _wolfPoints!.isNotEmpty && _wolfWinnerName != null) ...[
+              SizedBox(height: AppTheme.space6),
+              Text(
+                'WOLF MATCH',
+                style: text.labelSmall?.copyWith(
+                  color: AppTheme.sand(context),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: AppTheme.letterStepCaps,
+                ),
+              ),
+              SizedBox(height: AppTheme.space2),
+              OutlinedSurfaceCard(
+                borderColor: AppTheme.sand(context).withValues(alpha: 0.45),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Winner · $_wolfWinnerName',
+                      style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    if (_gameConfig != null && _gameConfig!.hasWolf)
+                      Text(
+                        '\$${_gameConfig!.wolfPointValue.toStringAsFixed(0)} / point',
+                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                      ),
+                    SizedBox(height: AppTheme.space2),
+                    for (final e in _wolfPoints!.entries)
+                      Row(
+                        children: [
+                          Expanded(child: Text(_nameForKey(e.key))),
+                          TallyMarks(count: e.value, height: 14, variant: TallyVariant.positive),
+                          SizedBox(width: AppTheme.space2),
+                          Text('${e.value} pts', style: AppTheme.monoLabel(context)),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
             SizedBox(height: AppTheme.space8),
             Text(
               'FINAL STANDINGS',

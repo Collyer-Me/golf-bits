@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 
 import 'history_round.dart';
 import 'round_bit_event_draft.dart';
+import 'round_game_config.dart';
 import 'round_session_args.dart';
 import 'stroke_tracking.dart';
+import 'wolf_round_state.dart';
 
 /// Final round payload for [RoundSummaryScreen] and Supabase `rounds` insert.
 @immutable
@@ -26,6 +28,10 @@ class RoundResult {
     this.holePars = const {},
     this.strokeByHole = const {},
     this.grossByPlayer = const {},
+    this.gameConfig = const RoundGameConfig(),
+    this.wolfPointsByPlayer = const {},
+    this.wolfHoleResults = const {},
+    this.wolfWinnerName,
   });
 
   final String courseName;
@@ -45,6 +51,12 @@ class RoundResult {
   final Map<String, int> holePars;
   final Map<String, Map<int, int>> strokeByHole;
   final Map<String, int> grossByPlayer;
+  final RoundGameConfig gameConfig;
+  final Map<String, int> wolfPointsByPlayer;
+  final Map<int, WolfHoleResult> wolfHoleResults;
+  final String? wolfWinnerName;
+
+  bool get hasWolf => gameConfig.hasWolf;
 
   /// Builds standings from per-player bit totals at end of round.
   factory RoundResult.fromSessionScores({
@@ -53,6 +65,9 @@ class RoundResult {
     List<RoundBitEventDraft> bitEvents = const [],
     Map<String, Map<int, int>>? strokeByHole,
     Map<String, int>? grossByPlayer,
+    Map<String, int>? wolfPointsByPlayer,
+    Map<int, WolfHoleResult>? wolfHoleResults,
+    String? wolfWinnerName,
   }) {
     if (scoredPlayers.isEmpty) {
       throw ArgumentError('scoredPlayers must not be empty');
@@ -95,6 +110,10 @@ class RoundResult {
       holePars: session.holePars,
       strokeByHole: strokeByHole ?? session.initialStrokeByHole,
       grossByPlayer: grossByPlayer ?? session.initialGrossByPlayer,
+      gameConfig: session.gameConfig,
+      wolfPointsByPlayer: wolfPointsByPlayer ?? session.initialWolfPointsByPlayer,
+      wolfHoleResults: wolfHoleResults ?? session.initialWolfHoleResults,
+      wolfWinnerName: wolfWinnerName,
     );
   }
 
@@ -121,6 +140,11 @@ class RoundResult {
       if (holePars.isNotEmpty) 'hole_pars': holePars,
       'stroke_by_hole': strokeByHoleToJson(strokeByHole),
       'gross_by_player': grossByPlayer,
+      'round_formats': roundFormatsToDb(gameConfig.formats),
+      'game_config': gameConfig.toJson(),
+      if (wolfPointsByPlayer.isNotEmpty) 'wolf_points_by_player': wolfPointsByPlayer,
+      if (wolfHoleResults.isNotEmpty) 'wolf_hole_results': wolfHoleResultsToJson(wolfHoleResults),
+      if (hasWolf) 'wolf_hole_phase': WolfInRoundPhase.call.toDb(),
     };
   }
 
