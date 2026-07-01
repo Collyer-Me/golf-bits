@@ -10,10 +10,13 @@ class EventPreferencesEditor extends StatefulWidget {
     super.key,
     required this.events,
     required this.onChanged,
+    this.embeddedInScroll = false,
   });
 
   final List<EventPreference> events;
   final ValueChanged<List<EventPreference>> onChanged;
+  /// When true, omits [Expanded]/[TabBarView] so the parent [ListView] owns scrolling.
+  final bool embeddedInScroll;
 
   @override
   State<EventPreferencesEditor> createState() => _EventPreferencesEditorState();
@@ -27,10 +30,16 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) setState(() {});
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -95,6 +104,45 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
     final preset = widget.events.where((e) => !e.isCustom).toList();
     final custom = widget.events.where((e) => e.isCustom).toList();
 
+    final addButton = OutlinedButton.icon(
+      onPressed: _addCustomEvent,
+      icon: Icon(Icons.add, color: scheme.primary),
+      label: Text('Add custom event', style: TextStyle(color: scheme.primary)),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(
+          color: scheme.primary.withValues(alpha: AppTheme.opacityBorderEmphasis),
+          width: AppTheme.chipOutlineWidth,
+        ),
+      ),
+    );
+
+    if (widget.embeddedInScroll) {
+      final activeRows = _tabController.index == 0 ? preset : custom;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Preset events'),
+              Tab(text: 'Custom events'),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space2),
+          _eventList(
+            context,
+            activeRows,
+            scheme,
+            text,
+            emptyCustom: _tabController.index == 1,
+            shrinkWrap: true,
+          ),
+          const SizedBox(height: AppTheme.space2),
+          addButton,
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -116,17 +164,7 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
           ),
         ),
         const SizedBox(height: AppTheme.space2),
-        OutlinedButton.icon(
-          onPressed: _addCustomEvent,
-          icon: Icon(Icons.add, color: scheme.primary),
-          label: Text('Add custom event', style: TextStyle(color: scheme.primary)),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(
-              color: scheme.primary.withValues(alpha: AppTheme.opacityBorderEmphasis),
-              width: AppTheme.chipOutlineWidth,
-            ),
-          ),
-        ),
+        addButton,
       ],
     );
   }
@@ -137,9 +175,11 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
     ColorScheme scheme,
     TextTheme text, {
     bool emptyCustom = false,
+    bool shrinkWrap = false,
   }) {
     if (rows.isEmpty && emptyCustom) {
-      return Center(
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppTheme.space6),
         child: Text(
           'No custom events yet.\nTap “Add custom event” below.',
           textAlign: TextAlign.center,
@@ -147,28 +187,37 @@ class _EventPreferencesEditorState extends State<EventPreferencesEditor>
         ),
       );
     }
+    final cards = rows
+        .map(
+          (event) => Padding(
+            padding: const EdgeInsets.only(bottom: AppTheme.space3),
+            child: _EventPreferenceCard(
+              event: event,
+              scheme: scheme,
+              text: text,
+              onToggleEnabled: (v) => _updateEvent(event.copyWith(enabled: v)),
+              onDecrementPoints: () => _updateEvent(
+                    event.copyWith(points: (event.points - 1).clamp(-5, 10)),
+                  ),
+              onIncrementPoints: () => _updateEvent(
+                    event.copyWith(points: (event.points + 1).clamp(-5, 10)),
+                  ),
+              onEditNickname: () => _editNickname(event),
+            ),
+          ),
+        )
+        .toList();
+
+    if (shrinkWrap) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: cards,
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.only(bottom: AppTheme.space2),
-      children: rows
-          .map(
-            (event) => Padding(
-              padding: const EdgeInsets.only(bottom: AppTheme.space3),
-              child: _EventPreferenceCard(
-                event: event,
-                scheme: scheme,
-                text: text,
-                onToggleEnabled: (v) => _updateEvent(event.copyWith(enabled: v)),
-                onDecrementPoints: () => _updateEvent(
-                      event.copyWith(points: (event.points - 1).clamp(-5, 10)),
-                    ),
-                onIncrementPoints: () => _updateEvent(
-                      event.copyWith(points: (event.points + 1).clamp(-5, 10)),
-                    ),
-                onEditNickname: () => _editNickname(event),
-              ),
-            ),
-          )
-          .toList(),
+      children: cards,
     );
   }
 }

@@ -38,6 +38,22 @@ void main() {
       expect(find.byType(WolfScoreHoleScreen), findsNothing);
     });
 
+    testWidgets('first opponent partner button selects partner on hole 1', (tester) async {
+      await tester.pumpWidget(
+        wrapWithAppTheme(WolfCallScreen(state: testWolfRoundState())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Partner'), findsWidgets);
+      await tester.tap(find.text('Partner').first);
+      await tester.pump();
+
+      await tester.tap(find.text('Score the hole'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WolfScoreHoleScreen), findsOneWidget);
+    });
+
     testWidgets('blind wolf navigates to score screen', (tester) async {
       await tester.pumpWidget(
         wrapWithAppTheme(WolfCallScreen(state: testWolfRoundState())),

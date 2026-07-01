@@ -24,6 +24,30 @@ const fs = require('fs');
 const path = require('path');
 
 const LIST_PATH = path.join(__dirname, 'wa-courses-batch.json');
+const ENV_PATH = path.join(__dirname, '..', 'tools', 'course-catalog-search', '.env');
+
+/** Loads tools/course-catalog-search/.env when shell vars are not already set. */
+function loadLocalEnv() {
+  if (!fs.existsSync(ENV_PATH)) return;
+  const text = fs.readFileSync(ENV_PATH, 'utf8');
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const k = trimmed.slice(0, eq).trim();
+    let v = trimmed.slice(eq + 1).trim();
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
+      v = v.slice(1, -1);
+    }
+    if (process.env[k] === undefined) process.env[k] = v;
+  }
+}
+
+loadLocalEnv();
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));

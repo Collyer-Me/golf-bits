@@ -36,7 +36,7 @@ abstract final class AppTheme {
   static const double avatarSizeMd = 38;
 
   /// Circular award (+) control on player cards.
-  static const double awardButtonSize = 44;
+  static const double awardButtonSize = 36;
 
   /// Hole-progress pip bar — upcoming segments.
   static const double opacityProgressPipUpcoming = 0.12;

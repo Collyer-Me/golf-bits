@@ -27,6 +27,7 @@ import '../theme/app_theme.dart';
 import '../widgets/event_preferences_editor.dart';
 import '../widgets/guest_cloud_round_sheet.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/selectable_surface_card.dart';
 import '../widgets/player_avatar.dart';
 import '../widgets/setup_step_progress.dart';
 import '../widgets/stroke_hole_counter.dart';
@@ -985,8 +986,11 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    if (!_hasBits) {
+      return _buildReviewStep(context);
+    }
+
+    return ListView(
       children: [
         if (_hasWolf) ...[
           Text('Wolf stake (\$/point)', style: text.titleSmall),
@@ -1010,7 +1014,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             onChanged: (v) => setState(() => _bitsPointValue = v),
           ),
         ],
-        if (_hasBits && !_hasWolf) ...[
+        if (!_hasWolf) ...[
           OutlinedSurfaceCard(
             borderColor: scheme.outlineVariant,
             child: Column(
@@ -1036,31 +1040,19 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
             ),
           ),
           SizedBox(height: AppTheme.space3),
-          Expanded(
-            child: EventPreferencesEditor(
-              events: _events,
-              onChanged: (next) => setState(() => _events = next),
-            ),
-          ),
-        ] else if (_hasBits) ...[
-          Expanded(
-            child: EventPreferencesEditor(
-              events: _events,
-              onChanged: (next) => setState(() => _events = next),
-            ),
-          ),
-        ] else
-          Expanded(
-            child: _buildReviewStep(context),
-          ),
-        if (_hasBits) ...[
-          SizedBox(height: AppTheme.space3),
-          FilledButton.tonalIcon(
-            onPressed: _saveCurrentSetupAsDefaults,
-            icon: const Icon(Icons.bookmark_add_outlined),
-            label: const Text('Save as my defaults'),
-          ),
         ],
+        EventPreferencesEditor(
+          events: _events,
+          onChanged: (next) => setState(() => _events = next),
+          embeddedInScroll: true,
+        ),
+        SizedBox(height: AppTheme.space3),
+        FilledButton.tonalIcon(
+          onPressed: _saveCurrentSetupAsDefaults,
+          icon: const Icon(Icons.bookmark_add_outlined),
+          label: const Text('Save as my defaults'),
+        ),
+        SizedBox(height: AppTheme.space4),
       ],
     );
   }
@@ -1251,68 +1243,62 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
           final selected = _selectedCourseId == c.id;
           return Padding(
             padding: const EdgeInsets.only(bottom: AppTheme.space25),
-            child: Material(
-              color: scheme.surface.withValues(alpha: 0),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-                onTap: () {
-                  setState(() {
-                    _selectedCourseId = c.id;
-                    _roundShouldReferenceCatalog = true;
-                    _selectedDetail = null;
-                  });
-                  unawaited(_loadCourseDetail(c.id));
-                },
-                child: OutlinedSurfaceCard(
-                  borderColor: selected ? scheme.primary : scheme.outlineVariant,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space4,
-                    vertical: AppTheme.buttonPadV,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(c.name, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                            Text(
-                              c.listSubtitle,
-                              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                            ),
-                            if (selected && _loadingCourseDetail)
-                              Padding(
-                                padding: const EdgeInsets.only(top: AppTheme.space2),
-                                child: Text(
-                                  'Loading scorecard…',
-                                  style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-                                ),
-                              ),
-                            if (selected &&
-                                !_loadingCourseDetail &&
-                                c.coverageLevel == CourseCoverageLevel.geoOnly &&
-                                (_selectedDetail?.hasTeeMatrix != true))
-                              Padding(
-                                padding: const EdgeInsets.only(top: AppTheme.space2),
-                                child: Text(
-                                  'Location only — you can still play; scorecard may be incomplete.',
-                                  style: text.labelSmall?.copyWith(color: scheme.tertiary),
-                                ),
-                              ),
-                          ],
+            child: SelectableSurfaceCard(
+              selected: selected,
+              onTap: () {
+                setState(() {
+                  _selectedCourseId = c.id;
+                  _roundShouldReferenceCatalog = true;
+                  _selectedDetail = null;
+                });
+                unawaited(_loadCourseDetail(c.id));
+              },
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.space4,
+                vertical: AppTheme.buttonPadV,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(c.name, style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          c.listSubtitle,
+                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                         ),
-                      ),
-                      if (selected && _loadingCourseDetail)
-                        const SizedBox(
-                          width: AppTheme.iconInline,
-                          height: AppTheme.iconInline,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      else if (selected)
-                        Icon(Icons.check_circle, color: scheme.primary),
-                    ],
+                        if (selected && _loadingCourseDetail)
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppTheme.space2),
+                            child: Text(
+                              'Loading scorecard…',
+                              style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                          ),
+                        if (selected &&
+                            !_loadingCourseDetail &&
+                            c.coverageLevel == CourseCoverageLevel.geoOnly &&
+                            (_selectedDetail?.hasTeeMatrix != true))
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppTheme.space2),
+                            child: Text(
+                              'Location only — you can still play; scorecard may be incomplete.',
+                              style: text.labelSmall?.copyWith(color: scheme.tertiary),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
+                  if (selected && _loadingCourseDetail)
+                    const SizedBox(
+                      width: AppTheme.iconInline,
+                      height: AppTheme.iconInline,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else if (selected)
+                    Icon(Icons.check_circle, color: scheme.primary),
+                ],
               ),
             ),
           );
@@ -1537,36 +1523,34 @@ class _FormatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    return OutlinedSurfaceCard(
-      borderColor: selected ? scheme.primary : scheme.outlineVariant,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                      Text(subtitle, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                    ],
-                  ),
+    return SelectableSurfaceCard(
+      selected: selected,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(subtitle, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
                 ),
-                Icon(selected ? Icons.check_circle : Icons.circle_outlined, color: scheme.primary),
-              ],
-            ),
-            if (showWolfRules) ...[
-              Divider(color: scheme.outlineVariant, height: AppTheme.space4),
-              Text('+1 Win with partner', style: text.bodySmall),
-              Text('×2 Lone Wolf', style: text.bodySmall),
-              Text('×3 Blind Wolf', style: text.bodySmall),
-              Text('Needs exactly 4 players', style: AppTheme.monoLabel(context)),
+              ),
+              Icon(selected ? Icons.check_circle : Icons.circle_outlined, color: scheme.primary),
             ],
+          ),
+          if (showWolfRules) ...[
+            Divider(color: scheme.outlineVariant, height: AppTheme.space4),
+            Text('+1 Win with partner', style: text.bodySmall),
+            Text('×2 Lone Wolf', style: text.bodySmall),
+            Text('×3 Blind Wolf', style: text.bodySmall),
+            Text('Needs exactly 4 players', style: AppTheme.monoLabel(context)),
           ],
-        ),
+        ],
       ),
     );
   }

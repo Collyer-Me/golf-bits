@@ -1,5 +1,5 @@
 # Build Flutter Web on GitHub-hosted runners and publish to GitHub Pages.
-# No local Flutter install required — push to main to update the preview URL.
+# PRs: analyze, test, and build (no deploy). main: same checks plus GitHub Pages deploy.
 
 name: Flutter Web → GitHub Pages
 
@@ -9,27 +9,27 @@ on:
     paths:
       - 'golf_bits/**'
       - '.github/workflows/flutter-web-gh-pages.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'golf_bits/**'
+      - '.github/workflows/flutter-web-gh-pages.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: 'pages'
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     # Node 20 on Actions is deprecated; official actions below use Node 24.
     # This also opts third-party actions (e.g. flutter-action) into Node 24 until they update.
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
@@ -68,6 +68,34 @@ jobs:
           flutter build web --release --base-href "$BASE_HREF" \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+
+      - name: Upload web build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: golf_bits/build/web
+          retention-days: 1
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download web build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: golf_bits/build/web
 
       - name: Upload Pages artifact
         # Pin full semver: @v5 is not always published as a moving tag for this action.

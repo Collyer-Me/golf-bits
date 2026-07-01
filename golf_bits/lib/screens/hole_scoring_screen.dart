@@ -8,6 +8,7 @@ import '../models/round_result.dart';
 import '../models/round_session_args.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
+import '../widgets/award_bits_button.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/stroke_hole_counter.dart';
@@ -722,18 +723,7 @@ class _PlayerCard extends StatelessWidget {
                   ],
                 ),
                 SizedBox(width: AppTheme.space3),
-                Tooltip(
-                  message: 'Award bits',
-                  child: FilledButton(
-                    onPressed: onAward,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(AppTheme.awardButtonSize, AppTheme.awardButtonSize),
-                      padding: EdgeInsets.zero,
-                      shape: const CircleBorder(),
-                    ),
-                    child: const Icon(Icons.add, size: AppTheme.iconDense),
-                  ),
-                ),
+                AwardBitsButton(onPressed: onAward),
               ],
             ),
             if (tracksStrokes) ...[

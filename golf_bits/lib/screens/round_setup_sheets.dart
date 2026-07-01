@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/course_catalog_models.dart';
 import '../models/custom_event_draft.dart';
 import '../theme/app_theme.dart';
+import '../widgets/selectable_surface_card.dart';
 
 /// Bottom sheet: quick-add a player (name + optional email).
 Future<void> showAddPlayerSheet(
@@ -65,6 +66,7 @@ class _AddPlayerSheetState extends State<_AddPlayerSheet> {
           SizedBox(height: AppTheme.space5),
           TextField(
             controller: _name,
+            autofocus: true,
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               hintText: 'Enter name…',
@@ -215,12 +217,17 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              widget.courseName,
-              style: text.titleLarge?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w800,
-              ),
+            Row(
+              children: [
+                Icon(Icons.golf_course_outlined, color: scheme.primary),
+                SizedBox(width: AppTheme.space3),
+                Expanded(
+                  child: Text(
+                    widget.courseName,
+                    style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
             if (widget.coverageLevel == CourseCoverageLevel.geoOnly ||
                 widget.coverageLevel == CourseCoverageLevel.manual) ...[
@@ -233,7 +240,10 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
               ),
             ],
             SizedBox(height: AppTheme.space5),
-            Text('Round length', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'ROUND LENGTH',
+              style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+            ),
             SizedBox(height: AppTheme.space2),
             SegmentedButton<int>(
               segments: const [
@@ -243,68 +253,78 @@ class _CourseSetupSheetState extends State<_CourseSetupSheet> {
               selected: {_holes},
               onSelectionChanged: (s) => setState(() => _holes = s.first),
             ),
+            if (_holes == 9) ...[
+              SizedBox(height: AppTheme.space5),
+              Text(
+                'STARTING NINE',
+                style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+              ),
+              SizedBox(height: AppTheme.space2),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: true, label: Text('Front 9')),
+                  ButtonSegment(value: false, label: Text('Back 9')),
+                ],
+                selected: {_frontNine},
+                onSelectionChanged: (s) => setState(() => _frontNine = s.first),
+              ),
+            ],
             SizedBox(height: AppTheme.space5),
-            Text('Starting nine', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-            SizedBox(height: AppTheme.space2),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: true, label: Text('Front 9')),
-                ButtonSegment(value: false, label: Text('Back 9')),
-              ],
-              selected: {_frontNine},
-              onSelectionChanged: (s) => setState(() => _frontNine = s.first),
+            Text(
+              'SELECT TEE BOX',
+              style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
             ),
-            SizedBox(height: AppTheme.space5),
-            Text('Select tee box', style: text.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
             SizedBox(height: AppTheme.space2),
             ...List.generate(tees.length, (i) {
               final t = tees[i];
               final selected = i == _teeIndex;
               return Padding(
-                padding: const EdgeInsets.only(bottom: AppTheme.space1),
-                child: Material(
-                  color: scheme.surface.withValues(alpha: 0),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                    onTap: () => setState(() => _teeIndex = i),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: AppTheme.space2, horizontal: AppTheme.spaceHalf),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: AppTheme.spaceHalf),
-                            child: Icon(
-                              selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                              size: AppTheme.iconDense,
-                              color: selected ? scheme.primary : scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.space1),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  t.label,
-                                  style: text.bodyMedium?.copyWith(
-                                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                                  ),
-                                ),
-                                if (t.subtitle != null && t.subtitle!.trim().isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: AppTheme.spaceHalf),
-                                    child: Text(
-                                      t.subtitle!,
-                                      style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
+                padding: const EdgeInsets.only(bottom: AppTheme.space2),
+                child: SelectableSurfaceCard(
+                  selected: selected,
+                  onTap: () => setState(() => _teeIndex = i),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.space3,
+                    vertical: AppTheme.space3,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 14,
+                        height: 14,
+                        margin: const EdgeInsets.only(top: AppTheme.spaceHalf),
+                        decoration: BoxDecoration(
+                          color: t.color,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: scheme.outlineVariant),
+                        ),
                       ),
-                    ),
+                      SizedBox(width: AppTheme.space3),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.label,
+                              style: text.bodyMedium?.copyWith(
+                                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                            if (t.subtitle != null && t.subtitle!.trim().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: AppTheme.spaceHalf),
+                                child: Text(
+                                  t.subtitle!,
+                                  style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (selected)
+                        Icon(Icons.check_circle, color: scheme.primary, size: AppTheme.iconDense),
+                    ],
                   ),
                 ),
               );

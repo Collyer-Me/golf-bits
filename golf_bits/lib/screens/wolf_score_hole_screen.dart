@@ -10,6 +10,7 @@ import '../models/round_result.dart';
 import '../models/wolf_round_state.dart';
 import '../models/wolf_scoring.dart';
 import '../theme/app_theme.dart';
+import '../widgets/award_bits_button.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/event_award_sheet.dart';
 import '../widgets/hole_footer_nav.dart';
@@ -516,15 +517,7 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
                 ),
               ),
               const Spacer(),
-              OutlinedButton.icon(
-                onPressed: () => _openBitsSheet(key),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('bits'),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  side: BorderSide(color: scheme.outlineVariant),
-                ),
-              ),
+              AwardBitsButton(onPressed: () => _openBitsSheet(key)),
             ],
           ),
         ],

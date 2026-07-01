@@ -53,7 +53,7 @@ class StrokeHoleCounter extends StatelessWidget {
               style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
-          IconButton.filled(
+          IconButton(
             onPressed: strokes < _max ? () => _bump(1) : null,
             tooltip: 'More strokes',
             icon: const Icon(Icons.add, size: AppTheme.iconDense),

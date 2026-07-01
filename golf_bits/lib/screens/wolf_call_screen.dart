@@ -11,6 +11,7 @@ import '../widgets/brand_app_bar.dart';
 import '../widgets/hole_header.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/player_avatar.dart';
+import '../widgets/selectable_surface_card.dart';
 import 'round_standings_screen.dart';
 import 'wolf_score_hole_screen.dart';
 
@@ -234,12 +235,24 @@ class _WolfCallScreenState extends State<WolfCallScreen> {
                 SizedBox(height: AppTheme.space2),
                 _ActionRow(
                   title: 'Go Lone Wolf',
-                  subtitle: 'No partner — beat all three.',
+                  subtitle: _opponentsTeed >= 3 || _selectedCall?.type == WolfCallType.lone
+                      ? 'No partner — beat all three.'
+                      : 'Available after all players tee off.',
                   multiplier: '×2',
                   accent: scheme.primary,
                   selected: _selectedCall?.type == WolfCallType.lone,
                   enabled: _opponentsTeed >= 3 || _selectedCall?.type == WolfCallType.lone,
-                  onTap: _opponentsTeed >= 3 ? _selectLoneWolf : null,
+                  onTap: _opponentsTeed >= 3
+                      ? _selectLoneWolf
+                      : () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Lone Wolf unlocks after all three opponents have teed off.',
+                              ),
+                            ),
+                          );
+                        },
                 ),
               ],
             ),
@@ -264,7 +277,7 @@ class _WolfCallScreenState extends State<WolfCallScreen> {
   Widget _buildPartnerRow(BuildContext context, String key, int index) {
     final scheme = Theme.of(context).colorScheme;
     final name = _nameFor(key);
-    final waiting = index >= _opponentsTeed;
+    final waiting = index > _opponentsTeed;
     final isActive = index == _opponentsTeed && _selectedCall?.type != WolfCallType.blind;
     final isSelected =
         _selectedCall?.type == WolfCallType.partner && _selectedCall?.partnerKey == key;
@@ -297,14 +310,27 @@ class _WolfCallScreenState extends State<WolfCallScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTheme.space2),
-      child: OutlinedSurfaceCard(
-        borderColor: isSelected ? scheme.primary : scheme.outlineVariant,
+      child: SelectableSurfaceCard(
+        selected: isSelected,
+        borderColor: isSelected ? scheme.primary : null,
         padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space2),
         child: Row(
           children: [
             PlayerAvatar(displayName: name, colorIndex: _colorIndex(key), size: 34),
             SizedBox(width: AppTheme.space2),
-            Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w700))),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  if (isActive && !isSelected)
+                    Text(
+                      'Teeing off — pick partner',
+                      style: AppTheme.monoLabel(context, color: scheme.primary),
+                    ),
+                ],
+              ),
+            ),
             if (isActive && !isSelected)
               OutlinedButton(
                 onPressed: () {
@@ -354,35 +380,47 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Container(
-          padding: const EdgeInsets.all(AppTheme.space3),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: selected ? accent : accent.withValues(alpha: enabled ? 0.5 : 0.2),
-              width: selected ? AppTheme.emphasisBorderWidth : AppTheme.outlineBorderWidth,
-            ),
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: accent)),
-                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-                  ],
+    final scheme = Theme.of(context).colorScheme;
+    final borderColor = selected
+        ? accent
+        : accent.withValues(alpha: enabled ? 0.5 : 0.2);
+
+    return SelectableSurfaceCard(
+      selected: selected,
+      borderColor: borderColor,
+      borderRadius: AppTheme.radiusMd,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: enabled ? accent : accent.withValues(alpha: 0.45),
+                  ),
                 ),
-              ),
-              Text(multiplier, style: AppTheme.score(context, size: 20, color: accent)),
-            ],
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: enabled ? null : scheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
           ),
-        ),
+          Text(
+            multiplier,
+            style: AppTheme.score(
+              context,
+              size: 20,
+              color: enabled ? accent : accent.withValues(alpha: 0.45),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -8,7 +8,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const GolfBitsApp());
+    await tester.pumpWidget(const GolfBitsApp(initialThemeMode: ThemeMode.dark));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
