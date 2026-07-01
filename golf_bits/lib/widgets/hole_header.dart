@@ -34,6 +34,7 @@ class HoleHeader extends StatelessWidget {
     } else if (par != null) {
       eyebrowParts.add('COURSE');
     }
+    if (strokeIndex != null) eyebrowParts.add('INDEX $strokeIndex');
     final eyebrow = eyebrowParts.join(' · ');
 
     return Row(
@@ -63,14 +64,6 @@ class HoleHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (strokeIndex != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppTheme.space1),
-            child: Text(
-              'SI $strokeIndex',
-              style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
-            ),
-          ),
         if (trailing != null) trailing!,
       ],
     );

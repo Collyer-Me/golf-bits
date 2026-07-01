@@ -76,11 +76,6 @@ class WolfRoundState {
     return si ?? hole;
   }
 
-  bool hasCatalogStrokeIndex(int hole) {
-    return holeStrokeIndexes.containsKey('$hole') ||
-        holeStrokeIndexes.containsKey(hole.toString());
-  }
-
   WolfRoundState copyWith({
     int? holeIndex,
     Map<String, int>? wolfPointsByPlayer,

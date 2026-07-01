@@ -166,5 +166,13 @@ void main() {
       expect(formatCourseHandicap(-3), '+3');
       expect(formatCourseHandicap(12), '12');
     });
+
+    test('formatExtraShotsLabel uses plain language', () {
+      expect(formatExtraShotsLabel(0), 'No extra shots');
+      expect(formatExtraShotsLabel(1), '1 extra shot');
+      expect(formatExtraShotsLabel(2), '2 extra shots');
+      expect(formatExtraShotsLabel(-1), '-1 extra shot');
+      expect(formatExtraShotsLabel(-2), '-2 extra shots');
+    });
   });
 }

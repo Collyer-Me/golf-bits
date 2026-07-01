@@ -352,24 +352,13 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
     return idx >= 0 ? idx : 0;
   }
 
-  String _netCaption(String key) {
-    final gross = _grossByPlayer[key];
-    if (gross == null) return '';
-    if (_state.basis == WolfScoringBasis.gross) return 'GROSS $gross';
-    final si = _state.strokeIndexForHole(_hole);
-    final hcp = _state.gameConfig.handicaps[key] ?? 0;
-    final hcpLabel = formatCourseHandicap(hcp);
+  String _extraShotsCaption(String key) {
+    if (_state.basis == WolfScoringBasis.gross) return 'No extra shots';
     final received = strokesReceivedOnHole(
-      courseHandicap: hcp,
-      strokeIndex: si,
+      courseHandicap: _state.gameConfig.handicaps[key] ?? 0,
+      strokeIndex: _state.strokeIndexForHole(_hole),
     );
-    final net = netStrokes(gross: gross, strokesReceived: received);
-    final siLabel = _state.hasCatalogStrokeIndex(_hole) ? 'SI $si' : 'SI $si (est)';
-    if (received != 0) {
-      final strokeLabel = received > 0 ? '+$received' : '$received';
-      return 'NET $net · HCP $hcpLabel · $siLabel · $strokeLabel';
-    }
-    return 'NET $net · HCP $hcpLabel · $siLabel';
+    return formatExtraShotsLabel(received);
   }
 
   @override
@@ -502,8 +491,8 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
                 children: [
                   Text(_nameFor(key), style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text(
-                    _netCaption(key),
-                    style: AppTheme.monoLabel(context, color: AppTheme.bits(context)).copyWith(fontSize: 9),
+                    _extraShotsCaption(key),
+                    style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
                   ),
                 ],
               ),

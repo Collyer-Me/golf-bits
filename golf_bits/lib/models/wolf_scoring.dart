@@ -94,6 +94,14 @@ int strokesReceivedOnHole({
 /// Display label for handicap entry (negative stored value → "+3" plus handicap).
 String formatCourseHandicap(int handicap) => handicap < 0 ? '+${-handicap}' : '$handicap';
 
+/// Plain-language strokes received on this hole (for player rows).
+String formatExtraShotsLabel(int strokesReceived) {
+  if (strokesReceived == 0) return 'No extra shots';
+  final abs = strokesReceived.abs();
+  final noun = abs == 1 ? 'shot' : 'shots';
+  return '$strokesReceived extra $noun';
+}
+
 int netStrokes({required int gross, required int strokesReceived}) {
   return gross - strokesReceived;
 }
