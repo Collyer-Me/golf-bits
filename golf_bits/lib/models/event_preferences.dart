@@ -71,12 +71,42 @@ class EventPreference {
       };
 }
 
+/// Maps award-sheet / round-setup labels to Material icon keys.
+String iconKeyForEventLabel(String name) {
+  final n = name.toLowerCase();
+  if (n.contains('birdie')) return 'sports_golf';
+  if (n.contains('eagle')) return 'trending_up';
+  if (n.contains('greenie') || n.contains('gir') || n.contains('green in')) {
+    return 'gps_fixed';
+  }
+  if (n.contains('sand') || n.contains('bunker')) return 'beach_access';
+  if (n.contains('bark') || n.contains('wood')) return 'park';
+  if (n.contains('chip') || n.contains('chippie')) return 'flag_outlined';
+  if (n.contains('prox') || n.contains('closest') || n.contains('pin')) {
+    return 'my_location';
+  }
+  if (n.contains('drive') || n.contains('nicklaus') || n.contains('tiger')) {
+    return 'straighten';
+  }
+  if (n.contains('putt') || n.contains('snake')) return 'radio_button_checked_outlined';
+  if (n.contains('water') || n.contains(' ob') || n.startsWith('ob')) {
+    return 'waves_outlined';
+  }
+  if (n.contains('double') || n.contains('bogey')) return 'trending_down';
+  if (n.contains('three') || n.contains('hazard')) return 'remove_circle_outline';
+  return 'star_outline';
+}
+
+/// Built-in bits catalog — Stick Golf “standard set” plus common variants.
+///
+/// [Greenie] is par-3 closest-to-pin (must make par+). [GIR] is the alternate
+/// “green in regulation” meaning some groups use instead.
 List<EventPreference> defaultEventPreferences() {
   return const [
     EventPreference(
       id: 'birdie',
       name: 'Birdie',
-      description: 'Awarded for completing the hole in 1 under par.',
+      description: 'Score exactly one under par on the hole.',
       defaultPoints: 1,
       enabled: true,
       points: 1,
@@ -85,16 +115,7 @@ List<EventPreference> defaultEventPreferences() {
     EventPreference(
       id: 'eagle',
       name: 'Eagle',
-      description: 'Awarded for completing the hole in 2 under par.',
-      defaultPoints: 2,
-      enabled: true,
-      points: 2,
-      isCustom: false,
-    ),
-    EventPreference(
-      id: 'chip',
-      name: 'Chip-in',
-      description: 'Holed out from off the green.',
+      description: 'Score two or more under par on the hole.',
       defaultPoints: 2,
       enabled: true,
       points: 2,
@@ -103,16 +124,97 @@ List<EventPreference> defaultEventPreferences() {
     EventPreference(
       id: 'greenie',
       name: 'Greenie',
-      description: 'Hit the green in regulation and two-putt or better.',
+      description:
+          'On a par 3: closest tee shot to the pin (on the green) and make par or better.',
       defaultPoints: 1,
       enabled: true,
       points: 1,
       isCustom: false,
     ),
     EventPreference(
+      id: 'sandie',
+      name: 'Sandie',
+      nickname: 'Sandy',
+      description: 'Ball in a greenside bunker, then up-and-down for par or better.',
+      defaultPoints: 1,
+      enabled: true,
+      points: 1,
+      isCustom: false,
+    ),
+    EventPreference(
+      id: 'barkie',
+      name: 'Barkie',
+      nickname: 'Woodie',
+      description: 'Ball hits a tree during the hole and you still make par or better.',
+      defaultPoints: 1,
+      enabled: true,
+      points: 1,
+      isCustom: false,
+    ),
+    EventPreference(
+      id: 'chip',
+      name: 'Chip-in',
+      nickname: 'Chippie',
+      description: 'Hole out from off the green (not a fringe putt) for par or better.',
+      defaultPoints: 1,
+      enabled: true,
+      points: 1,
+      isCustom: false,
+    ),
+    EventPreference(
+      id: 'prox',
+      name: 'Closest to Pin',
+      nickname: 'Prox',
+      description: 'Closest approach shot to the hole (one winner per hole).',
+      defaultPoints: 1,
+      enabled: true,
+      points: 1,
+      isCustom: false,
+    ),
+    EventPreference(
+      id: 'long_drive',
+      name: 'Long Drive',
+      nickname: 'Nicklaus',
+      description: 'Longest tee shot on a par 4 or 5 (usually must finish in the fairway).',
+      defaultPoints: 1,
+      enabled: true,
+      points: 1,
+      isCustom: false,
+    ),
+    EventPreference(
+      id: 'gir',
+      name: 'GIR',
+      nickname: 'Green in regulation',
+      description: 'Reach the green in regulation strokes (alternate to par-3 Greenie).',
+      defaultPoints: 1,
+      enabled: false,
+      points: 1,
+      isCustom: false,
+    ),
+    EventPreference(
       id: 'three',
       name: 'Three-putt',
-      description: 'Three or more putts on the green.',
+      nickname: 'Snake',
+      description: 'Three or more putts once the ball is on the putting surface.',
+      defaultPoints: -1,
+      enabled: true,
+      points: -1,
+      isCustom: false,
+    ),
+    EventPreference(
+      id: 'double_plus',
+      name: 'Double bogey+',
+      nickname: 'Double+',
+      description: 'Score double bogey or worse on the hole.',
+      defaultPoints: -1,
+      enabled: true,
+      points: -1,
+      isCustom: false,
+    ),
+    EventPreference(
+      id: 'water_ob',
+      name: 'Water / OB',
+      description: 'Ball in a water hazard or out of bounds during the hole.',
       defaultPoints: -1,
       enabled: true,
       points: -1,

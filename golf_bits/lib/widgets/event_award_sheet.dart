@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/event_preferences.dart';
 import '../models/round_session_args.dart';
 import '../theme/app_theme.dart';
 
@@ -31,7 +32,6 @@ class EventAwardSheet extends StatefulWidget {
     required this.initialSelectedKeys,
     required this.onAward,
     this.subtitle,
-    this.runsAlongsideWolf = false,
     this.participantOptions,
     this.selectedParticipantKey,
     this.onParticipantSelected,
@@ -44,7 +44,6 @@ class EventAwardSheet extends StatefulWidget {
   final Set<String> initialSelectedKeys;
   final EventAwardCallback onAward;
   final String? subtitle;
-  final bool runsAlongsideWolf;
   final List<RoundParticipant>? participantOptions;
   final String? selectedParticipantKey;
   final ValueChanged<String>? onParticipantSelected;
@@ -83,12 +82,12 @@ class _EventAwardSheetState extends State<EventAwardSheet> {
 
     final mapped = (widget.rules.isEmpty
             ? [
-                const RoundEventRule(label: 'Birdie', delta: 1, iconKey: 'sports_golf'),
-                const RoundEventRule(label: 'Eagle', delta: 2, iconKey: 'trending_up'),
-                const RoundEventRule(label: 'Chip-in', delta: 1, iconKey: 'flag_outlined'),
-                const RoundEventRule(label: 'One-Putt', delta: 1, iconKey: 'radio_button_checked_outlined'),
-                const RoundEventRule(label: 'Three-Putt', delta: -1, iconKey: 'remove_circle_outline'),
-                const RoundEventRule(label: 'Water Hazard', delta: -1, iconKey: 'waves_outlined'),
+                for (final e in defaultEventPreferences().where((e) => e.enabled))
+                  RoundEventRule(
+                    label: e.displayLabel,
+                    delta: e.points,
+                    iconKey: iconKeyForEventLabel(e.displayLabel),
+                  ),
               ]
             : widget.rules)
         .map((r) => EventDef(r.label, r.delta, r.iconKey))
@@ -134,25 +133,6 @@ class _EventAwardSheetState extends State<EventAwardSheet> {
                   ],
                 ),
               ),
-              if (widget.runsAlongsideWolf)
-                Padding(
-                  padding: const EdgeInsets.only(left: AppTheme.space2),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.space2,
-                      vertical: AppTheme.space1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.16),
-                      border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
-                      borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-                    ),
-                    child: Text(
-                      'RUNS ALONGSIDE WOLF',
-                      style: AppTheme.monoLabel(context, color: AppTheme.bits(context)).copyWith(fontSize: 9),
-                    ),
-                  ),
-                ),
               Tooltip(
                 message: 'Done',
                 child: FilledButton(
@@ -311,37 +291,44 @@ class AwardEventChip extends StatelessWidget {
     late final Color fg;
     BorderSide? border;
 
-    switch (visual) {
-      case AwardChipVisual.sand:
-        bg = scheme.secondary;
-        fg = scheme.onSecondary;
-      case AwardChipVisual.fairwayFilled:
-        bg = scheme.primary;
-        fg = scheme.onPrimary;
-      case AwardChipVisual.fairwayOutline:
-        if (selected) {
+    if (selected) {
+      switch (visual) {
+        case AwardChipVisual.sand:
+          bg = scheme.secondary;
+          fg = scheme.onSecondary;
+        case AwardChipVisual.fairwayFilled:
+        case AwardChipVisual.fairwayOutline:
           bg = scheme.primary;
           fg = scheme.onPrimary;
-        } else {
+        case AwardChipVisual.junk:
+          bg = scheme.error;
+          fg = scheme.onError;
+      }
+    } else {
+      switch (visual) {
+        case AwardChipVisual.sand:
+          bg = scheme.secondary.withValues(alpha: AppTheme.opacitySecondaryFill);
+          fg = scheme.secondary;
+          border = BorderSide(
+            color: scheme.secondary.withValues(alpha: AppTheme.opacitySecondaryBorder),
+            width: AppTheme.chipOutlineWidth,
+          );
+        case AwardChipVisual.fairwayFilled:
+        case AwardChipVisual.fairwayOutline:
           bg = scheme.primary.withValues(alpha: AppTheme.opacityFairwayChipFill);
           fg = scheme.primary;
           border = BorderSide(
             color: scheme.primary.withValues(alpha: AppTheme.opacityFairwayChipBorder),
             width: AppTheme.chipOutlineWidth,
           );
-        }
-      case AwardChipVisual.junk:
-        if (selected) {
-          bg = scheme.error;
-          fg = scheme.onError;
-        } else {
+        case AwardChipVisual.junk:
           bg = scheme.error.withValues(alpha: AppTheme.opacityJunkChipFill);
           fg = scheme.error;
           border = BorderSide(
             color: scheme.error.withValues(alpha: AppTheme.opacityJunkChipBorder),
             width: AppTheme.chipOutlineWidth,
           );
-        }
+      }
     }
 
     return Material(

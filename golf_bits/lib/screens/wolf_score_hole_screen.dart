@@ -129,7 +129,6 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
         par: _state.session.holePars['$_hole'],
         rules: rules,
         initialSelectedKeys: selectedForPlayerHole,
-        runsAlongsideWolf: _state.session.hasBits && _state.session.hasWolf,
         subtitle: 'HOLE $_hole · SIDE GAME',
         onAward: (label, delta, iconKey) async {
           var removed = false;
@@ -353,26 +352,24 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
     return idx >= 0 ? idx : 0;
   }
 
-  int? _netLabel(String key) {
-    final gross = _grossByPlayer[key];
-    if (gross == null) return null;
-    if (_state.basis == WolfScoringBasis.gross) return gross;
-    final received = strokesReceivedOnHole(
-      courseHandicap: _state.gameConfig.handicaps[key] ?? 0,
-      strokeIndex: _state.strokeIndexForHole(_hole),
-    );
-    return netStrokes(gross: gross, strokesReceived: received);
-  }
-
   String _netCaption(String key) {
-    final net = _netLabel(key);
-    if (net == null) return '';
-    if (_state.basis == WolfScoringBasis.gross) return 'GROSS $net';
+    final gross = _grossByPlayer[key];
+    if (gross == null) return '';
+    if (_state.basis == WolfScoringBasis.gross) return 'GROSS $gross';
+    final si = _state.strokeIndexForHole(_hole);
+    final hcp = _state.gameConfig.handicaps[key] ?? 0;
     final received = strokesReceivedOnHole(
-      courseHandicap: _state.gameConfig.handicaps[key] ?? 0,
-      strokeIndex: _state.strokeIndexForHole(_hole),
+      courseHandicap: hcp,
+      strokeIndex: si,
     );
-    return 'NET $net · ${received > 0 ? '$received STROKE' : 'NO STROKE'}';
+    final net = netStrokes(gross: gross, strokesReceived: received);
+    if (si == null) {
+      return 'NET $net · HCP $hcp · NO SI';
+    }
+    if (received > 0) {
+      return 'NET $net · HCP $hcp · SI $si · +$received';
+    }
+    return 'NET $net · HCP $hcp · SI $si';
   }
 
   @override
@@ -414,6 +411,7 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
                 HoleHeader(
                   hole: _hole,
                   par: _state.session.holePars['$_hole'],
+                  yardage: _state.session.holeYardages['$_hole'],
                   titleOverride: 'Score the hole',
                   strokeIndex: _state.strokeIndexForHole(_hole),
                 ),

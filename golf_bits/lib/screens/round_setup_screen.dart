@@ -494,16 +494,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
     return '${s.substring(0, 8)}-${s.substring(8, 12)}-${s.substring(12, 16)}-${s.substring(16, 20)}-${s.substring(20)}';
   }
 
-  String _iconKeyForEventName(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('birdie')) return 'sports_golf';
-    if (n.contains('eagle')) return 'trending_up';
-    if (n.contains('chip')) return 'flag_outlined';
-    if (n.contains('putt')) return 'radio_button_checked_outlined';
-    if (n.contains('water')) return 'waves_outlined';
-    if (n.contains('three') || n.contains('hazard')) return 'remove_circle_outline';
-    return 'star_outline';
-  }
+  String _iconKeyForEventName(String name) => iconKeyForEventLabel(name);
 
   Future<void> _startRound() async {
     if (_startingRound) return;

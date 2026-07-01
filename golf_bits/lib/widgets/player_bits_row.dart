@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import 'award_bits_button.dart';
 import 'tally_marks.dart';
 
-/// Bits tally, running total, and award control on one line (hole scoring design).
+/// Bits tally (this hole), running total, and award control — score and + stay right-aligned.
 class PlayerBitsRow extends StatelessWidget {
   const PlayerBitsRow({
     super.key,
@@ -14,7 +14,9 @@ class PlayerBitsRow extends StatelessWidget {
     this.tallyHeight = 22,
   });
 
+  /// Running round total (numeral on the right).
   final int totalBits;
+  /// Bits awarded on the current hole only (tally marks on the left).
   final int holeBits;
   final VoidCallback onAward;
   final double tallyHeight;
@@ -29,40 +31,31 @@ class PlayerBitsRow extends StatelessWidget {
             ? AppTheme.junk(context)
             : scheme.onSurfaceVariant;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: TallyMarks(
-                  count: totalBits,
-                  height: tallyHeight,
-                  variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
-                ),
-              ),
-            ),
-            const Spacer(),
-            Text(totalStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
-            SizedBox(width: AppTheme.space3),
-            AwardBitsButton(onPressed: onAward),
-          ],
-        ),
-        if (holeBits != 0)
-          Padding(
-            padding: const EdgeInsets.only(top: AppTheme.space1),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${holeBits >= 0 ? '+$holeBits' : '$holeBits'} this hole',
-                style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
-              ),
-            ),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: holeBits == 0
+                ? Text(
+                    '—',
+                    style: AppTheme.score(context, size: 16, color: scheme.onSurfaceVariant),
+                  )
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: TallyMarks(
+                      count: holeBits,
+                      height: tallyHeight,
+                      variant: holeBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
+                    ),
+                  ),
           ),
+        ),
+        Text(totalStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
+        SizedBox(width: AppTheme.space2),
+        AwardBitsButton(onPressed: onAward),
       ],
     );
   }

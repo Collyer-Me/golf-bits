@@ -27,10 +27,36 @@ void main() {
   });
 
   group('defaultEventPreferences', () {
-    test('includes built-in birdie and three-putt events', () {
+    test('includes standard-set built-ins with junk negatives', () {
       final defaults = defaultEventPreferences();
-      expect(defaults.map((e) => e.id), containsAll(['birdie', 'three']));
+      expect(
+        defaults.map((e) => e.id),
+        containsAll([
+          'birdie',
+          'eagle',
+          'greenie',
+          'sandie',
+          'barkie',
+          'chip',
+          'prox',
+          'long_drive',
+          'gir',
+          'three',
+          'double_plus',
+          'water_ob',
+        ]),
+      );
       expect(defaults.firstWhere((e) => e.id == 'three').points, -1);
+      expect(defaults.firstWhere((e) => e.id == 'greenie').description, contains('par 3'));
+      expect(defaults.firstWhere((e) => e.id == 'gir').enabled, isFalse);
+    });
+
+    test('preset nicknames use regional aliases', () {
+      final defaults = defaultEventPreferences();
+      expect(defaults.firstWhere((e) => e.id == 'sandie').nickname, 'Sandy');
+      expect(defaults.firstWhere((e) => e.id == 'three').nickname, 'Snake');
+      expect(defaults.firstWhere((e) => e.id == 'chip').nickname, 'Chippie');
+      expect(defaults.firstWhere((e) => e.id == 'barkie').nickname, 'Woodie');
     });
   });
 
@@ -94,8 +120,17 @@ void main() {
     test('round-trips through toJson', () {
       final events = defaultEventPreferences();
       final encoded = encodeEventPreferencesJson(events);
-      expect(encoded, hasLength(events.length));
+      expect(encoded, hasLength(12));
       expect(encoded.first['id'], 'birdie');
+    });
+  });
+
+  group('iconKeyForEventLabel', () {
+    test('maps common nicknames and canonical names', () {
+      expect(iconKeyForEventLabel('Snake'), 'radio_button_checked_outlined');
+      expect(iconKeyForEventLabel('Sandy'), 'beach_access');
+      expect(iconKeyForEventLabel('Nicklaus'), 'straighten');
+      expect(iconKeyForEventLabel('Greenie'), 'gps_fixed');
     });
   });
 
