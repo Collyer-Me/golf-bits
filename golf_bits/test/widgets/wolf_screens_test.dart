@@ -38,6 +38,23 @@ void main() {
       expect(find.byType(WolfScoreHoleScreen), findsNothing);
     });
 
+    testWidgets('all opponents selectable as partner on hole 1', (tester) async {
+      await tester.pumpWidget(
+        wrapWithAppTheme(WolfCallScreen(state: testWolfRoundState())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('WAITING'), findsNothing);
+      await tester.scrollUntilVisible(find.text('Jordan'), 120);
+      expect(find.text('Partner'), findsNWidgets(3));
+      await tester.scrollUntilVisible(find.text('Go Lone Wolf'), 120);
+      await tester.tap(find.text('Go Lone Wolf'));
+      await tester.pump();
+      await tester.tap(find.text('Score the hole'));
+      await tester.pumpAndSettle();
+      expect(find.byType(WolfScoreHoleScreen), findsOneWidget);
+    });
+
     testWidgets('first opponent partner button selects partner on hole 1', (tester) async {
       await tester.pumpWidget(
         wrapWithAppTheme(WolfCallScreen(state: testWolfRoundState())),

@@ -35,8 +35,8 @@ abstract final class AppTheme {
   /// In-round player avatar (hole scoring cards).
   static const double avatarSizeMd = 38;
 
-  /// Circular award (+) control on player cards.
-  static const double awardButtonSize = 36;
+  /// Circular award (+) control on player cards (~42–44px per design).
+  static const double awardButtonSize = 42;
 
   /// Hole-progress pip bar — upcoming segments.
   static const double opacityProgressPipUpcoming = 0.12;

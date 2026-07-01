@@ -8,9 +8,9 @@ import '../models/round_result.dart';
 import '../models/round_session_args.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
-import '../widgets/award_bits_button.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/player_bits_row.dart';
 import '../widgets/stroke_hole_counter.dart';
 import '../widgets/tally_marks.dart';
 import 'round_summary_screen.dart';
@@ -647,13 +647,6 @@ class _PlayerCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final onFill = AppTheme.textOnFilledCircle(fillColor, scheme);
-    final totalStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
-    final holeStr = holeBits >= 0 ? '+$holeBits' : '$holeBits';
-    final scoreColor = totalBits > 0
-        ? AppTheme.bits(context)
-        : totalBits < 0
-            ? AppTheme.junk(context)
-            : scheme.onSurfaceVariant;
     final leaderBorder = isLeader
         ? AppTheme.sand(context).withValues(alpha: AppTheme.opacityLeaderRing)
         : scheme.outlineVariant;
@@ -695,36 +688,10 @@ class _PlayerCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: AppTheme.space3),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: TallyMarks(
-                      count: totalBits,
-                      height: 22,
-                      variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(totalStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
-                    if (holeBits != 0)
-                      Text(
-                        '$holeStr this hole',
-                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
-                      ),
-                  ],
-                ),
-                SizedBox(width: AppTheme.space3),
-                AwardBitsButton(onPressed: onAward),
-              ],
+            PlayerBitsRow(
+              totalBits: totalBits,
+              holeBits: holeBits,
+              onAward: onAward,
             ),
             if (tracksStrokes) ...[
               Padding(

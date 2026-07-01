@@ -10,15 +10,14 @@ import '../models/round_result.dart';
 import '../models/wolf_round_state.dart';
 import '../models/wolf_scoring.dart';
 import '../theme/app_theme.dart';
-import '../widgets/award_bits_button.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/event_award_sheet.dart';
 import '../widgets/hole_footer_nav.dart';
 import '../widgets/hole_header.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/player_avatar.dart';
+import '../widgets/player_bits_row.dart';
 import '../widgets/stroke_hole_counter.dart';
-import '../widgets/tally_marks.dart';
 import 'round_standings_screen.dart';
 import 'round_summary_screen.dart';
 import 'wolf_call_screen.dart';
@@ -308,14 +307,31 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
     );
   }
 
-  void _backToCall() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
+  void _backToCall() async {
+    final next = await Navigator.of(context).push<WolfRoundState>(
+      MaterialPageRoute(
         builder: (_) => WolfCallScreen(
           state: _state.copyWith(currentPhase: WolfInRoundPhase.call),
+          popOnContinue: true,
         ),
       ),
     );
+    if (next != null && mounted) {
+      setState(() => _state = next);
+    }
+  }
+
+  String get _callSummary {
+    switch (_call.type) {
+      case WolfCallType.blind:
+        return 'Blind Wolf';
+      case WolfCallType.lone:
+        return 'Lone Wolf';
+      case WolfCallType.partner:
+        final partner = _call.partnerKey;
+        if (partner == null || partner.isEmpty) return 'Partner';
+        return 'Partner · ${_nameFor(partner)}';
+    }
   }
 
   void _openStandings() {
@@ -376,6 +392,11 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
     return Scaffold(
       appBar: BrandAppBar(
         actions: [
+          TextButton.icon(
+            onPressed: _backToCall,
+            icon: const Icon(Icons.edit_outlined, size: AppTheme.iconDense),
+            label: Text(_callSummary),
+          ),
           IconButton(
             tooltip: 'Standings',
             icon: const Icon(Icons.leaderboard_outlined),
@@ -397,9 +418,20 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
                   strokeIndex: _state.strokeIndexForHole(_hole),
                 ),
                 SizedBox(height: AppTheme.space3),
-                Text(
-                  'TEAMS · STROKES & BITS',
-                  style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'TEAMS · STROKES & BITS',
+                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                    if (_state.session.hasWolf)
+                      Text(
+                        '\$${_state.gameConfig.wolfPointValue.toStringAsFixed(0)} / PT',
+                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                      ),
+                  ],
                 ),
                 SizedBox(height: AppTheme.space2),
                 _TeamCard(
@@ -444,17 +476,9 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
             ),
             child: HoleFooterNav(
               onPrevious: _backToCall,
+              previousTooltip: 'Change partner',
               onNext: _nextHole,
               previousEnabled: true,
-              leading: _state.session.hasWolf
-                  ? Padding(
-                      padding: const EdgeInsets.only(right: AppTheme.space1),
-                      child: Text(
-                        '\$${_state.gameConfig.wolfPointValue.toStringAsFixed(0)} / PT',
-                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
-                      ),
-                    )
-                  : null,
             ),
           ),
         ],
@@ -495,30 +519,11 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
         ),
         if (_state.session.hasBits) ...[
           SizedBox(height: AppTheme.space2),
-          Row(
-            children: [
-              Text('BITS', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
-              SizedBox(width: AppTheme.space1),
-              if (holeBits != 0)
-                TallyMarks(
-                  count: holeBits,
-                  height: 18,
-                  variant: holeBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
-                )
-              else
-                Text('—', style: AppTheme.score(context, size: 14, color: scheme.onSurfaceVariant)),
-              SizedBox(width: AppTheme.space2),
-              Text(
-                totalBits >= 0 ? '+$totalBits' : '$totalBits',
-                style: AppTheme.score(
-                  context,
-                  size: 14,
-                  color: totalBits >= 0 ? AppTheme.bits(context) : AppTheme.junk(context),
-                ),
-              ),
-              const Spacer(),
-              AwardBitsButton(onPressed: () => _openBitsSheet(key)),
-            ],
+          PlayerBitsRow(
+            totalBits: totalBits,
+            holeBits: holeBits,
+            tallyHeight: 18,
+            onAward: () => _openBitsSheet(key),
           ),
         ],
         if (key != _state.teeOrder.last) Divider(color: scheme.outlineVariant, height: AppTheme.space4),
