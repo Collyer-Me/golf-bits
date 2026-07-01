@@ -12,7 +12,6 @@ import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/player_bits_row.dart';
 import '../widgets/stroke_hole_counter.dart';
-import '../widgets/tally_marks.dart';
 import 'round_summary_screen.dart';
 
 class _HolePlayer {
