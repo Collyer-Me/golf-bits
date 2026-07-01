@@ -7,9 +7,11 @@ import '../widgets/brand_app_bar.dart';
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/history_round.dart';
+import '../models/round_settlement.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/settle_up_panel.dart';
 import 'player_breakdown_screen.dart';
 
 /// Deep dive for one past round (standings + left early). Refetches from Supabase when configured.
@@ -51,6 +53,22 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final config = _round.gameConfig;
+    final bitsUnit = config.bitsPointValue;
+    final wolfUnit = config.wolfPointValue;
+    final colorIndex = {
+      for (var i = 0; i < config.teeOrder.length; i++) config.teeOrder[i]: i,
+    };
+    final bitsScores = {
+      for (final s in _round.standings)
+        if (s.participantKey.isNotEmpty) s.participantKey: s.bits,
+    };
+    final bitsPayments = config.hasBits
+        ? computeLeaderSettlement(scoresByPlayer: bitsScores, unitValue: bitsUnit)
+        : const <SettlementPayment>[];
+    final wolfPayments = config.hasWolf && _round.wolfPointsByPlayer.isNotEmpty
+        ? computeLeaderSettlement(scoresByPlayer: _round.wolfPointsByPlayer, unitValue: wolfUnit)
+        : const <SettlementPayment>[];
 
     return Scaffold(
       appBar: BrandAppBar(
@@ -123,7 +141,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
               ),
             ),
             Text(
-              '+${_round.winnerBits} BITS',
+              '+${_round.winnerBits} BITS'
+              '${config.hasBits ? ' · ${formatSettlementMoney(_round.winnerBits * bitsUnit)}' : ''}',
               textAlign: TextAlign.center,
               style: text.displaySmall?.copyWith(
                 color: scheme.onPrimaryContainer,
@@ -148,7 +167,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                   (e) => Padding(
                     padding: const EdgeInsets.only(bottom: AppTheme.space1),
                     child: Text(
-                      '${_round.displayNameForKey(e.key)} · ${e.value} pts',
+                      '${_round.displayNameForKey(e.key)} · ${e.value} pts · ${formatSettlementMoney(e.value * wolfUnit)}',
                       textAlign: TextAlign.center,
                       style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                     ),
@@ -182,7 +201,9 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             ),
             SizedBox(height: AppTheme.space8),
             Text(
-              'FINAL STANDINGS',
+              config.hasBits
+                  ? 'FINAL STANDINGS · \$${bitsUnit.toStringAsFixed(0)} / BIT'
+                  : 'FINAL STANDINGS',
               style: text.labelSmall?.copyWith(
                 color: scheme.primary,
                 fontWeight: FontWeight.w800,
@@ -197,6 +218,24 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 onReturnFromPlayer: () => unawaited(_refetchRound()),
               ),
             ),
+            if (config.hasBits) ...[
+              SizedBox(height: AppTheme.space6),
+              SettleUpPanel(
+                header: 'Settle up · \$${bitsUnit.toStringAsFixed(0)} / bit',
+                payments: bitsPayments,
+                nameForKey: _round.displayNameForKey,
+                colorIndexForKey: colorIndex,
+              ),
+            ],
+            if (config.hasWolf && _round.wolfPointsByPlayer.isNotEmpty) ...[
+              SizedBox(height: AppTheme.space6),
+              SettleUpPanel(
+                header: 'Settle up · \$${wolfUnit.toStringAsFixed(0)} / point',
+                payments: wolfPayments,
+                nameForKey: _round.displayNameForKey,
+                colorIndexForKey: colorIndex,
+              ),
+            ],
             if (_round.leftEarly.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               Text(

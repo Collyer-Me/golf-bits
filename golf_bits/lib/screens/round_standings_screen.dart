@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../data/wolf_round_sync.dart';
+import '../models/round_settlement.dart';
 import '../models/wolf_round_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/player_avatar.dart';
+import '../widgets/settle_up_panel.dart';
 import '../widgets/tally_marks.dart';
 
 /// Screen 06 — mid-round standings (Wolf / Bits toggle).
@@ -40,12 +42,37 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
     return rows;
   }
 
+  Map<String, int> get _colorIndexByKey => {
+        for (var i = 0; i < _state.teeOrder.length; i++) _state.teeOrder[i]: i,
+      };
+
+  String _nameForKey(String key) {
+    for (final p in _state.session.participants) {
+      if (p.key == key) return p.displayName;
+    }
+    return key;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final showBoth = _state.session.hasWolf && _state.session.hasBits;
-    final rows = _showWolf || !_state.session.hasBits ? _wolfRows() : _bitsRows();
+    final viewingWolf = _state.session.hasWolf && (!_state.session.hasBits || _showWolf);
+    final rows = viewingWolf ? _wolfRows() : _bitsRows();
+    final unitValue = viewingWolf
+        ? _state.gameConfig.wolfPointValue
+        : _state.gameConfig.bitsPointValue;
+    final scoresByPlayer = {
+      for (final r in rows) r.key: r.score,
+    };
+    final payments = computeLeaderSettlement(
+      scoresByPlayer: scoresByPlayer,
+      unitValue: unitValue,
+    );
+    final settleHeader = viewingWolf
+        ? 'Settle up · \$${unitValue.toStringAsFixed(0)} / point'
+        : 'Settle up · \$${unitValue.toStringAsFixed(0)} / bit';
 
     return Scaffold(
       appBar: const BrandAppBar(),
@@ -70,7 +97,7 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
           ],
           SizedBox(height: AppTheme.space4),
           Text(
-            _showWolf ? 'WOLF POINTS · THE MATCH' : 'BITS LEDGER · SIDE GAME',
+            viewingWolf ? 'WOLF POINTS · THE MATCH' : 'BITS LEDGER · SIDE GAME',
             style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
           ),
           SizedBox(height: AppTheme.space2),
@@ -103,7 +130,7 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
                         ],
                       ),
                     ),
-                    if (_showWolf)
+                    if (viewingWolf)
                       TallyMarks(count: rows[i].score, height: 20)
                     else
                       Text(
@@ -114,22 +141,16 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
                           color: rows[i].score >= 0 ? AppTheme.bits(context) : AppTheme.junk(context),
                         ),
                       ),
-                    SizedBox(width: AppTheme.space2),
-                    Text(
-                      '${rows[i].score}',
-                      style: AppTheme.score(context, size: 20),
-                    ),
                   ],
                 ),
               ),
             ),
           SizedBox(height: AppTheme.space4),
-          Text(
-            _showWolf
-                ? '\$${_state.gameConfig.wolfPointValue.toStringAsFixed(0)} / POINT · SETTLES AT THE END'
-                : '\$${_state.gameConfig.bitsPointValue.toStringAsFixed(0)} / BIT · SETTLES AT THE END',
-            textAlign: TextAlign.center,
-            style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+          SettleUpPanel(
+            header: settleHeader,
+            payments: payments,
+            nameForKey: _nameForKey,
+            colorIndexForKey: _colorIndexByKey,
           ),
         ],
       ),

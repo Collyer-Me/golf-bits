@@ -5,10 +5,12 @@ import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/round_game_config.dart';
 import '../models/round_result.dart';
+import '../models/round_settlement.dart';
 import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/settle_up_panel.dart';
 import '../widgets/tally_marks.dart';
 import 'player_breakdown_screen.dart';
 
@@ -55,6 +57,16 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
     }
     return key;
   }
+
+  Map<String, int> _colorIndexByKey() {
+    final order = _gameConfig?.teeOrder ?? _r.participants.map((p) => p.key).toList();
+    return {for (var i = 0; i < order.length; i++) order[i]: i};
+  }
+
+  Map<String, int> _bitsScoresByKey() => {
+        for (final s in _r.standings)
+          if (s.participantKey.isNotEmpty) s.participantKey: s.bits,
+      };
 
   Future<void> _backToHome() async {
     final live = widget.result;
@@ -124,6 +136,16 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
     final unsavedGuestRound = liveResult != null &&
         SupabaseEnv.isConfigured &&
         Supabase.instance.client.auth.currentSession == null;
+    final config = _gameConfig ?? const RoundGameConfig();
+    final bitsUnit = config.bitsPointValue;
+    final wolfUnit = config.wolfPointValue;
+    final bitsPayments = config.hasBits
+        ? computeLeaderSettlement(scoresByPlayer: _bitsScoresByKey(), unitValue: bitsUnit)
+        : const <SettlementPayment>[];
+    final wolfPayments = _wolfPoints != null && config.hasWolf
+        ? computeLeaderSettlement(scoresByPlayer: _wolfPoints!, unitValue: wolfUnit)
+        : const <SettlementPayment>[];
+    final colorIndex = _colorIndexByKey();
 
     return Scaffold(
       appBar: const BrandAppBar(),
@@ -166,7 +188,10 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
               style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             SizedBox(height: AppTheme.space6),
-            _WinnerHero(result: r),
+            _WinnerHero(
+              result: r,
+              bitsDollarValue: config.hasBits ? r.winnerBits * bitsUnit : null,
+            ),
             if (_wolfPoints != null && _wolfPoints!.isNotEmpty && _wolfWinnerName != null) ...[
               SizedBox(height: AppTheme.space6),
               Text(
@@ -193,22 +218,30 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                         style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
                       ),
                     SizedBox(height: AppTheme.space2),
-                    for (final e in _wolfPoints!.entries)
+                    for (final e in _wolfPoints!.entries) ...[
                       Row(
                         children: [
                           Expanded(child: Text(_nameForKey(e.key))),
                           TallyMarks(count: e.value, height: 14, variant: TallyVariant.positive),
                           SizedBox(width: AppTheme.space2),
                           Text('${e.value} pts', style: AppTheme.monoLabel(context)),
+                          SizedBox(width: AppTheme.space2),
+                          Text(
+                            formatSettlementMoney(e.value * wolfUnit),
+                            style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                          ),
                         ],
                       ),
+                    ],
                   ],
                 ),
               ),
             ],
             SizedBox(height: AppTheme.space8),
             Text(
-              'FINAL STANDINGS',
+              config.hasBits
+                  ? 'FINAL STANDINGS · \$${bitsUnit.toStringAsFixed(0)} / BIT'
+                  : 'FINAL STANDINGS',
               style: text.labelSmall?.copyWith(
                 color: scheme.primary,
                 fontWeight: FontWeight.w800,
@@ -315,6 +348,24 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                 ),
               );
             }),
+            if (config.hasBits) ...[
+              SizedBox(height: AppTheme.space6),
+              SettleUpPanel(
+                header: 'Settle up · \$${bitsUnit.toStringAsFixed(0)} / bit',
+                payments: bitsPayments,
+                nameForKey: _nameForKey,
+                colorIndexForKey: colorIndex,
+              ),
+            ],
+            if (config.hasWolf && _wolfPoints != null && _wolfPoints!.isNotEmpty) ...[
+              SizedBox(height: AppTheme.space6),
+              SettleUpPanel(
+                header: 'Settle up · \$${wolfUnit.toStringAsFixed(0)} / point',
+                payments: wolfPayments,
+                nameForKey: _nameForKey,
+                colorIndexForKey: colorIndex,
+              ),
+            ],
             if (r.leftEarly.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               Text(
@@ -396,9 +447,10 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
 /// Winner spotlight: Fairway-emphasis card, rounded-square avatar, big Bricolage
 /// score + a hero tally.
 class _WinnerHero extends StatelessWidget {
-  const _WinnerHero({required this.result});
+  const _WinnerHero({required this.result, this.bitsDollarValue});
 
   final RoundResult result;
+  final double? bitsDollarValue;
 
   @override
   Widget build(BuildContext context) {
@@ -421,6 +473,13 @@ class _WinnerHero extends StatelessWidget {
           ),
           SizedBox(height: AppTheme.space2),
           Text('+${result.winnerBits}', style: AppTheme.score(context, size: 44, color: AppTheme.bits(context))),
+          if (bitsDollarValue != null) ...[
+            SizedBox(height: AppTheme.space1),
+            Text(
+              formatSettlementMoney(bitsDollarValue!),
+              style: AppTheme.score(context, size: 28, color: AppTheme.bits(context)),
+            ),
+          ],
           SizedBox(height: AppTheme.space2),
           TallyMarks(count: result.winnerBits, height: 26),
           SizedBox(height: AppTheme.space1),

@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import 'award_bits_button.dart';
 import 'tally_marks.dart';
 
-/// Bits tally (this hole), running total, and award control — score and + stay right-aligned.
+/// Bits tally (this hole), optional running total, and award control.
 class PlayerBitsRow extends StatelessWidget {
   const PlayerBitsRow({
     super.key,
@@ -12,14 +12,16 @@ class PlayerBitsRow extends StatelessWidget {
     required this.onAward,
     this.holeBits = 0,
     this.tallyHeight = 22,
+    this.showRunningTotal = false,
   });
 
-  /// Running round total (numeral on the right).
+  /// Running round total (shown only when [showRunningTotal] is true).
   final int totalBits;
   /// Bits awarded on the current hole only (tally marks on the left).
   final int holeBits;
   final VoidCallback onAward;
   final double tallyHeight;
+  final bool showRunningTotal;
 
   @override
   Widget build(BuildContext context) {
@@ -53,8 +55,10 @@ class PlayerBitsRow extends StatelessWidget {
                   ),
           ),
         ),
-        Text(totalStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
-        SizedBox(width: AppTheme.space2),
+        if (showRunningTotal) ...[
+          Text(totalStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
+          SizedBox(width: AppTheme.space2),
+        ],
         AwardBitsButton(onPressed: onAward),
       ],
     );
