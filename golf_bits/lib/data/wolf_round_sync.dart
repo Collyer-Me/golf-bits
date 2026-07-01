@@ -51,7 +51,11 @@ class WolfRoundSync {
       final events = await HistoryRepository.fetchBitEventsForRound(roundId);
       final holeBits = <String, Map<int, int>>{};
       final bitLog = <Map<String, dynamic>>[];
-      final bitsByPlayer = Map<String, int>.from(state.bitsByPlayer);
+      // Rebuild from events only — [state.bitsByPlayer] / score_by_player already
+      // holds the same totals and must not be added again (double-count on each hole).
+      final bitsByPlayer = {
+        for (final p in state.session.participants) p.key: 0,
+      };
       for (final p in state.session.participants) {
         holeBits[p.key] = <int, int>{};
       }

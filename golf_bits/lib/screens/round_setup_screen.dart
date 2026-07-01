@@ -1582,7 +1582,10 @@ class _HandicapRow extends StatelessWidget {
               ),
             ),
             StrokeHoleCounter(
-              strokes: handicap.clamp(0, 54),
+              strokes: handicap.clamp(-10, 54),
+              min: -10,
+              max: 54,
+              formatValue: (v) => v < 0 ? '+${-v}' : '$v',
               onChanged: dimmed ? (_) {} : (v) => onChanged(v),
             ),
           ],

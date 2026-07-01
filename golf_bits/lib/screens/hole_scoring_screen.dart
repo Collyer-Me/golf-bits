@@ -136,6 +136,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       if (!mounted) return;
       setState(() {
         for (final p in _players) {
+          p.totalBits = 0;
           _holeBits[p.id] = <int, int>{};
         }
         _bitLog.clear();

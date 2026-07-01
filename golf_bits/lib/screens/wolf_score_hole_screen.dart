@@ -358,18 +358,18 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
     if (_state.basis == WolfScoringBasis.gross) return 'GROSS $gross';
     final si = _state.strokeIndexForHole(_hole);
     final hcp = _state.gameConfig.handicaps[key] ?? 0;
+    final hcpLabel = formatCourseHandicap(hcp);
     final received = strokesReceivedOnHole(
       courseHandicap: hcp,
       strokeIndex: si,
     );
     final net = netStrokes(gross: gross, strokesReceived: received);
-    if (si == null) {
-      return 'NET $net · HCP $hcp · NO SI';
+    final siLabel = _state.hasCatalogStrokeIndex(_hole) ? 'SI $si' : 'SI $si (est)';
+    if (received != 0) {
+      final strokeLabel = received > 0 ? '+$received' : '$received';
+      return 'NET $net · HCP $hcpLabel · $siLabel · $strokeLabel';
     }
-    if (received > 0) {
-      return 'NET $net · HCP $hcp · SI $si · +$received';
-    }
-    return 'NET $net · HCP $hcp · SI $si';
+    return 'NET $net · HCP $hcpLabel · $siLabel';
   }
 
   @override

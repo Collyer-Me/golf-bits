@@ -155,5 +155,16 @@ void main() {
       expect(strokesReceivedOnHole(courseHandicap: 36, strokeIndex: 5), 2);
       expect(strokesReceivedOnHole(courseHandicap: 4, strokeIndex: 10), 0);
     });
+
+    test('plus handicap gives strokes on hardest holes', () {
+      expect(strokesReceivedOnHole(courseHandicap: -2, strokeIndex: 1), -1);
+      expect(strokesReceivedOnHole(courseHandicap: -2, strokeIndex: 2), -1);
+      expect(strokesReceivedOnHole(courseHandicap: -2, strokeIndex: 5), 0);
+    });
+
+    test('formatCourseHandicap shows plus prefix for negative values', () {
+      expect(formatCourseHandicap(-3), '+3');
+      expect(formatCourseHandicap(12), '12');
+    });
   });
 }

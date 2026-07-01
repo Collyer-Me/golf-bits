@@ -9,18 +9,21 @@ class StrokeHoleCounter extends StatelessWidget {
     required this.strokes,
     this.par,
     required this.onChanged,
+    this.min = 1,
+    this.max = 15,
+    this.formatValue,
   });
 
   final int strokes;
   /// Reserved for callers; par defaulting happens upstream.
   final int? par;
   final ValueChanged<int> onChanged;
-
-  static const int _min = 1;
-  static const int _max = 15;
+  final int min;
+  final int max;
+  final String Function(int value)? formatValue;
 
   void _bump(int delta) {
-    final next = (strokes + delta).clamp(_min, _max);
+    final next = (strokes + delta).clamp(min, max);
     if (next != strokes) onChanged(next);
   }
 
@@ -38,7 +41,7 @@ class StrokeHoleCounter extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            onPressed: strokes > _min ? () => _bump(-1) : null,
+            onPressed: strokes > min ? () => _bump(-1) : null,
             tooltip: 'Fewer strokes',
             icon: const Icon(Icons.remove, size: AppTheme.iconDense),
             style: IconButton.styleFrom(
@@ -49,12 +52,12 @@ class StrokeHoleCounter extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppTheme.space1),
             child: Text(
-              '$strokes',
+              formatValue?.call(strokes) ?? '$strokes',
               style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
           IconButton(
-            onPressed: strokes < _max ? () => _bump(1) : null,
+            onPressed: strokes < max ? () => _bump(1) : null,
             tooltip: 'More strokes',
             icon: const Icon(Icons.add, size: AppTheme.iconDense),
             style: IconButton.styleFrom(

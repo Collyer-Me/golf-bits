@@ -71,16 +71,28 @@ class WolfHoleSettlement {
 }
 
 /// Strokes received on a hole from course handicap + stroke index.
+///
+/// Positive [courseHandicap] = receive strokes; negative = plus handicap (give strokes).
 int strokesReceivedOnHole({
   required int courseHandicap,
   required int? strokeIndex,
 }) {
-  if (strokeIndex == null || courseHandicap <= 0) return 0;
+  if (strokeIndex == null || courseHandicap == 0) return 0;
+  if (courseHandicap > 0) {
+    var strokes = 0;
+    if (strokeIndex <= courseHandicap) strokes++;
+    if (strokeIndex <= courseHandicap - 18) strokes++;
+    return strokes;
+  }
+  final give = -courseHandicap;
   var strokes = 0;
-  if (strokeIndex <= courseHandicap) strokes++;
-  if (strokeIndex <= courseHandicap - 18) strokes++;
+  if (strokeIndex <= give) strokes--;
+  if (strokeIndex <= give - 18) strokes--;
   return strokes;
 }
+
+/// Display label for handicap entry (negative stored value → "+3" plus handicap).
+String formatCourseHandicap(int handicap) => handicap < 0 ? '+${-handicap}' : '$handicap';
 
 int netStrokes({required int gross, required int strokesReceived}) {
   return gross - strokesReceived;
