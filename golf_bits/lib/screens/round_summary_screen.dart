@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
+import '../data/round_session_store.dart';
 import '../data/history_repository.dart';
 import '../models/round_game_config.dart';
 import '../models/round_result.dart';
@@ -98,6 +99,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
           bitLine = ' Bit timeline not stored: $e';
         }
         if (mounted) {
+          await RoundSessionStore.clearDraft();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Round saved to your history.$bitLine')),
           );

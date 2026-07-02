@@ -43,7 +43,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
 
   Future<void> _onPullRefresh() async {
     await _loadOverview();
-    if (_searchController.text.trim().length >= 2) {
+    if (_searchController.text.trim().length >= 3) {
       await _runSearch();
     }
   }
@@ -112,7 +112,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
   Future<void> _runSearch() async {
     if (_anonymousFindBlocked) return;
     final query = _searchController.text.trim();
-    if (query.length < 2) {
+    if (query.length < 3) {
       if (!mounted) return;
       setState(() {
         _searching = false;
@@ -613,9 +613,9 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
           ],
         ),
         const SizedBox(height: AppTheme.space3),
-        if (_searchController.text.trim().length < 2)
+        if (_searchController.text.trim().length < 3)
           Text(
-            'Type at least 2 characters to search.',
+            'Type at least 3 characters to search.',
             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           )
         else if (_searching)
@@ -643,12 +643,6 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
                             Text(
                               candidate.displayName,
                               style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              (candidate.email != null && candidate.email!.trim().isNotEmpty)
-                                  ? candidate.email!.trim()
-                                  : 'No email on file for this profile.',
-                              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                             ),
                           ],
                         ),

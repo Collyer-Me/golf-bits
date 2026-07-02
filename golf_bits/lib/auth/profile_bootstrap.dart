@@ -22,7 +22,6 @@ abstract final class ProfileBootstrap {
       await Supabase.instance.client.from('profiles').upsert({
         'id': user.id,
         'display_name': displayName,
-        if (user.email != null && user.email!.trim().isNotEmpty) 'email': user.email!.trim(),
       });
     } on PostgrestException catch (_) {
       // Profile sync should not block successful auth.

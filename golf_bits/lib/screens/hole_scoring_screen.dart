@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/history_repository.dart';
+import '../data/round_session_store.dart';
+import '../data/sync_status_notifier.dart';
 import '../models/round_bit_event_draft.dart';
 import '../models/round_result.dart';
 import '../models/round_session_args.dart';
@@ -110,9 +112,92 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
       final idx = _holeOrder.indexOf(s.currentHole);
       if (idx >= 0) _holeIndex = idx;
       _seedDefaultStrokesForCurrentHole();
-      unawaited(_hydrateFromCloud());
+      unawaited(_bootstrapRoundState());
     }
   }
+
+  Future<void> _bootstrapRoundState() async {
+    await _restoreFromLocalDraftIfAny();
+    await _hydrateFromCloud();
+  }
+
+  Future<void> _restoreFromLocalDraftIfAny() async {
+    final loaded = await RoundSessionStore.loadDraft();
+    if (loaded == null || loaded.kind != 'bits' || !mounted) return;
+    final data = loaded.data;
+    final sessionJson = data['session'];
+    if (sessionJson is! Map) return;
+    final draftSession = RoundSessionStore.sessionFromJson(Map<String, dynamic>.from(sessionJson));
+    final current = widget.session;
+    if (current != null &&
+        draftSession.roundId != null &&
+        current.roundId != null &&
+        draftSession.roundId != current.roundId) {
+      return;
+    }
+    final holeOrder = (data['holeOrder'] as List<dynamic>? ?? [])
+        .map((e) => (e as num).toInt())
+        .toList();
+    final holeIndex = (data['holeIndex'] as num?)?.toInt() ?? 0;
+    final playersRaw = data['players'] as List<dynamic>? ?? [];
+    final bitLogRaw = data['bitLog'] as List<dynamic>? ?? [];
+
+    setState(() {
+      if (holeOrder.isNotEmpty && holeIndex >= 0 && holeIndex < holeOrder.length) {
+        _holeIndex = holeIndex;
+      }
+      for (final raw in playersRaw) {
+        final m = Map<String, dynamic>.from(raw as Map);
+        final id = m['id'] as String?;
+        if (id == null) continue;
+        final player = _players.cast<_HolePlayer?>().firstWhere(
+              (p) => p?.id == id,
+              orElse: () => null,
+            );
+        if (player == null) continue;
+        player.totalBits = (m['totalBits'] as num?)?.toInt() ?? player.totalBits;
+      }
+      final restoredHoleBits = <String, Map<int, int>>{};
+      final holeBitsRaw = data['holeBits'];
+      if (holeBitsRaw is Map) {
+        for (final e in holeBitsRaw.entries) {
+          final inner = e.value;
+          if (inner is! Map) continue;
+          restoredHoleBits[e.key as String] = {
+            for (final h in inner.entries) int.parse(h.key.toString()): (h.value as num).toInt(),
+          };
+        }
+      }
+      for (final entry in restoredHoleBits.entries) {
+        _holeBits[entry.key] = Map<int, int>.from(entry.value);
+      }
+      final strokeRaw = data['strokeByHole'];
+      if (strokeRaw is Map) {
+        for (final e in strokeRaw.entries) {
+          final inner = e.value;
+          if (inner is! Map) continue;
+          _strokeByHole[e.key as String] = {
+            for (final h in inner.entries) int.parse(h.key.toString()): (h.value as num).toInt(),
+          };
+        }
+      }
+      _bitLog
+        ..clear()
+        ..addAll(
+          bitLogRaw.map((row) {
+            final m = Map<String, dynamic>.from(row as Map);
+            return RoundBitEventDraft(
+              playerName: m['player_name'] as String? ?? '',
+              participantKey: m['participant_key'] as String?,
+              hole: (m['hole'] as num).toInt(),
+              eventLabel: m['event_label'] as String,
+              delta: (m['delta'] as num).toInt(),
+              iconKey: m['icon_key'] as String?,
+            );
+          }),
+        );
+    });
+    _seedDefaultStrokesForCurrentHole();
 
   List<_HolePlayer> get _sortedPlayers {
     final copy = [..._players];
@@ -128,12 +213,14 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     final roundId = widget.session?.roundId;
     if (roundId == null || roundId.isEmpty) {
       _seedDefaultStrokesForCurrentHole();
-      await _persistProgress();
+      await _saveLocalDraft();
       return;
     }
     try {
+      await HistoryRepository.replayPendingBitEvents(roundId);
       final events = await HistoryRepository.fetchBitEventsForRound(roundId);
       if (!mounted) return;
+      final localTotals = {for (final p in _players) p.id: p.totalBits};
       setState(() {
         for (final p in _players) {
           p.totalBits = 0;
@@ -168,12 +255,42 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
           byHole[hole] = (byHole[hole] ?? 0) + delta;
           player.totalBits += delta;
         }
+        for (final p in _players) {
+          final local = localTotals[p.id] ?? 0;
+          if (local > p.totalBits) {
+            p.totalBits = local;
+          }
+        }
       });
       _seedDefaultStrokesForCurrentHole();
     } catch (_) {
-      // Non-fatal; totals from score_by_player still apply.
+      // Non-fatal; keep local totals.
     }
     await _persistProgress();
+    await _saveLocalDraft();
+  }
+
+  Future<void> _saveLocalDraft() async {
+    final session = widget.session;
+    if (session == null) return;
+    await RoundSessionStore.saveBitsDraft(
+      session: session,
+      holeIndex: _holeIndex,
+      players: [
+        for (final p in _players)
+          {
+            'id': p.id,
+            'name': p.name,
+            'userId': p.userId,
+            'isYou': p.isYou,
+            'totalBits': p.totalBits,
+          },
+      ],
+      holeBits: _holeBits,
+      bitLog: List<RoundBitEventDraft>.from(_bitLog),
+      strokeByHole: _strokeByHole,
+      holeOrder: _holeOrder,
+    );
   }
 
   int? _parForHole(int hole) => parForHole(_holePars, hole);
@@ -379,7 +496,10 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
 
   Future<void> _persistProgress() async {
     final roundId = widget.session?.roundId;
-    if (roundId == null || roundId.isEmpty) return;
+    if (roundId == null || roundId.isEmpty) {
+      await _saveLocalDraft();
+      return;
+    }
     try {
       await HistoryRepository.updateRoundProgress(
         roundId: roundId,
@@ -388,22 +508,39 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         strokeByHole: _strokeMode.tracksStrokes ? _strokeByHole : null,
         grossByPlayer: _strokeMode.tracksStrokes ? _grossByPlayer() : null,
       );
+      await _saveLocalDraft();
     } catch (_) {
-      // Keep gameplay responsive if sync fails.
+      SyncStatusNotifier.instance.recordFailure();
+      await _saveLocalDraft();
     }
   }
 
   Future<void> _persistAward(RoundBitEventDraft event) async {
     final roundId = widget.session?.roundId;
-    if (roundId == null || roundId.isEmpty) return;
+    if (roundId == null || roundId.isEmpty) {
+      await _saveLocalDraft();
+      return;
+    }
     try {
       await HistoryRepository.saveBitEventsForRound(roundId, [event]);
-    } catch (_) {}
+      SyncStatusNotifier.instance.recordSuccess();
+    } catch (_) {
+      SyncStatusNotifier.instance.recordFailure();
+      await RoundSessionStore.enqueuePendingBitEvent({
+        'action': 'save',
+        'round_id': roundId,
+        ...event.toRow(roundId),
+      });
+    }
+    await _saveLocalDraft();
   }
 
   Future<void> _persistAwardRemoval(RoundBitEventDraft event) async {
     final roundId = widget.session?.roundId;
-    if (roundId == null || roundId.isEmpty) return;
+    if (roundId == null || roundId.isEmpty) {
+      await _saveLocalDraft();
+      return;
+    }
     try {
       await HistoryRepository.deleteLatestBitEventForRound(
         roundId: roundId,
@@ -413,7 +550,20 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         eventLabel: event.eventLabel,
         delta: event.delta,
       );
-    } catch (_) {}
+      SyncStatusNotifier.instance.recordSuccess();
+    } catch (_) {
+      SyncStatusNotifier.instance.recordFailure();
+      await RoundSessionStore.enqueuePendingBitEvent({
+        'action': 'delete',
+        'round_id': roundId,
+        'participant_key': event.participantKey,
+        'player_name': event.playerName,
+        'hole': event.hole,
+        'event_label': event.eventLabel,
+        'delta': event.delta,
+      });
+    }
+    await _saveLocalDraft();
   }
 
   String _headerEyebrow(int? par, int? yardage, int? coursePar) {

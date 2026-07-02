@@ -26,6 +26,8 @@
 
 Official reference: [Supabase CLI](https://supabase.com/docs/guides/cli).
 
+Edge Function deploy order and required secrets (`APP_BASE_URL`, `RESEND_API_KEY`, etc.): see [`EDGE_FUNCTION_SECRETS.md`](EDGE_FUNCTION_SECRETS.md) at the repo root.
+
 ## Delivery workflow (GitHub + Supabase) — **ask first**
 
 After **significant** work is done (for example: a user-facing feature slice, schema or migration changes, Edge Function behavior, or integration work you would normally hand off for testing), **do not** automatically commit, push, or run Supabase deploy commands.

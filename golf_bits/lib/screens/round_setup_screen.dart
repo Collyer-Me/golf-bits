@@ -12,6 +12,7 @@ import '../config/supabase_env.dart';
 import '../data/course_catalog_repository.dart';
 import '../data/friends_repository.dart';
 import '../data/history_repository.dart';
+import '../data/round_session_store.dart';
 import '../data/round_coplayers.dart';
 import '../data/schema_compatibility_service.dart';
 import '../data/user_preferences_repository.dart';
@@ -510,6 +511,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       );
       return;
     }
+    await RoundSessionStore.clearDraft();
     final hit = _selectedCourseHit!;
     final detail = _selectedDetail;
     final setup = _courseSetup!;
@@ -567,6 +569,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
               'Run pending migrations.\n${compatibility.errors.join('\n')}',
             );
           }
+          HistoryRepository.configureRoundColumns(compatibility.detectedColumns['rounds']);
           final holePars = detail?.holeParsForTeeSync(setup.courseTeeId);
           final holeYardages = detail?.holeYardagesForTeeSync(setup.courseTeeId);
           final holeStrokeIndexes = detail?.holeStrokeIndexesForTeeSync(setup.courseTeeId);

@@ -7,6 +7,8 @@ import '../models/round_game_config.dart';
 import '../models/round_session_args.dart';
 import '../models/stroke_tracking.dart';
 import '../models/wolf_round_state.dart';
+import 'round_session_store.dart';
+import 'sync_status_notifier.dart';
 
 class HistoryRepository {
   HistoryRepository._();
@@ -14,6 +16,22 @@ class HistoryRepository {
   static SupabaseClient get _client => Supabase.instance.client;
 
   static String? get _uid => _client.auth.currentUser?.id;
+
+  static Set<String>? _roundColumns;
+
+  /// Filters insert/update payloads to columns known to exist (from schema probe).
+  static void configureRoundColumns(Set<String>? columns) {
+    _roundColumns = columns == null || columns.isEmpty ? null : Set<String>.from(columns);
+  }
+
+  static Map<String, dynamic> _filterRoundPayload(Map<String, dynamic> payload) {
+    final cols = _roundColumns;
+    if (cols == null || cols.isEmpty) return payload;
+    return {
+      for (final entry in payload.entries)
+        if (cols.contains(entry.key)) entry.key: entry.value,
+    };
+  }
 
   static String? _missingColumn(Object error) {
     if (error is! PostgrestException) return null;
@@ -41,39 +59,62 @@ class HistoryRepository {
     Map<String, dynamic> payload, {
     String select = 'id',
   }) async {
-    final working = Map<String, dynamic>.from(payload);
-    for (var i = 0; i < 12; i++) {
-      try {
-        final res = await _client.from('rounds').insert(working).select(select).single();
-        return Map<String, dynamic>.from(res as Map);
-      } catch (e) {
-        if (_isRlsViolation(e)) throw _rlsError();
-        final col = _missingColumn(e);
-        if (col == null || !working.containsKey(col)) rethrow;
-        working.remove(col);
+    final filtered = _filterRoundPayload(payload);
+    try {
+      final res = await _client.from('rounds').insert(filtered).select(select).single();
+      SyncStatusNotifier.instance.recordSuccess();
+      return Map<String, dynamic>.from(res as Map);
+    } catch (e) {
+      if (_isRlsViolation(e)) throw _rlsError();
+      // Legacy fallback if schema probe was unavailable.
+      final working = Map<String, dynamic>.from(payload);
+      for (var i = 0; i < 12; i++) {
+        try {
+          final res = await _client.from('rounds').insert(working).select(select).single();
+          SyncStatusNotifier.instance.recordSuccess();
+          return Map<String, dynamic>.from(res as Map);
+        } catch (err) {
+          if (_isRlsViolation(err)) throw _rlsError();
+          final col = _missingColumn(err);
+          if (col == null || !working.containsKey(col)) rethrow;
+          working.remove(col);
+        }
       }
+      SyncStatusNotifier.instance.recordFailure();
+      rethrow;
     }
-    throw StateError('Could not insert round after schema fallback attempts');
   }
 
   static Future<void> _updateRoundWithFallback({
     required String roundId,
     required Map<String, dynamic> payload,
   }) async {
-    final working = Map<String, dynamic>.from(payload);
-    for (var i = 0; i < 12; i++) {
-      if (working.isEmpty) return;
-      try {
-        await _client.from('rounds').update(working).eq('id', roundId);
-        return;
-      } catch (e) {
-        if (_isRlsViolation(e)) throw _rlsError();
-        final col = _missingColumn(e);
-        if (col == null || !working.containsKey(col)) rethrow;
-        working.remove(col);
+    final filtered = _filterRoundPayload(payload);
+    try {
+      if (filtered.isNotEmpty) {
+        await _client.from('rounds').update(filtered).eq('id', roundId);
       }
+      SyncStatusNotifier.instance.recordSuccess();
+      return;
+    } catch (e) {
+      if (_isRlsViolation(e)) throw _rlsError();
+      final working = Map<String, dynamic>.from(payload);
+      for (var i = 0; i < 12; i++) {
+        if (working.isEmpty) return;
+        try {
+          await _client.from('rounds').update(working).eq('id', roundId);
+          SyncStatusNotifier.instance.recordSuccess();
+          return;
+        } catch (err) {
+          if (_isRlsViolation(err)) throw _rlsError();
+          final col = _missingColumn(err);
+          if (col == null || !working.containsKey(col)) rethrow;
+          working.remove(col);
+        }
+      }
+      SyncStatusNotifier.instance.recordFailure();
+      rethrow;
     }
-    throw StateError('Could not update round after schema fallback attempts');
   }
 
   /// One round row by id (must belong to current user). Null if missing or RLS denies.
@@ -104,6 +145,7 @@ class HistoryRepository {
         .from('rounds')
         .select()
         .eq('created_by', uid)
+        .order('ended_at', ascending: false)
         .limit(500);
 
     final maps = _roundMaps(rows);
@@ -137,6 +179,7 @@ class HistoryRepository {
         .from('rounds')
         .select()
         .eq('created_by', uid)
+        .order('ended_at', ascending: false)
         .limit(80);
 
     final maps = _roundMaps(rows);
@@ -261,11 +304,13 @@ class HistoryRepository {
     Map<String, dynamic>? gameConfig,
   }) async {
     if (!SupabaseEnv.isConfigured) return;
+    final now = DateTime.now().toUtc().toIso8601String();
     final payload = <String, dynamic>{
-      'status': 'in_progress',
+      if (_roundColumns == null || _roundColumns!.contains('status')) 'status': 'in_progress',
       'current_hole': currentHole,
       'score_by_player': scoreByPlayer,
-      'ended_at': DateTime.now().toUtc().toIso8601String(),
+      if (_roundColumns == null || _roundColumns!.contains('last_activity_at'))
+        'last_activity_at': now,
     };
     if (strokeByHole != null) {
       payload['stroke_by_hole'] = strokeByHoleToJson(strokeByHole);
@@ -286,6 +331,49 @@ class HistoryRepository {
       payload['game_config'] = gameConfig;
     }
     await _updateRoundWithFallback(roundId: roundId, payload: payload);
+  }
+
+  static Future<void> replayPendingBitEvents(String roundId) async {
+    if (!SupabaseEnv.isConfigured || roundId.isEmpty) return;
+    final pending = await RoundSessionStore.loadPendingBitEvents();
+    if (pending.isEmpty) return;
+    final remaining = <Map<String, dynamic>>[];
+    for (final event in pending) {
+      if ((event['round_id'] as String?) != roundId) {
+        remaining.add(event);
+        continue;
+      }
+      try {
+        final action = event['action'] as String? ?? 'save';
+        if (action == 'delete') {
+          await deleteLatestBitEventForRound(
+            roundId: roundId,
+            participantKey: event['participant_key'] as String?,
+            playerName: event['player_name'] as String?,
+            hole: (event['hole'] as num).toInt(),
+            eventLabel: event['event_label'] as String,
+            delta: (event['delta'] as num).toInt(),
+          );
+        } else {
+          await saveBitEventsForRound(
+            roundId,
+            [
+              RoundBitEventDraft(
+                participantKey: event['participant_key'] as String?,
+                playerName: event['player_name'] as String? ?? '',
+                hole: (event['hole'] as num).toInt(),
+                eventLabel: event['event_label'] as String,
+                delta: (event['delta'] as num).toInt(),
+                iconKey: event['icon_key'] as String?,
+              ),
+            ],
+          );
+        }
+      } catch (_) {
+        remaining.add(event);
+      }
+    }
+    await RoundSessionStore.savePendingBitEvents(remaining);
   }
 
   /// Writes round handicaps back to linked player profiles.
@@ -488,12 +576,11 @@ class HistoryRepository {
     final row = Map<String, dynamic>.from(rows.first as Map);
     final userId = row['user_id'] as String?;
     final displayName = (row['display_name'] as String?)?.trim();
-    final resolvedEmail = (row['email'] as String?)?.trim();
     if (userId == null || displayName == null || displayName.isEmpty) return null;
     return RoundParticipant(
       key: 'u_$userId',
       displayName: displayName,
-      email: resolvedEmail ?? e,
+      email: e,
       userId: userId,
     );
   }

@@ -5,11 +5,23 @@ const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MAX_INVITES_PER_REQUEST = 10;
+const MAX_INVITES_PER_DAY = 50;
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function normalizeEmail(input: unknown): string | null {
@@ -64,7 +76,7 @@ Deno.serve(async (req) => {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const authHeader = req.headers.get('Authorization') ?? '';
-  const appBaseUrl = (Deno.env.get('APP_BASE_URL') ?? 'http://localhost:3000').replace(/\/$/, '');
+  const appBaseUrlRaw = Deno.env.get('APP_BASE_URL') ?? '';
   const resendApiKey = Deno.env.get('RESEND_API_KEY') ?? '';
   const inviteFromEmail = Deno.env.get('INVITE_FROM_EMAIL') ?? 'Bits <noreply@bits.local>';
 
@@ -72,6 +84,14 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Supabase env vars missing' }, 500);
   }
   if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  if (!appBaseUrlRaw.trim() || appBaseUrlRaw.includes('localhost')) {
+    return jsonResponse(
+      { error: 'APP_BASE_URL must be set to the production app URL (not localhost)' },
+      500,
+    );
+  }
+  const appBaseUrl = appBaseUrlRaw.replace(/\/$/, '');
 
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
@@ -83,6 +103,10 @@ Deno.serve(async (req) => {
     error: userErr,
   } = await userClient.auth.getUser();
   if (userErr || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  if (user.is_anonymous) {
+    return jsonResponse({ error: 'Anonymous accounts cannot send round invites' }, 403);
+  }
 
   let body: RequestBody;
   try {
@@ -105,6 +129,20 @@ Deno.serve(async (req) => {
   if (invites.length === 0) {
     return jsonResponse({ sent: 0, skipped: 0, invites: [] });
   }
+  if (invites.length > MAX_INVITES_PER_REQUEST) {
+    return jsonResponse({ error: `At most ${MAX_INVITES_PER_REQUEST} invites per request` }, 400);
+  }
+
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: sentToday, error: countErr } = await svc
+    .from('round_invites')
+    .select('id', { count: 'exact', head: true })
+    .eq('invited_by_user_id', user.id)
+    .gte('created_at', since);
+  if (countErr) return jsonResponse({ error: countErr.message }, 500);
+  if ((sentToday ?? 0) + invites.length > MAX_INVITES_PER_DAY) {
+    return jsonResponse({ error: 'Daily invite limit reached' }, 429);
+  }
 
   const { data: round, error: roundErr } = await userClient
     .from('rounds')
@@ -115,7 +153,11 @@ Deno.serve(async (req) => {
   if (roundErr) return jsonResponse({ error: roundErr.message }, 500);
   if (!round) return jsonResponse({ error: 'Round not found' }, 404);
 
-  const courseName = (body.courseName?.trim() || (round.course_name as string | null) || 'your round').trim();
+  const courseName = escapeHtml(
+    ((round.course_name as string | null)?.trim() || 'your round').trim(),
+  );
+
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
   const results: Array<{ email: string; inviteUrl: string; status: string; error?: string }> = [];
   for (const inv of invites) {
@@ -123,23 +165,27 @@ Deno.serve(async (req) => {
     const inviteUrl =
       `${appBaseUrl}/?type=signup&invite_token=${encodeURIComponent(token)}&invite_email=${encodeURIComponent(inv.email)}`;
 
-    const { data: inserted, error: insErr } = await svc
+    const { data: upserted, error: upsertErr } = await svc
       .from('round_invites')
-      .insert({
-        round_id: roundId,
-        invited_email: inv.email,
-        invited_name: inv.displayName ?? null,
-        invited_by_user_id: user.id,
-        token,
-        status: resendApiKey ? 'sent' : 'pending',
-        invite_url: inviteUrl,
-        sent_at: resendApiKey ? new Date().toISOString() : null,
-      })
+      .upsert(
+        {
+          round_id: roundId,
+          invited_email: inv.email,
+          invited_name: inv.displayName ?? null,
+          invited_by_user_id: user.id,
+          token,
+          status: resendApiKey ? 'sent' : 'pending',
+          invite_url: inviteUrl,
+          sent_at: resendApiKey ? new Date().toISOString() : null,
+          expires_at: expiresAt,
+        },
+        { onConflict: 'round_id,invited_email' },
+      )
       .select('id')
       .single();
 
-    if (insErr || !inserted) {
-      results.push({ email: inv.email, inviteUrl, status: 'failed', error: insErr?.message ?? 'insert_failed' });
+    if (upsertErr || !upserted) {
+      results.push({ email: inv.email, inviteUrl, status: 'failed', error: upsertErr?.message ?? 'upsert_failed' });
       continue;
     }
 
@@ -163,7 +209,7 @@ Deno.serve(async (req) => {
       });
       results.push({ email: inv.email, inviteUrl, status: 'sent' });
     } catch (e) {
-      await svc.from('round_invites').update({ status: 'failed' }).eq('id', inserted.id);
+      await svc.from('round_invites').update({ status: 'failed' }).eq('id', upserted.id);
       results.push({ email: inv.email, inviteUrl, status: 'failed', error: String(e) });
     }
   }

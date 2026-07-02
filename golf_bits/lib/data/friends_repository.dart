@@ -51,7 +51,7 @@ abstract final class FriendsRepository {
   static Future<List<FriendCandidate>> searchCandidates(String query) async {
     if (!SupabaseEnv.isConfigured || _uid == null) return const [];
     final q = query.trim();
-    if (q.length < 2) return const [];
+    if (q.length < 3) return const [];
     final rows = await _client.rpc(
       'search_friend_candidates',
       params: {'input_query': q, 'input_limit': 20},

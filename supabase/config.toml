@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.sync-course-by-name]
 verify_jwt = true
+
+[functions.send-round-invite]
+verify_jwt = true

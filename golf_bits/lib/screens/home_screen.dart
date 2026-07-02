@@ -5,10 +5,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../auth/guest_promotion.dart';
 import '../auth/guest_user.dart';
+import '../config/app_build_info.dart';
 import '../config/supabase_env.dart';
+import '../data/client_error_reporter.dart';
 import '../auth/guest_session.dart';
 import '../navigation/auth_navigation.dart';
 import '../data/history_repository.dart';
+import '../data/round_session_store.dart';
 import '../data/user_preferences_repository.dart';
 import '../data/wolf_round_sync.dart';
 import '../main.dart';
@@ -122,6 +125,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
   HistoryRound? _activeRound;
   HistoryRound? _previousRound;
   bool _showSyncBanner = true;
+  Map<String, dynamic>? _localDraft;
 
   Future<void> _dismissRound(HistoryRound round) async {
     final confirm = await showDialog<bool>(
@@ -200,10 +204,12 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
         return;
       }
       final snapshot = await HistoryRepository.fetchHomeDashboardRounds();
+      final draft = await RoundSessionStore.loadDraft();
       if (!mounted) return;
       setState(() {
         _activeRound = snapshot.active;
         _previousRound = snapshot.previous;
+        _localDraft = draft?.data;
         _loading = false;
       });
     } catch (e) {
@@ -215,6 +221,68 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _resumeLocalDraft() async {
+    final draft = _localDraft;
+    if (draft == null) return;
+    final kind = (draft['kind'] as String?) ?? 'bits';
+    if (kind == 'wolf') {
+      final state = RoundSessionStore.wolfStateFromDraft(draft);
+      if (state == null || !mounted) return;
+      final screen = state.currentPhase == WolfInRoundPhase.score && state.pendingCall != null
+          ? WolfScoreHoleScreen(state: state)
+          : WolfCallScreen(state: state);
+      await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => screen));
+    } else {
+      final sessionJson = draft['session'];
+      if (sessionJson is! Map || !mounted) return;
+      final session = RoundSessionStore.sessionFromJson(Map<String, dynamic>.from(sessionJson));
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(builder: (_) => HoleScoringScreen(session: session)),
+      );
+    }
+    if (mounted) await _loadDashboard();
+  }
+
+  Future<void> _discardLocalDraft() async {
+    await RoundSessionStore.clearDraft();
+    if (mounted) await _loadDashboard();
+  }
+
+  List<Widget> _buildLocalDraftCard(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final sessionJson = _localDraft?['session'];
+    final courseName = sessionJson is Map ? (sessionJson['courseName'] as String?) ?? 'Round' : 'Round';
+    return [
+      OutlinedSurfaceCard(
+        borderColor: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'LOCAL ROUND SAVED',
+              style: text.labelSmall?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w800,
+                letterSpacing: AppTheme.letterStepCaps,
+              ),
+            ),
+            SizedBox(height: AppTheme.space2),
+            Text(
+              'Resume $courseName on this device?',
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            SizedBox(height: AppTheme.space4),
+            FilledButton(onPressed: _resumeLocalDraft, child: const Text('Resume local round')),
+            SizedBox(height: AppTheme.space2),
+            TextButton(onPressed: _discardLocalDraft, child: const Text('Discard local save')),
+          ],
+        ),
+      ),
+      SizedBox(height: AppTheme.space4),
+    ];
   }
 
   static bool _isGuestUser() {
@@ -284,6 +352,7 @@ class _HomeDashboardState extends State<_HomeDashboard> with RouteAware {
                     ),
                     SizedBox(height: AppTheme.space4),
                   ],
+                  if (_localDraft != null) ..._buildLocalDraftCard(context),
                   if (_activeRound != null) ..._buildActiveRound(context, _activeRound!) else ..._buildNoActiveRoundCard(context),
                   ..._buildPreviousSessionSection(context),
                   if (_isGuestUser() && _showSyncBanner) ...[
@@ -815,6 +884,51 @@ class _ProfileTabState extends State<_ProfileTab> {
 
     children.addAll([
       SizedBox(height: AppTheme.space6),
+      Text(
+        'ABOUT',
+        style: text.labelSmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
+          letterSpacing: AppTheme.letterStepCaps,
+        ),
+      ),
+      SizedBox(height: AppTheme.space2),
+      Text(
+        AppBuildInfo.displayLabel,
+        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      ),
+      SizedBox(height: AppTheme.space3),
+      OutlinedButton.icon(
+        onPressed: () async {
+          final controller = TextEditingController();
+          final sent = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Send feedback'),
+              content: TextField(
+                controller: controller,
+                maxLines: 5,
+                decoration: const InputDecoration(hintText: 'What happened?'),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send')),
+              ],
+            ),
+          );
+          if (sent != true || !context.mounted) return;
+          final text = controller.text.trim();
+          if (text.isEmpty) return;
+          await ClientErrorReporter.reportFeedback(text);
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Thanks — feedback sent')),
+          );
+        },
+        icon: const Icon(Icons.feedback_outlined),
+        label: const Text('Send feedback'),
+      ),
+      SizedBox(height: AppTheme.space3),
       OutlinedButton.icon(
         onPressed: () {
           Navigator.of(context).push<void>(
