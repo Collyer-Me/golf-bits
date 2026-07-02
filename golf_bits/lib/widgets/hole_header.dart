@@ -56,7 +56,12 @@ class HoleHeader extends StatelessWidget {
                   color: scheme.onSurface,
                 ),
               ),
-              if (thru != null)
+              if (titleOverride != null)
+                Text(
+                  'Hole $hole',
+                  style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+                )
+              else if (thru != null)
                 Text(
                   'THRU $thru',
                   style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),

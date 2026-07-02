@@ -424,7 +424,6 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
                   yardage: _state.session.holeYardages['$_hole'],
                   titleOverride: 'Score the hole',
                   strokeIndex: _state.strokeIndexForHole(_hole),
-                  thru: _state.holeIndex,
                 ),
                 SizedBox(height: AppTheme.space3),
                 HoleProgressBar(

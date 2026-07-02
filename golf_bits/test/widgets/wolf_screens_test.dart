@@ -84,6 +84,7 @@ void main() {
 
       expect(find.byType(WolfScoreHoleScreen), findsOneWidget);
       expect(find.text('Score the hole'), findsWidgets);
+      expect(find.text('Hole 1'), findsOneWidget);
       expect(find.text('TEAMS · STROKES & BITS'), findsOneWidget);
     });
 

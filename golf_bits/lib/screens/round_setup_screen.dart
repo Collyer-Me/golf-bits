@@ -437,11 +437,23 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
   Future<void> _loadHandicapsForPlayers() async {
     final userIds = _players.map((p) => p.userId).toList();
     final fromProfiles = await HistoryRepository.fetchHandicapsForUserIds(userIds);
+    String? youName;
+    for (final p in _players) {
+      if (p.isYou) {
+        youName = p.name;
+        break;
+      }
+    }
+    final fromHistory = await RoundCoplayers.fetchLastHandicapsForCurrentUser(
+      knownDisplayName: youName,
+    );
     if (!mounted) return;
     setState(() {
       for (final p in _players) {
         final key = (p.userId != null && p.userId!.isNotEmpty) ? 'u_${p.userId}' : p.id;
-        final hc = fromProfiles[p.userId ?? ''];
+        final hc = fromProfiles[p.userId ?? ''] ??
+            (p.userId != null && p.userId!.isNotEmpty ? fromHistory.byUserId[p.userId!] : null) ??
+            fromHistory.byDisplayNameLower[p.name.trim().toLowerCase()];
         if (hc != null) _handicaps[key] = hc;
       }
     });

@@ -2,6 +2,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_env.dart';
 
+/// Last-known handicaps from the signed-in user's round history.
+class CoplayerHandicapLookup {
+  const CoplayerHandicapLookup({
+    this.byUserId = const {},
+    this.byDisplayNameLower = const {},
+  });
+
+  final Map<String, int> byUserId;
+  final Map<String, int> byDisplayNameLower;
+
+  static const empty = CoplayerHandicapLookup();
+}
+
 /// Reads co-player display names from `rounds.players` / `rounds.participants` with
 /// tolerant decoding so one bad row does not wipe the whole list.
 abstract final class RoundCoplayers {
@@ -15,6 +28,7 @@ abstract final class RoundCoplayers {
   static const _preferredSelectColumns = <String>[
     'players',
     'participants',
+    'game_config',
     'ended_at',
     'completed_at',
     'created_at',
@@ -216,6 +230,120 @@ abstract final class RoundCoplayers {
       }
     }
     return out;
+  }
+
+  static Map<String, int> _handicapsFromGameConfig(Map<String, dynamic> row) {
+    final raw = row['game_config'];
+    if (raw is! Map) return const {};
+    final config = Map<String, dynamic>.from(raw);
+    final handicaps = config['handicaps'];
+    if (handicaps is! Map) return const {};
+    final out = <String, int>{};
+    for (final entry in handicaps.entries) {
+      final hc = (entry.value as num?)?.toInt() ?? int.tryParse('${entry.value}');
+      if (hc != null) out[entry.key.toString()] = hc;
+    }
+    return out;
+  }
+
+  static int? _handicapForParticipantMap(
+    Map<String, dynamic> participant,
+    Map<String, int> configHandicaps,
+  ) {
+    final direct = (participant['handicap'] as num?)?.toInt();
+    if (direct != null) return direct;
+    final key = _readString(participant, ['key']);
+    if (key == null) return null;
+    return configHandicaps[key];
+  }
+
+  /// Most recent handicap per co-player from [rows] (newest round wins).
+  static CoplayerHandicapLookup mergeLastHandicapsFromRoundRows(
+    List<Map<String, dynamic>> rows,
+    String myDisplayName,
+    String? myUserId,
+  ) {
+    final me = myDisplayName.trim().toLowerCase();
+    final byUserId = <String, int>{};
+    final byDisplayNameLower = <String, int>{};
+    final sorted = [...rows];
+    _sortRowsNewestFirst(sorted);
+    for (final row in sorted) {
+      try {
+        final configHandicaps = _handicapsFromGameConfig(row);
+        final participants = row['participants'] as List<dynamic>? ?? const [];
+        for (final cell in participants) {
+          if (cell is! Map) continue;
+          final participant = Map<String, dynamic>.from(cell);
+          if (_readBool(participant, ['is_you', 'isYou'])) continue;
+          final userId = _readString(participant, ['user_id', 'userId']);
+          if (myUserId != null && myUserId.isNotEmpty && userId == myUserId) continue;
+          final name = _readString(participant, ['display_name', 'displayName', 'name']);
+          if (name != null && name.trim().toLowerCase() == me) continue;
+          final handicap = _handicapForParticipantMap(participant, configHandicaps);
+          if (handicap == null) continue;
+          if (userId != null && userId.isNotEmpty && !byUserId.containsKey(userId)) {
+            byUserId[userId] = handicap;
+          }
+          if (name != null) {
+            final lowered = name.trim().toLowerCase();
+            if (lowered.isNotEmpty && !byDisplayNameLower.containsKey(lowered)) {
+              byDisplayNameLower[lowered] = handicap;
+            }
+          }
+        }
+      } catch (_) {
+        // Skip malformed rows; keep handicaps from others.
+      }
+    }
+    return CoplayerHandicapLookup(
+      byUserId: byUserId,
+      byDisplayNameLower: byDisplayNameLower,
+    );
+  }
+
+  static Future<String> _displayNameForUser(SupabaseClient client, User user) async {
+    var displayName = '';
+    try {
+      dynamic rows;
+      try {
+        rows = await client.from('profiles').select('display_name').eq('id', user.id).limit(1);
+      } catch (_) {
+        rows = await client.from('profiles').select('display_name').eq('user_id', user.id).limit(1);
+      }
+      final list = rows as List<dynamic>;
+      if (list.isNotEmpty) {
+        displayName = ((list.first as Map)['display_name'] as String?)?.trim() ?? '';
+      }
+    } catch (_) {}
+    if (displayName.isNotEmpty) return displayName;
+    final metaName = (user.userMetadata?['full_name'] as String?)?.trim();
+    final emailName = user.email?.split('@').first.trim();
+    return (metaName != null && metaName.isNotEmpty)
+        ? metaName
+        : ((emailName != null && emailName.isNotEmpty) ? emailName : 'You');
+  }
+
+  /// Fetches the latest handicap per co-player from the signed-in user's rounds.
+  static Future<CoplayerHandicapLookup> fetchLastHandicapsForCurrentUser({
+    String? knownDisplayName,
+  }) async {
+    if (!SupabaseEnv.isConfigured) return CoplayerHandicapLookup.empty;
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
+    if (user == null) return CoplayerHandicapLookup.empty;
+
+    final displayName = (knownDisplayName?.trim().isNotEmpty ?? false)
+        ? knownDisplayName!.trim()
+        : await _displayNameForUser(client, user);
+
+    try {
+      final rows = await _fetchRowsForCurrentUser(client, user.id);
+      if (rows.isEmpty) return CoplayerHandicapLookup.empty;
+      return mergeLastHandicapsFromRoundRows(rows, displayName, user.id);
+    } catch (_) {
+      return CoplayerHandicapLookup.empty;
+    }
   }
 
   static Future<List<Map<String, dynamic>>> _fetchCoplayerOverviewRpcRows({
