@@ -273,11 +273,11 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
 
     final wolfWinnerKey = config.hasWolf ? _wolfWinnerKey() : null;
     final bannerHasWolf = config.hasWolf && wolfWinnerKey != null;
-    final bannerWinnerName = bannerHasWolf && wolfWinnerKey != null
-        ? _nameForStandingKey(wolfWinnerKey)
+    final bannerWinnerName = bannerHasWolf
+        ? _nameForStandingKey(wolfWinnerKey!)
         : r.winnerName;
     final bannerMetric = bannerHasWolf
-        ? (_wolfPoints[wolfWinnerKey] ?? 0)
+        ? (_wolfPoints[wolfWinnerKey!] ?? 0)
         : r.winnerBits;
     final bannerUnit = bannerHasWolf ? 'PTS' : 'BITS';
     final isCurrentUserWinner = bannerWinnerName.toLowerCase() == 'you';

@@ -64,7 +64,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     return {for (var i = 0; i < order.length; i++) order[i]: i};
   }
 
-  Map<String, int> _bitsForKey(String key) {
+  int _bitsForKey(String key) {
     for (final s in _round.standings) {
       if (s.participantKey == key) return s.bits;
     }
@@ -159,8 +159,8 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
 
     final wolfWinnerKey = config.hasWolf ? _wolfWinnerKey() : null;
     final bannerHasWolf = config.hasWolf && wolfWinnerKey != null;
-    final bannerWinnerName = bannerHasWolf && wolfWinnerKey != null
-        ? _round.displayNameForKey(wolfWinnerKey)
+    final bannerWinnerName = bannerHasWolf
+        ? _round.displayNameForKey(wolfWinnerKey!)
         : _round.winnerName;
     final bannerMetric = bannerHasWolf
         ? (_round.wolfPointsByPlayer[wolfWinnerKey] ?? 0)
