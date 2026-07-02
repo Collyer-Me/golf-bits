@@ -373,18 +373,6 @@ class _PlayerRow extends StatelessWidget {
     );
   }
 
-  Widget _subMoneyCell(double amount, BuildContext context) {
-    return SizedBox(
-      width: 52,
-      child: Text(
-        formatSettlementMoney(amount, showSign: true),
-        textAlign: TextAlign.right,
-        style: AppTheme.monoLabel(context, color: _moneyColor(context, amount, muted: true))
-            .copyWith(fontSize: 13),
-      ),
-    );
-  }
-
   Widget _mainMoneyCell(double amount, BuildContext context) {
     return SizedBox(
       width: 62,
@@ -396,10 +384,10 @@ class _PlayerRow extends StatelessWidget {
     );
   }
 
-  Color _moneyColor(BuildContext context, double amount, {bool muted = false}) {
+  Color _moneyColor(BuildContext context, double amount) {
     final scheme = Theme.of(context).colorScheme;
     if (amount.abs() < 0.005) return scheme.onSurfaceVariant;
-    if (amount > 0) return muted ? scheme.onSurfaceVariant : AppTheme.bits(context);
+    if (amount > 0) return AppTheme.bits(context);
     return AppTheme.junk(context);
   }
 }

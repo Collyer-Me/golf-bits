@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/history_round.dart';
+import '../models/wolf_audit.dart';
 import '../models/wolf_scoring.dart';
 import '../theme/app_theme.dart';
 import 'outlined_surface_card.dart';

@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golf_bits/models/round_game_config.dart';
+import 'package:golf_bits/models/wolf_audit.dart';
 import 'package:golf_bits/models/wolf_scoring.dart';
 
 void main() {
