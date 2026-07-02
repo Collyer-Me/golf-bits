@@ -512,6 +512,7 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
       return;
     }
     await RoundSessionStore.clearDraft();
+    if (!mounted) return;
     final hit = _selectedCourseHit!;
     final detail = _selectedDetail;
     final setup = _courseSetup!;

@@ -160,7 +160,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     final wolfWinnerKey = config.hasWolf ? _wolfWinnerKey() : null;
     final bannerHasWolf = config.hasWolf && wolfWinnerKey != null;
     final bannerWinnerName = bannerHasWolf
-        ? _round.displayNameForKey(wolfWinnerKey!)
+        ? _round.displayNameForKey(wolfWinnerKey)
         : _round.winnerName;
     final bannerMetric = bannerHasWolf
         ? (_round.wolfPointsByPlayer[wolfWinnerKey] ?? 0)

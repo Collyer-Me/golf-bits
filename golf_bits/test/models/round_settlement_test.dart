@@ -50,7 +50,7 @@ void main() {
         bitsByPlayer: const {'p1': 6, 'p2': 4, 'p3': 3, 'p4': -1},
         bitsPointValue: 2,
       );
-      final wolfNet = const {
+      const wolfNet = {
         'p1': 20.0,
         'p2': 10.0,
         'p3': -15.0,
@@ -78,7 +78,7 @@ void main() {
         bitsByPlayer: const {'p1': 6, 'p2': 4, 'p3': 3, 'p4': -1},
         bitsPointValue: 2,
       );
-      final wolfNet = const {
+      const wolfNet = {
         'p1': 20.0,
         'p2': 10.0,
         'p3': -15.0,

@@ -213,6 +213,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
         }
         if (mounted) {
           await RoundSessionStore.clearDraft();
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Round saved to your history.$bitLine')),
           );
@@ -274,10 +275,10 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
     final wolfWinnerKey = config.hasWolf ? _wolfWinnerKey() : null;
     final bannerHasWolf = config.hasWolf && wolfWinnerKey != null;
     final bannerWinnerName = bannerHasWolf
-        ? _nameForStandingKey(wolfWinnerKey!)
+        ? _nameForStandingKey(wolfWinnerKey)
         : r.winnerName;
     final bannerMetric = bannerHasWolf
-        ? (_wolfPoints[wolfWinnerKey!] ?? 0)
+        ? (_wolfPoints[wolfWinnerKey] ?? 0)
         : r.winnerBits;
     final bannerUnit = bannerHasWolf ? 'PTS' : 'BITS';
     final isCurrentUserWinner = bannerWinnerName.toLowerCase() == 'you';
