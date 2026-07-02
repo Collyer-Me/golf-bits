@@ -7,8 +7,10 @@ import '../models/round_session_args.dart';
 import '../models/wolf_round_state.dart';
 import '../models/wolf_scoring.dart';
 import '../theme/app_theme.dart';
+import '../navigation/wolf_round_navigation.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/hole_header.dart';
+import '../widgets/hole_progress_bar.dart';
 import '../widgets/player_avatar.dart';
 import '../widgets/selectable_surface_card.dart';
 import 'round_standings_screen.dart';
@@ -125,6 +127,17 @@ class _WolfCallScreenState extends State<WolfCallScreen> {
     );
   }
 
+  Future<void> _prevHole() async {
+    if (_state.holeIndex <= 0) return;
+    await WolfRoundNavigation.openHole(context, _state, _state.holeIndex - 1);
+  }
+
+  Future<void> _jumpToHole(int holeIndex) async {
+    if (holeIndex == _state.holeIndex) return;
+    if (holeIndex > _state.holeIndex) return;
+    await WolfRoundNavigation.openHole(context, _state, holeIndex);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -159,6 +172,13 @@ class _WolfCallScreenState extends State<WolfCallScreen> {
                   yardage: yardage,
                   strokeIndex: si,
                   thru: _state.holeIndex,
+                ),
+                SizedBox(height: AppTheme.space3),
+                HoleProgressBar(
+                  holeCount: _state.holeOrder.length,
+                  currentIndex: _state.holeIndex,
+                  maxTappableIndex: _state.holeIndex,
+                  onHoleTap: _jumpToHole,
                 ),
                 SizedBox(height: AppTheme.space4),
                 Container(
@@ -253,9 +273,23 @@ class _WolfCallScreenState extends State<WolfCallScreen> {
               AppTheme.pageHorizontal,
               MediaQuery.paddingOf(context).bottom + AppTheme.space4,
             ),
-            child: FilledButton(
-              onPressed: _continueToScore,
-              child: Text(widget.popOnContinue ? 'Save call' : 'Score the hole'),
+            child: Row(
+              children: [
+                if (_state.holeIndex > 0) ...[
+                  IconButton.outlined(
+                    tooltip: 'Previous hole',
+                    onPressed: _prevHole,
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  SizedBox(width: AppTheme.space2),
+                ],
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _continueToScore,
+                    child: Text(widget.popOnContinue ? 'Save call' : 'Score the hole'),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

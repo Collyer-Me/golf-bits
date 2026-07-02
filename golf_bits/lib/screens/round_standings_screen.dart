@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/wolf_round_sync.dart';
-import '../models/round_settlement.dart';
 import '../models/wolf_round_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/player_avatar.dart';
-import '../widgets/settle_up_panel.dart';
-import '../widgets/tally_marks.dart';
 
 /// Screen 06 — mid-round standings (Wolf / Bits toggle).
 class RoundStandingsScreen extends StatefulWidget {
@@ -26,7 +23,7 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
   WolfRoundState get _state => widget.state;
 
   List<({String key, String name, int score})> _wolfRows() {
-    final totals = WolfRoundSync.computeWolfTotals(_state.wolfHoleResults);
+    final totals = WolfRoundSync.effectiveWolfTotals(_state);
     final rows = [
       for (final p in _state.session.participants)
         (key: p.key, name: p.displayName, score: totals[p.key] ?? 0),
@@ -42,17 +39,6 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
     return rows;
   }
 
-  Map<String, int> get _colorIndexByKey => {
-        for (var i = 0; i < _state.teeOrder.length; i++) _state.teeOrder[i]: i,
-      };
-
-  String _nameForKey(String key) {
-    for (final p in _state.session.participants) {
-      if (p.key == key) return p.displayName;
-    }
-    return key;
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -60,21 +46,6 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
     final showBoth = _state.session.hasWolf && _state.session.hasBits;
     final viewingWolf = _state.session.hasWolf && (!_state.session.hasBits || _showWolf);
     final rows = viewingWolf ? _wolfRows() : _bitsRows();
-    final config = _state.gameConfig;
-    final playerKeys = _state.teeOrder;
-    final bitsScores = {
-      for (final p in _state.session.participants) p.key: _state.bitsByPlayer[p.key] ?? 0,
-    };
-    final wolfTotals = WolfRoundSync.computeWolfTotals(_state.wolfHoleResults);
-    final settlement = computeRoundSettlement(
-      playerKeys: playerKeys,
-      bitsByPlayer: bitsScores,
-      wolfPointsByPlayer: wolfTotals,
-      bitsPointValue: config.bitsPointValue,
-      wolfPointValue: config.wolfPointValue,
-      hasBits: _state.session.hasBits,
-      hasWolf: _state.session.hasWolf,
-    );
 
     return Scaffold(
       appBar: const BrandAppBar(),
@@ -132,33 +103,20 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
                         ],
                       ),
                     ),
-                    if (viewingWolf)
-                      TallyMarks(count: rows[i].score, height: 20)
-                    else
-                      Text(
-                        rows[i].score >= 0 ? '+${rows[i].score}' : '${rows[i].score}',
-                        style: AppTheme.score(
-                          context,
-                          size: 20,
-                          color: rows[i].score >= 0 ? AppTheme.bits(context) : AppTheme.junk(context),
-                        ),
+                    Text(
+                      rows[i].score >= 0 ? '+${rows[i].score}' : '${rows[i].score}',
+                      style: AppTheme.score(
+                        context,
+                        size: 20,
+                        color: viewingWolf
+                            ? (rows[i].score >= 0 ? scheme.primary : AppTheme.junk(context))
+                            : (rows[i].score >= 0 ? AppTheme.bits(context) : AppTheme.junk(context)),
                       ),
+                    ),
                   ],
                 ),
               ),
             ),
-          SizedBox(height: AppTheme.space4),
-          Text(
-            'SETTLE UP PREVIEW',
-            style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
-          ),
-          SizedBox(height: AppTheme.space2),
-          SettleUpPanel(
-            payments: settlement.payments,
-            nameForKey: _nameForKey,
-            colorIndexForKey: _colorIndexByKey,
-            compact: true,
-          ),
         ],
       ),
     );

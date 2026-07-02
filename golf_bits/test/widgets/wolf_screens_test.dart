@@ -121,6 +121,7 @@ void main() {
       expect(find.text('Standings'), findsOneWidget);
       expect(find.text('WOLF POINTS · THE MATCH'), findsOneWidget);
       expect(find.text('You'), findsWidgets);
+      expect(find.text('+2'), findsWidgets);
       expect(find.text('Sam'), findsWidgets);
       expect(find.text('★ LEADING'), findsOneWidget);
       expect(find.byType(SegmentedButton<bool>), findsNothing);
@@ -152,6 +153,18 @@ void main() {
 
       expect(find.text('BITS LEDGER · SIDE GAME'), findsOneWidget);
       expect(find.text('Sam'), findsWidgets);
+    });
+
+    testWidgets('falls back to wolfPointsByPlayer when hole results missing', (tester) async {
+      final state = testWolfRoundState(
+        wolfPointsByPlayer: const {'you': 4, 'sam': -2, 'alex': -1, 'jordan': -1},
+      );
+
+      await tester.pumpWidget(wrapWithAppTheme(RoundStandingsScreen(state: state)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('+4'), findsOneWidget);
+      expect(find.text('-2'), findsOneWidget);
     });
   });
 }

@@ -8,6 +8,7 @@ WolfRoundState testWolfRoundState({
   List<RoundFormat> formats = const [RoundFormat.wolf],
   Map<int, WolfHoleResult> wolfHoleResults = const {},
   Map<String, int> bitsByPlayer = const {},
+  Map<String, int> wolfPointsByPlayer = const {},
 }) {
   const teeOrder = ['you', 'sam', 'alex', 'jordan'];
   const participants = [
@@ -37,6 +38,7 @@ WolfRoundState testWolfRoundState({
   );
   return WolfRoundState.fromSession(session).copyWith(
     wolfHoleResults: wolfHoleResults,
+    wolfPointsByPlayer: wolfPointsByPlayer,
     bitsByPlayer: bitsByPlayer.isEmpty
         ? {for (final p in participants) p.key: 0}
         : bitsByPlayer,

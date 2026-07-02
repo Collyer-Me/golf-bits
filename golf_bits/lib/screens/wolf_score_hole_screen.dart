@@ -9,11 +9,13 @@ import '../models/round_game_config.dart';
 import '../models/round_result.dart';
 import '../models/wolf_round_state.dart';
 import '../models/wolf_scoring.dart';
+import '../navigation/wolf_round_navigation.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/event_award_sheet.dart';
 import '../widgets/hole_footer_nav.dart';
 import '../widgets/hole_header.dart';
+import '../widgets/hole_progress_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/player_avatar.dart';
 import '../widgets/player_bits_row.dart';
@@ -42,7 +44,12 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
     super.initState();
     _state = widget.state;
     _strokeByHole = _state.strokeByHole.map((k, v) => MapEntry(k, Map<int, int>.from(v)));
-    _grossByPlayer = {for (final k in _state.teeOrder) k: _defaultGross(k)};
+    final saved = _state.wolfHoleResults[_hole];
+    if (saved != null && saved.grossByPlayer.isNotEmpty) {
+      _grossByPlayer = Map<String, int>.from(saved.grossByPlayer);
+    } else {
+      _grossByPlayer = {for (final k in _state.teeOrder) k: _defaultGross(k)};
+    }
     _seedDefaults();
     unawaited(_hydrateBits());
   }
@@ -339,6 +346,20 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
     );
   }
 
+  Future<void> _prevHole() async {
+    if (_state.holeIndex <= 0) {
+      _backToCall();
+      return;
+    }
+    await WolfRoundNavigation.openHole(context, _state, _state.holeIndex - 1);
+  }
+
+  Future<void> _jumpToHole(int holeIndex) async {
+    if (holeIndex == _state.holeIndex) return;
+    if (holeIndex > _state.holeIndex) return;
+    await WolfRoundNavigation.openHole(context, _state, holeIndex);
+  }
+
   String _nameFor(String key) {
     try {
       return _state.session.participants.firstWhere((p) => p.key == key).displayName;
@@ -403,6 +424,14 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
                   yardage: _state.session.holeYardages['$_hole'],
                   titleOverride: 'Score the hole',
                   strokeIndex: _state.strokeIndexForHole(_hole),
+                  thru: _state.holeIndex,
+                ),
+                SizedBox(height: AppTheme.space3),
+                HoleProgressBar(
+                  holeCount: _state.holeOrder.length,
+                  currentIndex: _state.holeIndex,
+                  maxTappableIndex: _state.holeIndex,
+                  onHoleTap: _jumpToHole,
                 ),
                 SizedBox(height: AppTheme.space3),
                 Row(
@@ -462,8 +491,8 @@ class _WolfScoreHoleScreenState extends State<WolfScoreHoleScreen> {
               MediaQuery.paddingOf(context).bottom + AppTheme.space4,
             ),
             child: HoleFooterNav(
-              onPrevious: _backToCall,
-              previousTooltip: 'Change partner',
+              onPrevious: _prevHole,
+              previousTooltip: _state.holeIndex > 0 ? 'Previous hole' : 'Change partner',
               onNext: _nextHole,
               previousEnabled: true,
             ),

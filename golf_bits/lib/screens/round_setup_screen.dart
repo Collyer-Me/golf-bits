@@ -530,6 +530,9 @@ class _RoundSetupScreenState extends State<RoundSetupScreen> {
         ),
     ];
     final teeOrder = participants.map((p) => p.key).toList();
+    if (_hasWolf) {
+      teeOrder.shuffle(Random());
+    }
     String? roundId;
     if (SupabaseEnv.isConfigured) {
       setState(() => _startingRound = true);

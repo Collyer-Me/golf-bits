@@ -246,4 +246,41 @@ void main() {
       expect(formatExtraShotsLabel(-2), '-2 extra shots');
     });
   });
+
+  group('auditWolfRound', () {
+    test('validates stored hole results and totals', () {
+      const teeOrder = ['you', 'sam', 'alex', 'jordan'];
+      const holeOrder = [1, 2];
+      final results = {
+        1: WolfHoleResult(
+          hole: 1,
+          wolfKey: 'you',
+          call: const WolfCall(type: WolfCallType.partner, partnerKey: 'sam'),
+          grossByPlayer: const {'you': 4, 'sam': 4, 'alex': 5, 'jordan': 5},
+          pointsByPlayer: const {'you': 2, 'sam': 2, 'alex': -2, 'jordan': -2},
+        ),
+        2: WolfHoleResult(
+          hole: 2,
+          wolfKey: 'sam',
+          call: const WolfCall(type: WolfCallType.lone),
+          grossByPlayer: const {'you': 5, 'sam': 3, 'alex': 5, 'jordan': 5},
+          pointsByPlayer: const {'sam': 6, 'you': -2, 'alex': -2, 'jordan': -2},
+        ),
+      };
+
+      final audit = auditWolfRound(
+        holeOrder: holeOrder,
+        teeOrder: teeOrder,
+        wolfHoleResults: results,
+        wolfPointsByPlayer: const {'you': 0, 'sam': 8, 'alex': -4, 'jordan': -4},
+        basis: WolfScoringBasis.gross,
+        handicaps: const {},
+        holeStrokeIndexes: const {},
+        holeCount: 18,
+      );
+
+      expect(audit.isValid, isTrue);
+      expect(audit.holes, hasLength(2));
+    });
+  });
 }

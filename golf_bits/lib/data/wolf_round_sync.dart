@@ -23,6 +23,17 @@ class WolfRoundSync {
     return totals;
   }
 
+  /// Prefer hole-by-hole results; fall back to persisted totals when results are absent.
+  static Map<String, int> effectiveWolfTotals(WolfRoundState state) {
+    if (state.wolfHoleResults.isNotEmpty) {
+      return computeWolfTotals(state.wolfHoleResults);
+    }
+    if (state.wolfPointsByPlayer.isNotEmpty) {
+      return Map<String, int>.from(state.wolfPointsByPlayer);
+    }
+    return {for (final k in state.teeOrder) k: 0};
+  }
+
   static Map<String, int> computeGrossByPlayer(Map<String, Map<int, int>> strokeByHole) {
     return computeGrossByPlayerFromStrokes(strokeByHole);
   }

@@ -6,11 +6,14 @@ import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/history_round.dart';
 import '../models/round_settlement.dart';
+import '../models/round_session_args.dart';
+import '../models/wolf_scoring.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/round_complete_ledger.dart';
 import '../widgets/settle_up_panel.dart';
+import '../widgets/wolf_hole_audit_panel.dart';
 import 'player_breakdown_screen.dart';
 
 /// Deep dive for one past round (ledger + settle-up). Refetches from Supabase when configured.
@@ -158,6 +161,18 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
 
     final wolfWinnerKey = config.hasWolf ? _wolfWinnerKey() : null;
+    final wolfAudit = config.hasWolf && _round.wolfHoleResults.isNotEmpty
+        ? auditWolfRound(
+            holeOrder: buildHoleOrder(holeCount: _round.holeCount, startHole: _round.startHole),
+            teeOrder: config.teeOrder,
+            wolfHoleResults: _round.wolfHoleResults,
+            wolfPointsByPlayer: _round.wolfPointsByPlayer,
+            basis: config.scoringBasis,
+            handicaps: config.handicaps,
+            holeStrokeIndexes: _round.holeStrokeIndexes,
+            holeCount: _round.holeCount,
+          )
+        : null;
     final bannerHasWolf = config.hasWolf && wolfWinnerKey != null;
     final bannerWinnerName = bannerHasWolf
         ? _round.displayNameForKey(wolfWinnerKey)
@@ -235,6 +250,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
               colorIndexForKey: _colorIndexByKey(),
               evenMoneyMessage: _evenMoneyMessage(settlement.finalNet, wolfWinnerKey),
             ),
+            if (wolfAudit != null) ...[
+              SizedBox(height: AppTheme.space6),
+              WolfHoleAuditPanel(
+                round: _round,
+                audit: wolfAudit,
+                nameForKey: _round.displayNameForKey,
+              ),
+            ],
             if (_round.leftEarly.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               Text(

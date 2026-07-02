@@ -211,8 +211,8 @@ class _HeaderRow extends StatelessWidget {
         children: [
           Expanded(child: Text('PLAYER', style: label)),
           if (combined) ...[
-            _moneyHeader('WOLF', AppTheme.bits(context), label),
-            _moneyHeader('BITS', AppTheme.sand(context), label),
+            _pointsHeader('WOLF', AppTheme.bits(context), label),
+            _pointsHeader('BITS', AppTheme.sand(context), label),
             _moneyHeader('NET', scheme.onSurface, label),
           ] else if (hasWolf) ...[
             SizedBox(
@@ -235,6 +235,17 @@ class _HeaderRow extends StatelessWidget {
   Widget _moneyHeader(String text, Color color, TextStyle base) {
     return SizedBox(
       width: 62,
+      child: Text(
+        text,
+        textAlign: TextAlign.right,
+        style: base.copyWith(color: color),
+      ),
+    );
+  }
+
+  Widget _pointsHeader(String text, Color color, TextStyle base) {
+    return SizedBox(
+      width: 52,
       child: Text(
         text,
         textAlign: TextAlign.right,
@@ -292,8 +303,8 @@ class _PlayerRow extends StatelessWidget {
           ),
         ),
         if (combined) ...[
-          _subMoneyCell(row.wolfDollars, context),
-          _subMoneyCell(row.bitsDollars, context),
+          _pointsCell(row.wolfPoints, context, scheme.primary),
+          _pointsCell(row.bits, context, AppTheme.sand(context)),
           _mainMoneyCell(settleAmount, context),
         ] else if (hasWolf) ...[
           SizedBox(
@@ -341,6 +352,24 @@ class _PlayerRow extends StatelessWidget {
                 child: content,
               ),
             ),
+    );
+  }
+
+  Widget _pointsCell(int points, BuildContext context, Color color) {
+    final scheme = Theme.of(context).colorScheme;
+    final display = points >= 0 ? '+$points' : '$points';
+    final textColor = points == 0
+        ? scheme.onSurfaceVariant
+        : points > 0
+            ? color
+            : AppTheme.junk(context);
+    return SizedBox(
+      width: 52,
+      child: Text(
+        display,
+        textAlign: TextAlign.right,
+        style: AppTheme.score(context, size: 17, color: textColor),
+      ),
     );
   }
 
