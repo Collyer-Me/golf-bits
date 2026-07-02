@@ -66,7 +66,8 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
 
   Map<String, int> _bitsScoresByKey() => {
         for (final s in _r.standings)
-          if (s.participantKey.isNotEmpty) s.participantKey: s.bits,
+          if (s.participantKey != null && s.participantKey!.isNotEmpty)
+            s.participantKey!: s.bits,
       };
 
   Future<void> _backToHome() async {

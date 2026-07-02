@@ -198,6 +198,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         );
     });
     _seedDefaultStrokesForCurrentHole();
+  }
 
   List<_HolePlayer> get _sortedPlayers {
     final copy = [..._players];

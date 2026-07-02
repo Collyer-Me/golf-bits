@@ -59,9 +59,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     final colorIndex = {
       for (var i = 0; i < config.teeOrder.length; i++) config.teeOrder[i]: i,
     };
-    final bitsScores = {
+    final bitsScores = <String, int>{
       for (final s in _round.standings)
-        if (s.participantKey.isNotEmpty) s.participantKey: s.bits,
+        if (s.participantKey != null && s.participantKey!.isNotEmpty)
+          s.participantKey!: s.bits,
     };
     final bitsPayments = config.hasBits
         ? computeLeaderSettlement(scoresByPlayer: bitsScores, unitValue: bitsUnit)

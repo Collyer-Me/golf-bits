@@ -12,7 +12,7 @@ class SyncStatusNotifier extends ChangeNotifier {
   String? get message => _message;
 
   void recordFailure([String? detail]) {
-    final next = true;
+    const next = true;
     final msg = detail ?? 'Cloud sync is failing. Scores are saved on this device.';
     if (_syncFailing && _message == msg) return;
     _syncFailing = next;
