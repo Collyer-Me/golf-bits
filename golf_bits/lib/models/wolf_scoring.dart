@@ -304,7 +304,10 @@ WolfHoleSettlement settleWolfHole({
   );
 }
 
-/// Zero-sum point transfers per hole (see docs/GOLF_SETTLEMENT.md).
+/// Zero-sum point transfers per hole.
+///
+/// Partner (2v2): winners +1 each, losers −1 each.
+/// Lone (×2): wolf ±6 vs field ∓2 each. Blind (×3): wolf ±9 vs field ∓3 each.
 void _assignZeroSumWolfPoints({
   required Map<String, int> points,
   required List<String> wolfSide,
@@ -314,7 +317,7 @@ void _assignZeroSumWolfPoints({
 }) {
   switch (call.type) {
     case WolfCallType.partner:
-      const stake = 2;
+      const stake = 1;
       final winningSide = wolfSideWon ? wolfSide : fieldSide;
       final losingSide = wolfSideWon ? fieldSide : wolfSide;
       for (final key in winningSide) {

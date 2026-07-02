@@ -110,7 +110,7 @@ void main() {
             wolfKey: 'you',
             call: const WolfCall(type: WolfCallType.partner, partnerKey: 'sam'),
             grossByPlayer: const {'you': 4, 'sam': 4, 'alex': 5, 'jordan': 5},
-            pointsByPlayer: const {'you': 2, 'sam': 2, 'alex': -2, 'jordan': -2},
+            pointsByPlayer: const {'you': 1, 'sam': 1, 'alex': -1, 'jordan': -1},
           ),
         },
       );
@@ -121,7 +121,7 @@ void main() {
       expect(find.text('Standings'), findsOneWidget);
       expect(find.text('WOLF POINTS · THE MATCH'), findsOneWidget);
       expect(find.text('You'), findsWidgets);
-      expect(find.text('+2'), findsWidgets);
+      expect(find.text('+1'), findsWidgets);
       expect(find.text('Sam'), findsWidgets);
       expect(find.text('★ LEADING'), findsOneWidget);
       expect(find.byType(SegmentedButton<bool>), findsNothing);

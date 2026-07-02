@@ -28,6 +28,21 @@ Official reference: [Supabase CLI](https://supabase.com/docs/guides/cli).
 
 Edge Function deploy order and required secrets (`APP_BASE_URL`, `RESEND_API_KEY`, etc.): see [`EDGE_FUNCTION_SECRETS.md`](EDGE_FUNCTION_SECRETS.md) at the repo root.
 
+## Data analysis (Supabase)
+
+For **read-only round / Wolf scoring investigation** (not schema changes), use the developer scripts under [`tools/round-analysis/`](tools/round-analysis/README.md).
+
+| Goal | Command (repo root, Node 18+) |
+|------|-------------------------------|
+| List recent rounds | `node tools/round-analysis/list-rounds.mjs --completed --wolf` |
+| Audit latest Wolf round | `node tools/round-analysis/audit-wolf.mjs --latest-completed` |
+| Audit one round by id | `node tools/round-analysis/audit-wolf.mjs --id <uuid>` |
+| Dump full round JSON | `node tools/round-analysis/fetch-round.mjs --id <uuid>` |
+
+**Credentials:** `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` in `tools/course-catalog-search/.env` (or `tools/round-analysis/.env`). **Never commit** these values or paste the service-role key into chat.
+
+Agents should prefer these scripts over guessing from app code when verifying hole-by-hole Wolf results or settlement disputes.
+
 ## Delivery workflow (GitHub + Supabase) — **ask first**
 
 After **significant** work is done (for example: a user-facing feature slice, schema or migration changes, Edge Function behavior, or integration work you would normally hand off for testing), **do not** automatically commit, push, or run Supabase deploy commands.

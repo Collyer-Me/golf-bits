@@ -100,10 +100,10 @@ void main() {
       expect(result.wolfBestBall, 3);
       expect(result.fieldBestBall, 4);
       expect(result.winner, WolfHoleWinner.wolfSide);
-      expect(result.pointsByPlayer['you'], 2);
-      expect(result.pointsByPlayer['sam'], 2);
-      expect(result.pointsByPlayer['alex'], -2);
-      expect(result.pointsByPlayer['jordan'], -2);
+      expect(result.pointsByPlayer['you'], 1);
+      expect(result.pointsByPlayer['sam'], 1);
+      expect(result.pointsByPlayer['alex'], -1);
+      expect(result.pointsByPlayer['jordan'], -1);
       expect(result.pointsByPlayer.values.fold(0, (a, b) => a + b), 0);
     });
   });
@@ -257,7 +257,7 @@ void main() {
           wolfKey: 'you',
           call: const WolfCall(type: WolfCallType.partner, partnerKey: 'sam'),
           grossByPlayer: const {'you': 4, 'sam': 4, 'alex': 5, 'jordan': 5},
-          pointsByPlayer: const {'you': 2, 'sam': 2, 'alex': -2, 'jordan': -2},
+          pointsByPlayer: const {'you': 1, 'sam': 1, 'alex': -1, 'jordan': -1},
         ),
         2: WolfHoleResult(
           hole: 2,

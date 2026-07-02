@@ -9,6 +9,8 @@
   "scripts": {
     "supabase": "supabase",
     "sync-wa-courses": "node scripts/sync-wa-courses-batch.cjs",
+    "rounds:list": "node tools/round-analysis/list-rounds.mjs",
+    "rounds:audit-wolf": "node tools/round-analysis/audit-wolf.mjs --latest-completed",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

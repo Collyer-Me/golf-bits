@@ -1,0 +1,16 @@
+---
+description: Read-only Supabase data analysis for rounds and Wolf scoring
+globs:
+alwaysApply: false
+---
+
+# Data analysis (rounds / Wolf)
+
+When the user asks to verify scores, audit a completed round, or investigate history data:
+
+1. Use **`node tools/round-analysis/…`** from repo root (see [`tools/round-analysis/README.md`](../../tools/round-analysis/README.md)).
+2. Credentials live in **`tools/course-catalog-search/.env`** or **`tools/round-analysis/.env`** — never commit or echo the service-role key.
+3. Start with `audit-wolf.mjs --latest-completed` or `--id <uuid>` after `list-rounds.mjs`.
+4. Do **not** use the Supabase Dashboard SQL editor as the primary workflow for schema; use CLI migrations for schema changes.
+
+If Node is missing on the machine, tell the user to install Node 18+ or run the audit command locally and paste the JSON **summary** (not secrets).
