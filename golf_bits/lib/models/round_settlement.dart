@@ -56,6 +56,19 @@ List<SettlementPayment> computeLeaderSettlement({
   return lines;
 }
 
+/// Net cash flow per player from settlement lines (positive = collects).
+Map<String, double> settlementNetByPlayer({
+  required Iterable<SettlementPayment> payments,
+  required Iterable<String> playerKeys,
+}) {
+  final out = {for (final k in playerKeys) k: 0.0};
+  for (final p in payments) {
+    out[p.fromKey] = (out[p.fromKey] ?? 0) - p.amount;
+    out[p.toKey] = (out[p.toKey] ?? 0) + p.amount;
+  }
+  return out;
+}
+
 /// Totals collected by each winner (sum of incoming payments).
 Map<String, double> settlementCollections(Iterable<SettlementPayment> payments) {
   final out = <String, double>{};

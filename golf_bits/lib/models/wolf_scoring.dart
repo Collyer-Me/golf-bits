@@ -70,6 +70,36 @@ class WolfHoleSettlement {
   final Map<String, int> pointsByPlayer;
 }
 
+/// Typical stroke-index ranks for a par-72 layout when the catalog lacks SI data.
+/// Keyed by physical hole number (1–18), values are difficulty rank 1–18.
+const Map<int, int> standardStrokeIndexByHoleNumber = {
+  1: 11,
+  2: 7,
+  3: 3,
+  4: 15,
+  5: 1,
+  6: 13,
+  7: 9,
+  8: 17,
+  9: 5,
+  10: 12,
+  11: 8,
+  12: 2,
+  13: 14,
+  14: 18,
+  15: 4,
+  16: 16,
+  17: 6,
+  18: 10,
+};
+
+/// Stroke index (1–18 difficulty rank) for [hole] from catalog map, then standard template.
+int? resolveStrokeIndexForHole(int hole, Map<String, int> holeStrokeIndexes) {
+  final fromCatalog = holeStrokeIndexes['$hole'] ?? holeStrokeIndexes[hole.toString()];
+  if (fromCatalog != null) return fromCatalog;
+  return standardStrokeIndexByHoleNumber[hole];
+}
+
 /// Strokes received on a hole from course handicap + stroke index.
 ///
 /// Positive [courseHandicap] = receive strokes; negative = plus handicap (give strokes).

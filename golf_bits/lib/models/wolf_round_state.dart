@@ -70,11 +70,8 @@ class WolfRoundState {
         holeCount: holeCount,
       );
 
-  /// Stroke index for net scoring. Falls back to hole number when catalog lacks SI.
-  int strokeIndexForHole(int hole) {
-    final si = holeStrokeIndexes['$hole'] ?? holeStrokeIndexes[hole.toString()];
-    return si ?? hole;
-  }
+  /// Stroke index for net scoring (1–18 rank). Never uses hole number as SI.
+  int? strokeIndexForHole(int hole) => resolveStrokeIndexForHole(hole, holeStrokeIndexes);
 
   WolfRoundState copyWith({
     int? holeIndex,

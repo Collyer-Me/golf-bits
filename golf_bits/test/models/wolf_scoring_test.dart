@@ -149,6 +149,26 @@ void main() {
     });
   });
 
+  group('resolveStrokeIndexForHole', () {
+    test('uses catalog map when present', () {
+      expect(
+        resolveStrokeIndexForHole(3, const {'3': 12}),
+        12,
+      );
+    });
+
+    test('falls back to standard template not hole number', () {
+      expect(resolveStrokeIndexForHole(10, const {}), 12);
+      expect(resolveStrokeIndexForHole(10, const {}), isNot(10));
+    });
+
+    test('hc 16 gets stroke on SI 12 hole but hc 4 does not', () {
+      const si = 12;
+      expect(strokesReceivedOnHole(courseHandicap: 16, strokeIndex: si), 1);
+      expect(strokesReceivedOnHole(courseHandicap: 4, strokeIndex: si), 0);
+    });
+  });
+
   group('strokesReceivedOnHole', () {
     test('single and double stroke allocation', () {
       expect(strokesReceivedOnHole(courseHandicap: 12, strokeIndex: 5), 1);

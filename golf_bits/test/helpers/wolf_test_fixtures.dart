@@ -1,6 +1,7 @@
 import 'package:golf_bits/models/round_game_config.dart';
 import 'package:golf_bits/models/round_session_args.dart';
 import 'package:golf_bits/models/wolf_round_state.dart';
+import 'package:golf_bits/models/wolf_scoring.dart';
 
 /// Shared Wolf in-round state for widget tests.
 WolfRoundState testWolfRoundState({
@@ -30,7 +31,9 @@ WolfRoundState testWolfRoundState({
     gameConfig: gameConfig,
     holePars: {for (var i = 1; i <= 18; i++) '$i': 4},
     holeYardages: {for (var i = 1; i <= 18; i++) '$i': 400},
-    holeStrokeIndexes: {for (var i = 1; i <= 18; i++) '$i': i},
+    holeStrokeIndexes: {
+      for (final e in standardStrokeIndexByHoleNumber.entries) '${e.key}': e.value,
+    },
   );
   return WolfRoundState.fromSession(session).copyWith(
     wolfHoleResults: wolfHoleResults,

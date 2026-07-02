@@ -13,12 +13,14 @@ class SettleUpPanel extends StatelessWidget {
     required this.payments,
     required this.nameForKey,
     this.colorIndexForKey = const {},
+    this.showCollections = false,
   });
 
   final String header;
   final List<SettlementPayment> payments;
   final String Function(String key) nameForKey;
   final Map<String, int> colorIndexForKey;
+  final bool showCollections;
 
   @override
   Widget build(BuildContext context) {
@@ -53,14 +55,15 @@ class SettleUpPanel extends StatelessWidget {
                         colorIndex: colorIndexForKey[payments[i].fromKey] ?? 0,
                       ),
                     ],
-                    for (final entry in collections.entries) ...[
-                      Divider(height: 1, color: scheme.outlineVariant),
-                      _CollectionRow(
-                        name: nameForKey(entry.key),
-                        amount: entry.value,
-                        colorIndex: colorIndexForKey[entry.key] ?? 0,
-                      ),
-                    ],
+                    if (showCollections)
+                      for (final entry in collections.entries) ...[
+                        Divider(height: 1, color: scheme.outlineVariant),
+                        _CollectionRow(
+                          name: nameForKey(entry.key),
+                          amount: entry.value,
+                          colorIndex: colorIndexForKey[entry.key] ?? 0,
+                        ),
+                      ],
                   ],
                 ),
         ),

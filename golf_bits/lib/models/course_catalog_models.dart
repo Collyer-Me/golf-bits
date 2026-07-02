@@ -375,23 +375,38 @@ class CourseDetailView {
   /// Stroke index map for the selected tee (`"7"` → 5).
   Map<String, int>? holeStrokeIndexesForTeeSync(String? courseTeeId) {
     if (tees.isEmpty) return null;
-    CourseTeeOption? tee;
+
+    Map<String, int> fromTee(CourseTeeOption tee) {
+      final out = <String, int>{};
+      for (final h in tee.holes) {
+        final si = h.strokeIndex;
+        if (si != null) out['${h.holeNumber}'] = si;
+      }
+      return out;
+    }
+
+    CourseTeeOption? selected;
     if (courseTeeId != null) {
       for (final t in tees) {
         if (t.id == courseTeeId) {
-          tee = t;
+          selected = t;
           break;
         }
       }
     }
-    tee ??= tees.first;
-    if (tee.holes.isEmpty) return null;
-    final out = <String, int>{};
-    for (final h in tee.holes) {
-      final si = h.strokeIndex;
-      if (si != null) out['${h.holeNumber}'] = si;
+    selected ??= tees.first;
+
+    final selectedMap = selected.holes.isEmpty ? <String, int>{} : fromTee(selected);
+    if (selectedMap.length >= 9) return selectedMap.isEmpty ? null : selectedMap;
+
+    // Prefer the tee with the most SI rows when the selected tee is sparse.
+    var best = selectedMap;
+    for (final tee in tees) {
+      if (tee.holes.isEmpty) continue;
+      final candidate = fromTee(tee);
+      if (candidate.length > best.length) best = candidate;
     }
-    return out.isEmpty ? null : out;
+    return best.isEmpty ? null : best;
   }
 
   factory CourseDetailView.fromDetailJson(Map<String, dynamic> j) {

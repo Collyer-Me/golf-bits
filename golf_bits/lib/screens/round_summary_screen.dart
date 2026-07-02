@@ -70,6 +70,26 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
             s.participantKey!: s.bits,
       };
 
+  List<({String key, String name, int points})> _wolfStandingsRows() {
+    final points = _wolfPoints;
+    if (points == null || points.isEmpty) return const [];
+    final rows = [
+      for (final p in _r.participants)
+        (key: p.key, name: p.displayName, points: points[p.key] ?? 0),
+    ]..sort((a, b) => b.points.compareTo(a.points));
+    return rows;
+  }
+
+  String? _participantKeyForName(String name) {
+    for (final p in _r.participants) {
+      if (p.displayName == name) return p.key;
+    }
+    for (final s in _r.standings) {
+      if (s.name == name) return s.participantKey;
+    }
+    return null;
+  }
+
   Future<void> _backToHome() async {
     final live = widget.result;
     final loggedInUser = Supabase.instance.client.auth.currentUser;
@@ -149,6 +169,17 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
         ? computeLeaderSettlement(scoresByPlayer: _wolfPoints!, unitValue: wolfUnit)
         : const <SettlementPayment>[];
     final colorIndex = _colorIndexByKey();
+    final wolfRows = _wolfStandingsRows();
+    final wolfWinnerKey = _wolfWinnerName == null
+        ? null
+        : _participantKeyForName(_wolfWinnerName!);
+    final wolfNet = settlementNetByPlayer(
+      payments: wolfPayments,
+      playerKeys: config.teeOrder.isNotEmpty
+          ? config.teeOrder
+          : _r.participants.map((p) => p.key),
+    );
+    final wolfWinnerNet = wolfWinnerKey == null ? null : wolfNet[wolfWinnerKey];
 
     return Scaffold(
       appBar: const BrandAppBar(),
@@ -191,68 +222,92 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
               style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             SizedBox(height: AppTheme.space6),
-            _WinnerHero(
-              result: r,
-              bitsDollarValue: config.hasBits ? r.winnerBits * bitsUnit : null,
-            ),
-            if (_wolfPoints != null && _wolfPoints!.isNotEmpty && _wolfWinnerName != null) ...[
+            if (config.hasWolf && _wolfWinnerName != null && _wolfPoints != null) ...[
+              _WolfWinnerHero(
+                winnerName: _wolfWinnerName!,
+                winnerPoints: wolfWinnerKey == null
+                    ? (wolfRows.isEmpty ? 0 : wolfRows.first.points)
+                    : (_wolfPoints![wolfWinnerKey] ?? 0),
+                netCollection: wolfWinnerNet,
+              ),
+              if (config.hasBits) SizedBox(height: AppTheme.space6),
+            ],
+            if (config.hasBits)
+              _WinnerHero(
+                result: r,
+                bitsDollarValue: r.winnerBits * bitsUnit,
+              ),
+            if (config.hasWolf && wolfRows.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               Text(
-                'WOLF MATCH',
+                'WOLF STANDINGS · \$${wolfUnit.toStringAsFixed(0)} / POINT',
                 style: text.labelSmall?.copyWith(
                   color: AppTheme.sand(context),
                   fontWeight: FontWeight.w800,
                   letterSpacing: AppTheme.letterStepCaps,
                 ),
               ),
-              SizedBox(height: AppTheme.space2),
-              OutlinedSurfaceCard(
-                borderColor: AppTheme.sand(context).withValues(alpha: 0.45),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Winner · $_wolfWinnerName',
-                      style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              SizedBox(height: AppTheme.space3),
+              for (var i = 0; i < wolfRows.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.space2),
+                  child: OutlinedSurfaceCard(
+                    borderColor: i == 0
+                        ? AppTheme.sand(context).withValues(alpha: 0.45)
+                        : scheme.outlineVariant,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.space4,
+                      vertical: AppTheme.space3,
                     ),
-                    if (_gameConfig != null && _gameConfig!.hasWolf)
-                      Text(
-                        '\$${_gameConfig!.wolfPointValue.toStringAsFixed(0)} / point',
-                        style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
-                      ),
-                    SizedBox(height: AppTheme.space2),
-                    for (final e in _wolfPoints!.entries) ...[
-                      Row(
-                        children: [
-                          Expanded(child: Text(_nameForKey(e.key))),
-                          TallyMarks(count: e.value, height: 14, variant: TallyVariant.positive),
-                          SizedBox(width: AppTheme.space2),
-                          Text('${e.value} pts', style: AppTheme.monoLabel(context)),
-                          SizedBox(width: AppTheme.space2),
-                          Text(
-                            formatSettlementMoney(e.value * wolfUnit),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: AppTheme.space5,
+                          child: Text(
+                            '${i + 1}',
+                            textAlign: TextAlign.center,
                             style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
                           ),
-                        ],
-                      ),
-                    ],
-                  ],
+                        ),
+                        SizedBox(width: AppTheme.space2),
+                        _SquareAvatar(name: wolfRows[i].name),
+                        SizedBox(width: AppTheme.space3),
+                        Expanded(
+                          child: Text(
+                            wolfRows[i].name,
+                            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        TallyMarks(
+                          count: wolfRows[i].points,
+                          height: 16,
+                          variant: TallyVariant.positive,
+                        ),
+                        SizedBox(width: AppTheme.space3),
+                        Text(
+                          '${wolfRows[i].points} pts',
+                          style: AppTheme.score(context, size: 24, color: AppTheme.sand(context)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+            if (config.hasBits) ...[
+              SizedBox(height: AppTheme.space8),
+              Text(
+                'BITS STANDINGS · \$${bitsUnit.toStringAsFixed(0)} / BIT',
+                style: text.labelSmall?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: AppTheme.letterStepCaps,
                 ),
               ),
-            ],
-            SizedBox(height: AppTheme.space8),
-            Text(
-              config.hasBits
-                  ? 'FINAL STANDINGS · \$${bitsUnit.toStringAsFixed(0)} / BIT'
-                  : 'FINAL STANDINGS',
-              style: text.labelSmall?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: AppTheme.letterStepCaps,
-              ),
-            ),
-            SizedBox(height: AppTheme.space3),
-            ...r.standings.map((s) {
+              SizedBox(height: AppTheme.space3),
+            ] else
+              SizedBox(height: AppTheme.space8),
+            if (config.hasBits)
+              ...r.standings.map((s) {
               final holeOrder = List<int>.generate(r.holeCount, (i) => i + 1);
               final grossLine = grossLabelForStanding(
                 mode: r.strokeTrackingMode,
@@ -351,20 +406,20 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
                 ),
               );
             }),
-            if (config.hasBits) ...[
+            if (config.hasWolf && _wolfPoints != null && _wolfPoints!.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               SettleUpPanel(
-                header: 'Settle up · \$${bitsUnit.toStringAsFixed(0)} / bit',
-                payments: bitsPayments,
+                header: 'Wolf settle up · \$${wolfUnit.toStringAsFixed(0)} / point',
+                payments: wolfPayments,
                 nameForKey: _nameForKey,
                 colorIndexForKey: colorIndex,
               ),
             ],
-            if (config.hasWolf && _wolfPoints != null && _wolfPoints!.isNotEmpty) ...[
+            if (config.hasBits) ...[
               SizedBox(height: AppTheme.space6),
               SettleUpPanel(
-                header: 'Settle up · \$${wolfUnit.toStringAsFixed(0)} / point',
-                payments: wolfPayments,
+                header: 'Bits settle up · \$${bitsUnit.toStringAsFixed(0)} / bit',
+                payments: bitsPayments,
                 nameForKey: _nameForKey,
                 colorIndexForKey: colorIndex,
               ),
@@ -447,8 +502,7 @@ class _RoundSummaryScreenState extends State<RoundSummaryScreen> {
   }
 }
 
-/// Winner spotlight: Fairway-emphasis card, rounded-square avatar, big Bricolage
-/// score + a hero tally.
+/// Winner spotlight for the bits side game.
 class _WinnerHero extends StatelessWidget {
   const _WinnerHero({required this.result, this.bitsDollarValue});
 
@@ -460,12 +514,12 @@ class _WinnerHero extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Semantics(
-      label: 'Winner, ${result.winnerName}, plus ${result.winnerBits} bits',
+      label: 'Bits leader, ${result.winnerName}, plus ${result.winnerBits} bits',
       child: OutlinedSurfaceCard(
       borderColor: scheme.primary,
       child: Column(
         children: [
-          Text('🏆  WINNER', style: AppTheme.monoLabel(context, color: AppTheme.sand(context))),
+          Text('BITS LEADER', style: AppTheme.monoLabel(context, color: AppTheme.sand(context))),
           SizedBox(height: AppTheme.space4),
           _SquareAvatar(name: result.winnerName, size: AppTheme.iconHero),
           SizedBox(height: AppTheme.space3),
@@ -490,6 +544,60 @@ class _WinnerHero extends StatelessWidget {
         ],
       ),
     ),
+    );
+  }
+}
+
+/// Wolf match winner spotlight (independent from bits).
+class _WolfWinnerHero extends StatelessWidget {
+  const _WolfWinnerHero({
+    required this.winnerName,
+    required this.winnerPoints,
+    this.netCollection,
+  });
+
+  final String winnerName;
+  final int winnerPoints;
+  final double? netCollection;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      label: 'Wolf winner, $winnerName, $winnerPoints points',
+      child: OutlinedSurfaceCard(
+        borderColor: AppTheme.sand(context).withValues(alpha: 0.55),
+        child: Column(
+          children: [
+            Text('WOLF WINNER', style: AppTheme.monoLabel(context, color: AppTheme.sand(context))),
+            SizedBox(height: AppTheme.space4),
+            _SquareAvatar(name: winnerName, size: AppTheme.iconHero),
+            SizedBox(height: AppTheme.space3),
+            Text(
+              winnerName,
+              textAlign: TextAlign.center,
+              style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            SizedBox(height: AppTheme.space2),
+            Text(
+              '$winnerPoints pts',
+              style: AppTheme.score(context, size: 44, color: AppTheme.sand(context)),
+            ),
+            if (netCollection != null && netCollection! > 0) ...[
+              SizedBox(height: AppTheme.space1),
+              Text(
+                'Collects ${formatSettlementMoney(netCollection!)}',
+                style: AppTheme.score(context, size: 28, color: AppTheme.sand(context)),
+              ),
+            ],
+            SizedBox(height: AppTheme.space2),
+            TallyMarks(count: winnerPoints, height: 26),
+            SizedBox(height: AppTheme.space1),
+            Text('WOLF', style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
     );
   }
 }

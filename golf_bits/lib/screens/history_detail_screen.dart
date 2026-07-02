@@ -168,7 +168,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                   (e) => Padding(
                     padding: const EdgeInsets.only(bottom: AppTheme.space1),
                     child: Text(
-                      '${_round.displayNameForKey(e.key)} · ${e.value} pts · ${formatSettlementMoney(e.value * wolfUnit)}',
+                      '${_round.displayNameForKey(e.key)} · ${e.value} pts',
                       textAlign: TextAlign.center,
                       style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                     ),
