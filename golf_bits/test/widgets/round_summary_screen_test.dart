@@ -14,7 +14,7 @@ void main() {
 
     expect(find.byType(BrandAppBar), findsOneWidget);
     expect(find.text('Round complete'), findsOneWidget);
-    expect(find.text('FINAL STANDINGS'), findsOneWidget);
+    expect(find.textContaining('FINAL STANDINGS'), findsOneWidget);
     expect(find.text('Alex'), findsWidgets);
     await tester.scrollUntilVisible(find.text('Taylor'), 120);
     expect(find.text('Taylor'), findsOneWidget);

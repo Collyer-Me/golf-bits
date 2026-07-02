@@ -12,6 +12,17 @@ class SettlementPayment {
   final String fromKey;
   final String toKey;
   final double amount;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SettlementPayment &&
+          fromKey == other.fromKey &&
+          toKey == other.toKey &&
+          amount == other.amount;
+
+  @override
+  int get hashCode => Object.hash(fromKey, toKey, amount);
 }
 
 /// Leader settlement: each player below the leader pays
