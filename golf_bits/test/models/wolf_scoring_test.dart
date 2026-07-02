@@ -274,7 +274,7 @@ void main() {
         holeOrder: holeOrder,
         teeOrder: teeOrder,
         wolfHoleResults: results,
-        wolfPointsByPlayer: const {'you': 0, 'sam': 8, 'alex': -4, 'jordan': -4},
+        wolfPointsByPlayer: const {'you': -1, 'sam': 7, 'alex': -3, 'jordan': -3},
         basis: WolfScoringBasis.gross,
         handicaps: const {},
         holeStrokeIndexes: const {},
