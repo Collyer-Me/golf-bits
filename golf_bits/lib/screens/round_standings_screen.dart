@@ -60,19 +60,21 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
     final showBoth = _state.session.hasWolf && _state.session.hasBits;
     final viewingWolf = _state.session.hasWolf && (!_state.session.hasBits || _showWolf);
     final rows = viewingWolf ? _wolfRows() : _bitsRows();
-    final unitValue = viewingWolf
-        ? _state.gameConfig.wolfPointValue
-        : _state.gameConfig.bitsPointValue;
-    final scoresByPlayer = {
-      for (final r in rows) r.key: r.score,
+    final config = _state.gameConfig;
+    final playerKeys = _state.teeOrder;
+    final bitsScores = {
+      for (final p in _state.session.participants) p.key: _state.bitsByPlayer[p.key] ?? 0,
     };
-    final payments = computeLeaderSettlement(
-      scoresByPlayer: scoresByPlayer,
-      unitValue: unitValue,
+    final wolfTotals = WolfRoundSync.computeWolfTotals(_state.wolfHoleResults);
+    final settlement = computeRoundSettlement(
+      playerKeys: playerKeys,
+      bitsByPlayer: bitsScores,
+      wolfPointsByPlayer: wolfTotals,
+      bitsPointValue: config.bitsPointValue,
+      wolfPointValue: config.wolfPointValue,
+      hasBits: _state.session.hasBits,
+      hasWolf: _state.session.hasWolf,
     );
-    final settleHeader = viewingWolf
-        ? 'Settle up · \$${unitValue.toStringAsFixed(0)} / point'
-        : 'Settle up · \$${unitValue.toStringAsFixed(0)} / bit';
 
     return Scaffold(
       appBar: const BrandAppBar(),
@@ -146,11 +148,16 @@ class _RoundStandingsScreenState extends State<RoundStandingsScreen> {
               ),
             ),
           SizedBox(height: AppTheme.space4),
+          Text(
+            'SETTLE UP PREVIEW',
+            style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
+          ),
+          SizedBox(height: AppTheme.space2),
           SettleUpPanel(
-            header: settleHeader,
-            payments: payments,
+            payments: settlement.payments,
             nameForKey: _nameForKey,
             colorIndexForKey: _colorIndexByKey,
+            compact: true,
           ),
         ],
       ),

@@ -110,7 +110,7 @@ void main() {
             wolfKey: 'you',
             call: const WolfCall(type: WolfCallType.partner, partnerKey: 'sam'),
             grossByPlayer: const {'you': 4, 'sam': 4, 'alex': 5, 'jordan': 5},
-            pointsByPlayer: const {'you': 1, 'sam': 1},
+            pointsByPlayer: const {'you': 2, 'sam': 2, 'alex': -2, 'jordan': -2},
           ),
         },
       );
@@ -135,7 +135,7 @@ void main() {
             wolfKey: 'you',
             call: const WolfCall(type: WolfCallType.lone),
             grossByPlayer: const {'you': 3, 'sam': 5, 'alex': 5, 'jordan': 5},
-            pointsByPlayer: const {'you': 2},
+            pointsByPlayer: const {'you': 6, 'sam': -2, 'alex': -2, 'jordan': -2},
           ),
         },
         bitsByPlayer: const {'you': 1, 'sam': 4, 'alex': 0, 'jordan': -1},

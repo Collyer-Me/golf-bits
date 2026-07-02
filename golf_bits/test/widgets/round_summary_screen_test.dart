@@ -6,7 +6,7 @@ import 'package:golf_bits/widgets/brand_app_bar.dart';
 import '../helpers/test_app.dart';
 
 void main() {
-  testWidgets('demo round summary shows BrandAppBar and standings', (tester) async {
+  testWidgets('demo round summary shows ledger and settle up', (tester) async {
     await tester.pumpWidget(
       wrapWithAppTheme(const RoundSummaryScreen()),
     );
@@ -14,12 +14,13 @@ void main() {
 
     expect(find.byType(BrandAppBar), findsOneWidget);
     expect(find.text('Round complete'), findsOneWidget);
-    expect(find.textContaining('FINAL STANDINGS'), findsOneWidget);
+    expect(find.text('THE LEDGER'), findsOneWidget);
+    expect(find.text('SETTLE UP'), findsOneWidget);
     expect(find.text('Alex'), findsWidgets);
     await tester.scrollUntilVisible(find.text('Taylor'), 120);
     expect(find.text('Taylor'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Back to Home'), 120);
-    expect(find.text('Share Results'), findsOneWidget);
+    expect(find.text('Share'), findsOneWidget);
     expect(find.text('Back to Home'), findsOneWidget);
   });
 

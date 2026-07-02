@@ -288,11 +288,13 @@ WolfHoleSettlement settleWolfHole({
   }
 
   final wolfWins = wolfBest < fieldBest;
-  final winners = wolfWins ? wolfSide : fieldSide;
-  final multiplier = call.multiplier;
-  for (final key in winners) {
-    points[key] = 1 * multiplier;
-  }
+  _assignZeroSumWolfPoints(
+    points: points,
+    wolfSide: wolfSide,
+    fieldSide: fieldSide,
+    call: call,
+    wolfSideWon: wolfWins,
+  );
 
   return WolfHoleSettlement(
     winner: wolfWins ? WolfHoleWinner.wolfSide : WolfHoleWinner.fieldSide,
@@ -300,6 +302,48 @@ WolfHoleSettlement settleWolfHole({
     fieldBestBall: fieldBest,
     pointsByPlayer: points,
   );
+}
+
+/// Zero-sum point transfers per hole (see docs/GOLF_SETTLEMENT.md).
+void _assignZeroSumWolfPoints({
+  required Map<String, int> points,
+  required List<String> wolfSide,
+  required List<String> fieldSide,
+  required WolfCall call,
+  required bool wolfSideWon,
+}) {
+  switch (call.type) {
+    case WolfCallType.partner:
+      const stake = 2;
+      final winningSide = wolfSideWon ? wolfSide : fieldSide;
+      final losingSide = wolfSideWon ? fieldSide : wolfSide;
+      for (final key in winningSide) {
+        points[key] = stake;
+      }
+      for (final key in losingSide) {
+        points[key] = -stake;
+      }
+    case WolfCallType.lone:
+    case WolfCallType.blind:
+      final multiplier = call.multiplier;
+      final wolfStake = 3 * multiplier;
+      final fieldStake = multiplier;
+      if (wolfSideWon) {
+        for (final key in wolfSide) {
+          points[key] = wolfStake;
+        }
+        for (final key in fieldSide) {
+          points[key] = -fieldStake;
+        }
+      } else {
+        for (final key in wolfSide) {
+          points[key] = -wolfStake;
+        }
+        for (final key in fieldSide) {
+          points[key] = fieldStake;
+        }
+      }
+  }
 }
 
 /// Partner rows in tee order after Wolf (non-wolf players in rotation order).

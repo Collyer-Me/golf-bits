@@ -2,19 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../widgets/brand_app_bar.dart';
-
 import '../config/supabase_env.dart';
 import '../data/history_repository.dart';
 import '../models/history_round.dart';
 import '../models/round_settlement.dart';
-import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
+import '../widgets/round_complete_ledger.dart';
 import '../widgets/settle_up_panel.dart';
 import 'player_breakdown_screen.dart';
 
-/// Deep dive for one past round (standings + left early). Refetches from Supabase when configured.
+/// Deep dive for one past round (ledger + settle-up). Refetches from Supabase when configured.
 class HistoryDetailScreen extends StatefulWidget {
   const HistoryDetailScreen({super.key, required this.round});
 
@@ -32,7 +31,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   void initState() {
     super.initState();
     _round = widget.round;
-    unawaited(_refetchRound()); // fire-and-forget; completes in background
+    unawaited(_refetchRound());
   }
 
   Future<void> _refetchRound() async {
@@ -49,27 +48,123 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     }
   }
 
+  List<String> _playerKeys() {
+    final config = _round.gameConfig;
+    if (config.teeOrder.isNotEmpty) return config.teeOrder;
+    final keys = <String>{
+      for (final s in _round.standings)
+        if (s.participantKey != null && s.participantKey!.isNotEmpty) s.participantKey!,
+      ..._round.wolfPointsByPlayer.keys,
+    };
+    return keys.toList();
+  }
+
+  Map<String, int> _colorIndexByKey() {
+    final order = _playerKeys();
+    return {for (var i = 0; i < order.length; i++) order[i]: i};
+  }
+
+  Map<String, int> _bitsForKey(String key) {
+    for (final s in _round.standings) {
+      if (s.participantKey == key) return s.bits;
+    }
+    return 0;
+  }
+
+  String? _wolfWinnerKey() {
+    final name = _round.wolfWinnerName;
+    if (name == null) return null;
+    for (final k in _playerKeys()) {
+      if (_round.displayNameForKey(k) == name) return k;
+    }
+    if (_round.wolfPointsByPlayer.isEmpty) return null;
+    return _round.wolfPointsByPlayer.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+  }
+
+  List<RoundCompleteLedgerRow> _ledgerRows({
+    required Map<String, double> bitsNet,
+    required Map<String, double> wolfNet,
+    required Map<String, double> finalNet,
+    required String? wolfWinnerKey,
+  }) {
+    final keys = _playerKeys();
+    final config = _round.gameConfig;
+    final rows = [
+      for (final key in keys)
+        RoundCompleteLedgerRow(
+          participantKey: key,
+          name: _round.displayNameForKey(key),
+          colorIndex: _colorIndexByKey()[key] ?? 0,
+          wolfPoints: _round.wolfPointsByPlayer[key] ?? 0,
+          bits: _bitsForKey(key),
+          wolfDollars: wolfNet[key] ?? 0,
+          bitsDollars: bitsNet[key] ?? 0,
+          netDollars: finalNet[key] ?? 0,
+          isMatchWinner: wolfWinnerKey != null && key == wolfWinnerKey,
+          onTap: config.hasBits
+              ? () async {
+                  await Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PlayerBreakdownScreen(
+                        roundId: _round.id,
+                        playerName: _round.displayNameForKey(key),
+                        participantKey: key,
+                        courseShortTitle: _round.courseShortTitle,
+                        dateHeader: _round.dateHeader,
+                        strokeByHole: _round.strokeByHole,
+                        holePars: _round.holePars,
+                        grossByPlayer: _round.grossByPlayer,
+                      ),
+                    ),
+                  );
+                  await _refetchRound();
+                }
+              : null,
+        ),
+    ];
+    if (config.hasWolf && _round.wolfPointsByPlayer.isNotEmpty) {
+      rows.sort((a, b) => b.wolfPoints.compareTo(a.wolfPoints));
+    } else if (config.hasBits) {
+      rows.sort((a, b) => b.bits.compareTo(a.bits));
+    }
+    return rows;
+  }
+
+  String? _evenMoneyMessage(Map<String, double> finalNet, String? wolfWinnerKey) {
+    final config = _round.gameConfig;
+    if (!config.hasWolf || !config.hasBits || wolfWinnerKey == null) return null;
+    final net = finalNet[wolfWinnerKey] ?? 0;
+    if (net.abs() >= 0.01) return null;
+    return '${_round.displayNameForKey(wolfWinnerKey)} settles even — match win, bits gave it back';
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final config = _round.gameConfig;
-    final bitsUnit = config.bitsPointValue;
-    final wolfUnit = config.wolfPointValue;
-    final colorIndex = {
-      for (var i = 0; i < config.teeOrder.length; i++) config.teeOrder[i]: i,
-    };
-    final bitsScores = <String, int>{
-      for (final s in _round.standings)
-        if (s.participantKey != null && s.participantKey!.isNotEmpty)
-          s.participantKey!: s.bits,
-    };
-    final bitsPayments = config.hasBits
-        ? computeLeaderSettlement(scoresByPlayer: bitsScores, unitValue: bitsUnit)
-        : const <SettlementPayment>[];
-    final wolfPayments = config.hasWolf && _round.wolfPointsByPlayer.isNotEmpty
-        ? computeLeaderSettlement(scoresByPlayer: _round.wolfPointsByPlayer, unitValue: wolfUnit)
-        : const <SettlementPayment>[];
+    final playerKeys = _playerKeys();
+    final bitsScores = {for (final k in playerKeys) k: _bitsForKey(k)};
+    final wolfPoints = {for (final k in playerKeys) k: _round.wolfPointsByPlayer[k] ?? 0};
+
+    final settlement = computeRoundSettlement(
+      playerKeys: playerKeys,
+      bitsByPlayer: bitsScores,
+      wolfPointsByPlayer: wolfPoints,
+      bitsPointValue: config.bitsPointValue,
+      wolfPointValue: config.wolfPointValue,
+      hasBits: config.hasBits,
+      hasWolf: config.hasWolf,
+    );
+
+    final wolfWinnerKey = config.hasWolf ? _wolfWinnerKey() : null;
+    final bannerHasWolf = config.hasWolf && wolfWinnerKey != null;
+    final bannerWinnerName = bannerHasWolf && wolfWinnerKey != null
+        ? _round.displayNameForKey(wolfWinnerKey)
+        : _round.winnerName;
+    final bannerMetric = bannerHasWolf
+        ? (_round.wolfPointsByPlayer[wolfWinnerKey] ?? 0)
+        : _round.winnerBits;
 
     return Scaffold(
       appBar: BrandAppBar(
@@ -99,144 +194,47 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
           children: [
             SizedBox(height: AppTheme.space4),
             Text(
-              '${_round.courseShortTitle} · ${_round.dateHeader}',
-              textAlign: TextAlign.center,
-              style: text.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                letterSpacing: AppTheme.letterStepCaps,
-              ),
+              '${_round.courseShortTitle.toUpperCase()} · ${_round.dateHeader.toUpperCase()}',
+              style: AppTheme.monoLabel(context, color: AppTheme.bits(context)),
             ),
             if (_round.hasWolf) ...[
               SizedBox(height: AppTheme.space2),
-              Center(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppTheme.sand(context).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-                    border: Border.all(color: AppTheme.sand(context).withValues(alpha: 0.45)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space1),
-                    child: Text(
-                      _round.formatLabel.toUpperCase(),
-                      style: text.labelSmall?.copyWith(
-                        color: AppTheme.sand(context),
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: AppTheme.letterStepCaps,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            SizedBox(height: AppTheme.space4),
-            Icon(Icons.emoji_events_outlined, size: AppTheme.iconLarge, color: scheme.secondary),
-            SizedBox(height: AppTheme.space3),
-            Text(
-              _round.winnerName,
-              textAlign: TextAlign.center,
-              style: text.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            Text(
-              '+${_round.winnerBits} BITS'
-              '${config.hasBits ? ' · ${formatSettlementMoney(_round.winnerBits * bitsUnit)}' : ''}',
-              textAlign: TextAlign.center,
-              style: text.displaySmall?.copyWith(
-                color: scheme.onPrimaryContainer,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            if (_round.hasWolf && _round.wolfPointsByPlayer.isNotEmpty) ...[
-              SizedBox(height: AppTheme.space4),
               Text(
-                'WOLF · ${_round.wolfWinnerName ?? '—'}',
-                textAlign: TextAlign.center,
-                style: text.titleMedium?.copyWith(
-                  color: AppTheme.sand(context),
-                  fontWeight: FontWeight.w800,
-                ),
+                _round.formatLabel.toUpperCase(),
+                style: AppTheme.monoLabel(context, color: AppTheme.sand(context)),
               ),
-              SizedBox(height: AppTheme.space2),
-              ...(() {
-                final wolfEntries = _round.wolfPointsByPlayer.entries.toList()
-                  ..sort((a, b) => b.value.compareTo(a.value));
-                return wolfEntries.map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppTheme.space1),
-                    child: Text(
-                      '${_round.displayNameForKey(e.key)} · ${e.value} pts',
-                      textAlign: TextAlign.center,
-                      style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-                    ),
-                  ),
-                );
-              })(),
             ],
-            SizedBox(height: AppTheme.space3),
-            Center(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-                  border: Border.all(color: scheme.primary.withValues(alpha: AppTheme.opacityPrimaryBorder)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.space4,
-                    vertical: AppTheme.space2,
-                  ),
-                  child: Text(
-                    _round.completed ? 'ROUND COMPLETE' : 'ROUND IN PROGRESS',
-                    style: text.labelSmall?.copyWith(
-                      color: scheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: AppTheme.letterStepCaps,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: AppTheme.space8),
             Text(
-              config.hasBits
-                  ? 'FINAL STANDINGS · \$${bitsUnit.toStringAsFixed(0)} / BIT'
-                  : 'FINAL STANDINGS',
-              style: text.labelSmall?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: AppTheme.letterStepCaps,
-              ),
+              _round.completed ? 'Round complete' : 'Round in progress',
+              style: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
-            SizedBox(height: AppTheme.space3),
-            ..._round.standings.map(
-              (s) => _StandingTile(
-                round: _round,
-                standing: s,
-                onReturnFromPlayer: () => unawaited(_refetchRound()),
-              ),
+            SizedBox(height: AppTheme.space4),
+            RoundCompleteWinnerBanner(
+              hasWolf: bannerHasWolf,
+              winnerName: bannerWinnerName,
+              headlineMetric: bannerMetric,
+              metricUnit: bannerHasWolf ? 'PTS' : 'BITS',
+              isCurrentUser: bannerWinnerName.toLowerCase() == 'you',
             ),
-            if (config.hasBits) ...[
-              SizedBox(height: AppTheme.space6),
-              SettleUpPanel(
-                header: 'Settle up · \$${bitsUnit.toStringAsFixed(0)} / bit',
-                payments: bitsPayments,
-                nameForKey: _round.displayNameForKey,
-                colorIndexForKey: colorIndex,
+            SizedBox(height: AppTheme.space4),
+            RoundCompleteLedger(
+              formats: config.formats,
+              rows: _ledgerRows(
+                bitsNet: settlement.bitsNet,
+                wolfNet: settlement.wolfNet,
+                finalNet: settlement.finalNet,
+                wolfWinnerKey: wolfWinnerKey,
               ),
-            ],
-            if (config.hasWolf && _round.wolfPointsByPlayer.isNotEmpty) ...[
-              SizedBox(height: AppTheme.space6),
-              SettleUpPanel(
-                header: 'Settle up · \$${wolfUnit.toStringAsFixed(0)} / point',
-                payments: wolfPayments,
-                nameForKey: _round.displayNameForKey,
-                colorIndexForKey: colorIndex,
-              ),
-            ],
+              bitsPointValue: config.bitsPointValue,
+              wolfPointValue: config.wolfPointValue,
+            ),
+            SizedBox(height: AppTheme.space4),
+            SettleUpPanel(
+              payments: settlement.payments,
+              nameForKey: _round.displayNameForKey,
+              colorIndexForKey: _colorIndexByKey(),
+              evenMoneyMessage: _evenMoneyMessage(settlement.finalNet, wolfWinnerKey),
+            ),
             if (_round.leftEarly.isNotEmpty) ...[
               SizedBox(height: AppTheme.space6),
               Text(
@@ -248,7 +246,41 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 ),
               ),
               SizedBox(height: AppTheme.space3),
-              ..._round.leftEarly.map((r) => _LeftEarlyTile(row: r)),
+              ..._round.leftEarly.map(
+                (row) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppTheme.space2),
+                  child: OutlinedSurfaceCard(
+                    borderColor: scheme.outlineVariant,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.space4,
+                      vertical: AppTheme.space3,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                row.name,
+                                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                'Left hole ${row.leftHole}',
+                                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          row.bitsLabel,
+                          style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
             SizedBox(height: AppTheme.space6),
             FilledButton.icon(
@@ -261,162 +293,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
               label: const Text('Share Results'),
             ),
             SizedBox(height: MediaQuery.paddingOf(context).bottom + AppTheme.space4),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StandingTile extends StatelessWidget {
-  const _StandingTile({
-    required this.round,
-    required this.standing,
-    this.onReturnFromPlayer,
-  });
-
-  final HistoryRound round;
-  final HistoryStanding standing;
-  final VoidCallback? onReturnFromPlayer;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final win = standing.isWinnerRow;
-    final bitsColor = standing.bits < 0
-        ? scheme.error
-        : (win ? scheme.onPrimaryContainer : scheme.onSurface);
-    final grossLine = grossLabelForStanding(
-      mode: round.strokeTrackingMode,
-      grossByPlayer: round.grossByPlayer,
-      holePars: round.holePars,
-      holeOrder: round.holeOrderFromStart(),
-      strokeByHole: round.strokeByHole,
-      participantKey: standing.participantKey,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.space2),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-        onTap: () async {
-          await Navigator.of(context).push<void>(
-            MaterialPageRoute<void>(
-              builder: (_) => PlayerBreakdownScreen(
-                roundId: round.id,
-                playerName: standing.name,
-                participantKey: standing.participantKey,
-                courseShortTitle: round.courseShortTitle,
-                dateHeader: round.dateHeader,
-                strokeByHole: round.strokeByHole,
-                holePars: round.holePars,
-                grossByPlayer: round.grossByPlayer,
-              ),
-            ),
-          );
-          onReturnFromPlayer?.call();
-        },
-        child: OutlinedSurfaceCard(
-          borderColor: win ? scheme.primary : scheme.outlineVariant,
-          padding: EdgeInsets.zero,
-          child: Material(
-            color: win
-                ? scheme.primaryContainer.withValues(alpha: AppTheme.opacitySecondaryFill * 1.3)
-                : scheme.surface.withValues(alpha: 0),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: AppTheme.space3,
-                    backgroundColor: scheme.surfaceContainerHigh,
-                    child: Text(
-                      '${standing.rank}',
-                      style: text.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  SizedBox(width: AppTheme.space3),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          standing.name,
-                          style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          standing.subtitle,
-                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                        if (grossLine != null)
-                          Text(
-                            grossLine,
-                            style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    standing.bits >= 0 ? '+${standing.bits}' : '${standing.bits}',
-                    style: text.titleLarge?.copyWith(
-                      color: bitsColor,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LeftEarlyTile extends StatelessWidget {
-  const _LeftEarlyTile({required this.row});
-
-  final HistoryLeftEarly row;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTheme.space2),
-      child: OutlinedSurfaceCard(
-        borderColor: scheme.outlineVariant,
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(row.name, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(
-                    'Left hole ${row.leftHole}',
-                    style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.space3, vertical: AppTheme.space1),
-                child: Text(
-                  row.bitsLabel,
-                  style: text.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
           ],
         ),
       ),

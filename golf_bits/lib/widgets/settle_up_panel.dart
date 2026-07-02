@@ -5,148 +5,142 @@ import '../theme/app_theme.dart';
 import 'outlined_surface_card.dart';
 import 'player_avatar.dart';
 
-/// Who owes who for a side game (bits or Wolf points).
+/// Combined settle-up: payer → payee transfers with minimal payment count.
 class SettleUpPanel extends StatelessWidget {
   const SettleUpPanel({
     super.key,
-    required this.header,
+    this.header = 'SETTLE UP',
     required this.payments,
     required this.nameForKey,
     this.colorIndexForKey = const {},
-    this.showCollections = false,
+    this.evenMoneyMessage,
+    this.compact = false,
   });
 
   final String header;
   final List<SettlementPayment> payments;
   final String Function(String key) nameForKey;
   final Map<String, int> colorIndexForKey;
-  final bool showCollections;
+  final String? evenMoneyMessage;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final collections = settlementCollections(payments);
+    final sand = AppTheme.sand(context);
+    final paymentNote = payments.isEmpty
+        ? 'All square'
+        : '${payments.length} payment${payments.length == 1 ? '' : 's'} clears it';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          header.toUpperCase(),
-          style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
-        ),
-        SizedBox(height: AppTheme.space2),
-        OutlinedSurfaceCard(
-          borderColor: scheme.outlineVariant,
-          child: payments.isEmpty
-              ? Text(
-                  'All square — no money owed',
-                  style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < payments.length; i++) ...[
-                      if (i > 0) Divider(height: 1, color: scheme.outlineVariant),
-                      _PaymentRow(
-                        fromName: nameForKey(payments[i].fromKey),
-                        toName: nameForKey(payments[i].toKey),
-                        amount: payments[i].amount,
-                        colorIndex: colorIndexForKey[payments[i].fromKey] ?? 0,
-                      ),
-                    ],
-                    if (showCollections)
-                      for (final entry in collections.entries) ...[
-                        Divider(height: 1, color: scheme.outlineVariant),
-                        _CollectionRow(
-                          name: nameForKey(entry.key),
-                          amount: entry.value,
-                          colorIndex: colorIndexForKey[entry.key] ?? 0,
-                        ),
-                      ],
-                  ],
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PaymentRow extends StatelessWidget {
-  const _PaymentRow({
-    required this.fromName,
-    required this.toName,
-    required this.amount,
-    required this.colorIndex,
-  });
-
-  final String fromName;
-  final String toName;
-  final double amount;
-  final int colorIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppTheme.space2),
-      child: Row(
+    return OutlinedSurfaceCard(
+      borderColor: sand.withValues(alpha: 0.35),
+      padding: EdgeInsets.all(compact ? AppTheme.space3 : AppTheme.space4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PlayerAvatar(displayName: fromName, colorIndex: colorIndex, size: 30),
-          SizedBox(width: AppTheme.space2),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                style: text.bodyMedium,
-                children: [
-                  TextSpan(text: '$fromName pays ', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  TextSpan(
-                    text: toName,
-                    style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.bits(context)),
-                  ),
-                ],
+          Row(
+            children: [
+              Text(header.toUpperCase(), style: AppTheme.monoLabel(context, color: sand)),
+              const Spacer(),
+              Text(
+                paymentNote,
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+          if (payments.isEmpty && evenMoneyMessage == null) ...[
+            SizedBox(height: AppTheme.space3),
+            Text(
+              'All square — no money owed',
+              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+          for (var i = 0; i < payments.length; i++) ...[
+            if (i == 0) SizedBox(height: AppTheme.space3),
+            if (i > 0)
+              Divider(height: 1, color: scheme.surfaceContainerHighest),
+            _TransferRow(
+              fromName: nameForKey(payments[i].fromKey),
+              toName: nameForKey(payments[i].toKey),
+              fromColorIndex: colorIndexForKey[payments[i].fromKey] ?? 0,
+              toColorIndex: colorIndexForKey[payments[i].toKey] ?? 0,
+              amount: payments[i].amount,
+              compact: compact,
+            ),
+          ],
+          if (evenMoneyMessage != null) ...[
+            SizedBox(height: AppTheme.space3),
+            Divider(height: 1, color: scheme.surfaceContainerHighest),
+            Padding(
+              padding: const EdgeInsets.only(top: AppTheme.space3),
+              child: Text(
+                evenMoneyMessage!,
+                style: text.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-          Text(
-            formatSettlementMoney(amount),
-            style: AppTheme.score(context, size: 18),
-          ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _CollectionRow extends StatelessWidget {
-  const _CollectionRow({
-    required this.name,
+class _TransferRow extends StatelessWidget {
+  const _TransferRow({
+    required this.fromName,
+    required this.toName,
+    required this.fromColorIndex,
+    required this.toColorIndex,
     required this.amount,
-    required this.colorIndex,
+    required this.compact,
   });
 
-  final String name;
+  final String fromName;
+  final String toName;
+  final int fromColorIndex;
+  final int toColorIndex;
   final double amount;
-  final int colorIndex;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final sand = AppTheme.sand(context);
+    final avatarSize = compact ? 28.0 : 30.0;
+    final amountSize = compact ? 18.0 : 20.0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppTheme.space2),
+      padding: EdgeInsets.symmetric(vertical: compact ? AppTheme.space2 : AppTheme.space25),
       child: Row(
         children: [
-          PlayerAvatar(displayName: name, colorIndex: colorIndex, size: 30),
+          PlayerAvatar(displayName: fromName, colorIndex: fromColorIndex, size: avatarSize),
           SizedBox(width: AppTheme.space2),
           Expanded(
+            flex: 2,
             child: Text(
-              '$name collects',
-              style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              fromName,
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(Icons.arrow_forward, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          PlayerAvatar(displayName: toName, colorIndex: toColorIndex, size: avatarSize),
+          SizedBox(width: AppTheme.space2),
+          Expanded(
+            flex: 2,
+            child: Text(
+              toName,
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           Text(
-            '+${formatSettlementMoney(amount)}',
-            style: AppTheme.score(context, size: 18, color: AppTheme.bits(context)),
+            formatSettlementMoney(amount),
+            style: AppTheme.score(context, size: amountSize, color: sand),
           ),
         ],
       ),

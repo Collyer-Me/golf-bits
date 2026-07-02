@@ -100,15 +100,16 @@ void main() {
       expect(result.wolfBestBall, 3);
       expect(result.fieldBestBall, 4);
       expect(result.winner, WolfHoleWinner.wolfSide);
-      expect(result.pointsByPlayer['you'], 1);
-      expect(result.pointsByPlayer['sam'], 1);
-      expect(result.pointsByPlayer['alex'], 0);
-      expect(result.pointsByPlayer['jordan'], 0);
+      expect(result.pointsByPlayer['you'], 2);
+      expect(result.pointsByPlayer['sam'], 2);
+      expect(result.pointsByPlayer['alex'], -2);
+      expect(result.pointsByPlayer['jordan'], -2);
+      expect(result.pointsByPlayer.values.fold(0, (a, b) => a + b), 0);
     });
   });
 
   group('settleWolfHole — lone wolf', () {
-    test('lone wolf win doubles points', () {
+    test('lone wolf win awards zero-sum points', () {
       const teeOrder = ['you', 'sam', 'alex', 'jordan'];
       const gross = {'you': 3, 'sam': 5, 'alex': 5, 'jordan': 6};
       const call = WolfCall(type: WolfCallType.lone);
@@ -124,7 +125,57 @@ void main() {
       );
 
       expect(result.winner, WolfHoleWinner.wolfSide);
-      expect(result.pointsByPlayer['you'], 2);
+      expect(result.pointsByPlayer['you'], 6);
+      expect(result.pointsByPlayer['sam'], -2);
+      expect(result.pointsByPlayer['alex'], -2);
+      expect(result.pointsByPlayer['jordan'], -2);
+      expect(result.pointsByPlayer.values.fold(0, (a, b) => a + b), 0);
+    });
+
+    test('lone wolf loss reverses zero-sum points', () {
+      const teeOrder = ['you', 'sam', 'alex', 'jordan'];
+      const gross = {'you': 6, 'sam': 3, 'alex': 4, 'jordan': 4};
+      const call = WolfCall(type: WolfCallType.lone);
+
+      final result = settleWolfHole(
+        teeOrder: teeOrder,
+        wolfKey: 'you',
+        call: call,
+        grossByPlayer: gross,
+        basis: WolfScoringBasis.gross,
+        handicaps: const {},
+        strokeIndex: null,
+      );
+
+      expect(result.winner, WolfHoleWinner.fieldSide);
+      expect(result.pointsByPlayer['you'], -6);
+      expect(result.pointsByPlayer['sam'], 2);
+      expect(result.pointsByPlayer['alex'], 2);
+      expect(result.pointsByPlayer['jordan'], 2);
+    });
+  });
+
+  group('settleWolfHole — blind wolf', () {
+    test('blind wolf win awards +9 / -3 per opponent', () {
+      const teeOrder = ['you', 'sam', 'alex', 'jordan'];
+      const gross = {'you': 3, 'sam': 5, 'alex': 5, 'jordan': 6};
+      const call = WolfCall(type: WolfCallType.blind);
+
+      final result = settleWolfHole(
+        teeOrder: teeOrder,
+        wolfKey: 'you',
+        call: call,
+        grossByPlayer: gross,
+        basis: WolfScoringBasis.gross,
+        handicaps: const {},
+        strokeIndex: null,
+      );
+
+      expect(result.winner, WolfHoleWinner.wolfSide);
+      expect(result.pointsByPlayer['you'], 9);
+      expect(result.pointsByPlayer['sam'], -3);
+      expect(result.pointsByPlayer['alex'], -3);
+      expect(result.pointsByPlayer['jordan'], -3);
     });
   });
 
