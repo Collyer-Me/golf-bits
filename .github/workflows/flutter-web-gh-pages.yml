@@ -59,10 +59,11 @@ jobs:
 
       # Repository secrets: SUPABASE_URL, SUPABASE_ANON_KEY (Dashboard → Settings → API).
       # If unset, the app builds but auth shows “not configured” until you add secrets and redeploy.
+      # Custom domain (bitsdotsjunk.com) serves from site root; use "/" not "/repo-name/".
       - name: Build web
         working-directory: golf_bits
         env:
-          BASE_HREF: /${{ github.event.repository.name }}/
+          BASE_HREF: /
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
