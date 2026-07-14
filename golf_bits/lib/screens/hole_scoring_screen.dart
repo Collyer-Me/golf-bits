@@ -12,6 +12,7 @@ import '../models/stroke_tracking.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/event_award_sheet.dart';
+import '../widgets/hole_progress_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 import '../widgets/player_bits_row.dart';
 import '../widgets/stroke_hole_counter.dart';
@@ -47,6 +48,8 @@ class HoleScoringScreen extends StatefulWidget {
 class _HoleScoringScreenState extends State<HoleScoringScreen> {
   late final List<int> _holeOrder;
   int _holeIndex = 0;
+  /// Furthest hole index reached this round (for tap-to-jump + resume).
+  int _maxReachedIndex = 0;
   late final List<_HolePlayer> _players;
   late final Map<String, int> _playerColorIndex;
   final List<RoundBitEventDraft> _bitLog = [];
@@ -57,6 +60,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
   late final Map<String, int> _holeYardages;
 
   int get _hole => _holeOrder[_holeIndex];
+  int get _furthestHole => _holeOrder[_maxReachedIndex];
 
   @override
   void initState() {
@@ -110,7 +114,10 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
         _strokeByHole[entry.key] = Map<int, int>.from(entry.value);
       }
       final idx = _holeOrder.indexOf(s.currentHole);
-      if (idx >= 0) _holeIndex = idx;
+      if (idx >= 0) {
+        _holeIndex = idx;
+        _maxReachedIndex = idx;
+      }
       _seedDefaultStrokesForCurrentHole();
       unawaited(_bootstrapRoundState());
     }
@@ -145,6 +152,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     setState(() {
       if (holeOrder.isNotEmpty && holeIndex >= 0 && holeIndex < holeOrder.length) {
         _holeIndex = holeIndex;
+        _maxReachedIndex = holeIndex;
       }
       for (final raw in playersRaw) {
         final m = Map<String, dynamic>.from(raw as Map);
@@ -276,7 +284,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     if (session == null) return;
     await RoundSessionStore.saveBitsDraft(
       session: session,
-      holeIndex: _holeIndex,
+      holeIndex: _maxReachedIndex,
       players: [
         for (final p in _players)
           {
@@ -341,8 +349,14 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
 
   void _prevHole() {
     if (_holeIndex == 0) return;
+    _jumpToHole(_holeIndex - 1);
+  }
+
+  void _jumpToHole(int index) {
+    if (index == _holeIndex) return;
+    if (index < 0 || index > _maxReachedIndex) return;
     setState(() {
-      _holeIndex -= 1;
+      _holeIndex = index;
       _seedDefaultStrokesForCurrentHole();
     });
     unawaited(_persistProgress());
@@ -376,6 +390,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     if (!mounted) return;
     setState(() {
       _holeIndex += 1;
+      if (_holeIndex > _maxReachedIndex) _maxReachedIndex = _holeIndex;
       _seedDefaultStrokesForCurrentHole();
     });
     await _persistProgress();
@@ -504,7 +519,7 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
     try {
       await HistoryRepository.updateRoundProgress(
         roundId: roundId,
-        currentHole: _hole,
+        currentHole: _furthestHole,
         scoreByPlayer: _scoreByPlayer(),
         strokeByHole: _strokeMode.tracksStrokes ? _strokeByHole : null,
         grossByPlayer: _strokeMode.tracksStrokes ? _grossByPlayer() : null,
@@ -628,17 +643,19 @@ class _HoleScoringScreenState extends State<HoleScoringScreen> {
                         ],
                       ),
                     ),
-                    if (_holeIndex > 0)
+                    if (_maxReachedIndex > 0)
                       Text(
-                        'THRU $_holeIndex',
+                        'THRU $_maxReachedIndex',
                         style: AppTheme.monoLabel(context, color: scheme.onSurfaceVariant),
                       ),
                   ],
                 ),
                 SizedBox(height: AppTheme.space3),
-                _HoleProgressBar(
+                HoleProgressBar(
                   holeCount: _holeOrder.length,
                   currentIndex: _holeIndex,
+                  maxTappableIndex: _maxReachedIndex,
+                  onHoleTap: _jumpToHole,
                 ),
                 SizedBox(height: AppTheme.space6),
                 ...sorted.map(
@@ -718,43 +735,6 @@ String _standingLabel(_HolePlayer player, List<int> tiers) {
     2 => '3RD',
     _ => '${rank + 1}TH',
   };
-}
-
-class _HoleProgressBar extends StatelessWidget {
-  const _HoleProgressBar({
-    required this.holeCount,
-    required this.currentIndex,
-  });
-
-  final int holeCount;
-  final int currentIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Row(
-      children: [
-        for (var i = 0; i < holeCount; i++) ...[
-          if (i > 0) SizedBox(width: AppTheme.space1),
-          Expanded(
-            flex: i == currentIndex ? 25 : 10,
-            child: Container(
-              height: AppTheme.space1,
-              decoration: BoxDecoration(
-                color: i < currentIndex
-                    ? scheme.surfaceContainerHigh
-                    : i == currentIndex
-                        ? scheme.primary
-                        : scheme.onSurface.withValues(alpha: AppTheme.opacityProgressPipUpcoming),
-                borderRadius: BorderRadius.circular(AppTheme.stadiumRadius),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
 class _PlayerCard extends StatelessWidget {

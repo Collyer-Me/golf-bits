@@ -4,7 +4,7 @@ import '../theme/app_theme.dart';
 import 'award_bits_button.dart';
 import 'tally_marks.dart';
 
-/// Bits tally (this hole), optional running total, and award control.
+/// Round-total tally marks, this-hole numeric score, and award control.
 class PlayerBitsRow extends StatelessWidget {
   const PlayerBitsRow({
     super.key,
@@ -12,24 +12,26 @@ class PlayerBitsRow extends StatelessWidget {
     required this.onAward,
     this.holeBits = 0,
     this.tallyHeight = 22,
-    this.showRunningTotal = false,
   });
 
-  /// Running round total (shown only when [showRunningTotal] is true).
+  /// Running round total (tally marks on the left).
   final int totalBits;
-  /// Bits awarded on the current hole only (tally marks on the left).
+  /// Bits awarded on the current hole only (numeric on the right).
   final int holeBits;
   final VoidCallback onAward;
   final double tallyHeight;
-  final bool showRunningTotal;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final totalStr = totalBits >= 0 ? '+$totalBits' : '$totalBits';
-    final scoreColor = totalBits > 0
+    final holeStr = holeBits == 0
+        ? '—'
+        : holeBits > 0
+            ? '+$holeBits'
+            : '$holeBits';
+    final holeColor = holeBits > 0
         ? AppTheme.bits(context)
-        : totalBits < 0
+        : holeBits < 0
             ? AppTheme.junk(context)
             : scheme.onSurfaceVariant;
 
@@ -39,7 +41,7 @@ class PlayerBitsRow extends StatelessWidget {
         Expanded(
           child: Align(
             alignment: Alignment.centerLeft,
-            child: holeBits == 0
+            child: totalBits == 0
                 ? Text(
                     '—',
                     style: AppTheme.score(context, size: 16, color: scheme.onSurfaceVariant),
@@ -48,17 +50,15 @@ class PlayerBitsRow extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: TallyMarks(
-                      count: holeBits,
+                      count: totalBits,
                       height: tallyHeight,
-                      variant: holeBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
+                      variant: totalBits < 0 ? TallyVariant.penalty : TallyVariant.positive,
                     ),
                   ),
           ),
         ),
-        if (showRunningTotal) ...[
-          Text(totalStr, style: AppTheme.score(context, size: 26, color: scoreColor)),
-          SizedBox(width: AppTheme.space2),
-        ],
+        Text(holeStr, style: AppTheme.score(context, size: 22, color: holeColor)),
+        SizedBox(width: AppTheme.space2),
         AwardBitsButton(onPressed: onAward),
       ],
     );
