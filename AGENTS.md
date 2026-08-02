@@ -81,7 +81,7 @@ Small-only edits (typos, comments, formatting) do not require this prompt unless
 
 ## Agent pre-push quality checklist (Flutter/web)
 
-**This machine has no Flutter SDK.** Do not run `flutter` / `dart` CLI locally. After push, **GitHub Actions** (`.github/workflows/flutter-web-gh-pages.yml`) runs analyze + web build.
+**Flutter SDK** is available locally (stable 3.44.x). Prefer local `flutter analyze` / `flutter test` when editing `golf_bits/`. **GitHub Actions** still runs web analyze + build on push (`.github/workflows/flutter-web-gh-pages.yml`); unsigned Android/iOS smoke builds are separate workflows (`flutter-android.yml`, `flutter-ios.yml`, manual/tag).
 
 When edits include `golf_bits/lib/**/*.dart`, complete this checklist before offering commit/push:
 

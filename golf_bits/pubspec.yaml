@@ -20,6 +20,8 @@ dependencies:
   # auth only (no passkeys). Revisit when we add a committed pubspec.lock.
   supabase_flutter: '>=2.8.0 <2.15.0'
   shared_preferences: ^2.3.0
+  # Direct dep for cold-start auth deep links (also transitive via supabase_flutter).
+  app_links: ^7.0.0
 
 dev_dependencies:
   flutter_test:
@@ -29,10 +31,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Brand PNG used by flutter_launcher_icons (not required at runtime).
+  # Fonts: see assets/fonts/README.md — still loaded via google_fonts until bundled.
+  assets:
+    - assets/brand/app-icon.png
 
 # Native launcher icons. Web favicon + PWA icons are committed under web/ and
-# need no build step. For Android/iOS, after `flutter create` generates those
-# platform folders, run: dart run flutter_launcher_icons
+# need no build step. After changing the source PNG: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
   ios: true

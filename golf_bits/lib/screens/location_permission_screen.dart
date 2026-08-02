@@ -5,7 +5,10 @@ import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
 import '../widgets/outlined_surface_card.dart';
 
-/// Post–sign-up prompt: explain location + CTA (stub — no platform permission call yet).
+/// Post–sign-up prompt for future location-based course/tee helpers.
+///
+/// Does **not** request OS location permission yet (no Info.plist /
+/// Android permission strings, no geolocator). Continue enters the app.
 class LocationPermissionScreen extends StatelessWidget {
   const LocationPermissionScreen({super.key});
 
@@ -51,14 +54,14 @@ class LocationPermissionScreen extends StatelessWidget {
               ),
               SizedBox(height: AppTheme.space8),
               Text(
-                'Play smarter, not harder',
+                'Course picking, coming soon',
                 textAlign: TextAlign.center,
                 style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
               SizedBox(height: AppTheme.space3),
               Text(
-                'Location helps pick the right course and tee box automatically, '
-                'so you spend less time tapping and more time swinging.',
+                'Later, optional location will help suggest the right course and tee box. '
+                'For now you can pick those yourself — nothing is shared until you opt in.',
                 textAlign: TextAlign.center,
                 style: text.bodyLarge?.copyWith(
                   color: scheme.onSurfaceVariant,
@@ -98,15 +101,8 @@ class LocationPermissionScreen extends StatelessWidget {
               ),
               const Spacer(),
               FilledButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Location permission will hook to geolocator / web API'),
-                    ),
-                  );
-                  openAppHome(context);
-                },
-                child: const Text('Allow Location'),
+                onPressed: () => openAppHome(context),
+                child: const Text('Continue'),
               ),
               SizedBox(height: AppTheme.space3),
               TextButton(

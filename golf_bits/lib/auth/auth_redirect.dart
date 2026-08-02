@@ -1,9 +1,21 @@
 import 'package:flutter/foundation.dart';
 
-/// `redirectTo` for Supabase email links (password recovery, etc.). Must match an entry under
-/// Authentication → URL configuration → Redirect URLs in the Supabase dashboard.
+/// Custom URL scheme for native email auth redirects (recovery, confirm, etc.).
+/// Must match Android intent-filters, iOS CFBundleURLTypes, and a Supabase
+/// Authentication → URL configuration → Redirect URLs entry.
+const String kNativeAuthRedirectUrl = 'golfbits://auth-callback';
+
+/// `redirectTo` / `emailRedirectTo` for Supabase email links.
+///
+/// - **Web:** current origin (Pages or localhost), fragment stripped.
+/// - **iOS/Android:** [kNativeAuthRedirectUrl].
+///
+/// Must match an allow-listed entry under Authentication → URL configuration →
+/// Redirect URLs in the Supabase dashboard.
 String? supabaseAuthRedirectUrl() {
-  if (!kIsWeb) return null;
-  final u = Uri.base;
-  return u.replace(fragment: '').toString();
+  if (kIsWeb) {
+    final u = Uri.base;
+    return u.replace(fragment: '').toString();
+  }
+  return kNativeAuthRedirectUrl;
 }

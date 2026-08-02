@@ -2,7 +2,7 @@
 abstract final class GuestPromotionCopy {
   static const title = "You're playing as a guest";
   static const subtitle =
-      'Rounds can sync to this browser profile. Add email and a password to keep the same player identity across devices and unlock People.';
+      'Rounds can sync on this device. Add email and a password to keep the same player identity across devices and unlock People.';
 
   static const upgradeCta = 'Upgrade guest account';
 
@@ -13,5 +13,5 @@ abstract final class GuestPromotionCopy {
 
   /// History tab card (before upgrade CTA).
   static const historyBody =
-      'Your rounds stay on this guest profile. Upgrade to keep them if you switch browser or device.';
+      'Your rounds stay on this guest profile. Upgrade to keep them if you switch device or clear app data.';
 }

@@ -68,13 +68,13 @@ class GuestCloudRoundSheet extends StatelessWidget {
           ),
           SizedBox(height: AppTheme.space2),
           Text(
-            'Without signing in, we will start a guest profile in this browser so your round can sync and resume.',
+            'Without signing in, we will start a guest profile on this device so your round can sync and resume.',
             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
           SizedBox(height: AppTheme.space5),
           _bullet(context, true, 'Track bits and save round progress to the server.'),
-          _bullet(context, true, 'Resume this round on this browser.'),
-          _bullet(context, false, 'Limited to this browser until you upgrade your guest account.'),
+          _bullet(context, true, 'Resume this round on this device.'),
+          _bullet(context, false, 'Limited to this device until you upgrade your guest account.'),
           SizedBox(height: AppTheme.space6),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),

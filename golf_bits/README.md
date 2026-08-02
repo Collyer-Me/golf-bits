@@ -53,9 +53,9 @@ The workflow uses `--base-href "/golf-bits/"` (from the GitHub repository name) 
 2. Push to **`main`** (or re-run the workflow). The build passes these as `--dart-define` values baked into the web bundle.
 3. In the **Supabase dashboard** (Authentication → URL configuration):
    - **Site URL**: your Pages URL, e.g. `https://<user>.github.io/<repo>/` (trailing slash is fine).
-   - **Redirect URLs**: add the same URL, plus `http://localhost:*` if you run Flutter web locally with `--dart-define`.
+   - **Redirect URLs**: add the same Pages URL, plus `http://localhost:*` for local Flutter web, **and** `golfbits://auth-callback` for iOS/Android email links (password recovery / confirm).
 4. **Authentication → Providers**: ensure **Email** is enabled (only email auth is wired in the app). For **Continue as guest**, enable **Anonymous** sign-ins (optional; if disabled, the app still opens home and shows a short message).
-5. **Password recovery** uses `detectSessionInUri` on web; after the user follows the email link, they get a **Set new password** screen, then the shell. Ensure redirect URLs still match your Pages URL.
+5. **Password recovery** uses `detectSessionInUri` (web URI + native `golfbits://` deep link); after the user follows the email link, they get a **Set new password** screen, then the shell.
 
 ### Database (profiles + round history)
 
@@ -65,13 +65,12 @@ SQL lives in [`supabase/migrations/`](../supabase/migrations/). Run each file **
 
 From this directory (`golf_bits`):
 
-1. **Generate platform projects** (required once; adds `android/`, `ios/`, etc.):
+1. **Platform projects** — `android/`, `ios/`, and `web/` are committed. If regenerating:
 
    ```bash
    flutter create . --project-name golf_bits --org com.golfbits --platforms=ios,android,web
+   dart run flutter_launcher_icons
    ```
-
-   If the tool warns about existing files, prefer running `flutter create` in an empty folder and moving `lib/` + `pubspec.yaml`, or merge carefully.
 
 2. **Fetch packages**
 

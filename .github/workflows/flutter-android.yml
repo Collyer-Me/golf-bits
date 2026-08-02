@@ -1,0 +1,73 @@
+# Unsigned Android build smoke-test (debug APK). Signing + Play upload come later.
+# Manual / tag triggers only — not on every main push.
+
+name: Flutter Android
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'golf_bits/**'
+      - '.github/workflows/flutter-android.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Dependencies
+        working-directory: golf_bits
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: golf_bits
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        working-directory: golf_bits
+        run: flutter test
+
+      - name: Build debug APK
+        working-directory: golf_bits
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --dart-define=BUILD_SHA="${{ github.sha }}" \
+            --dart-define=APP_VERSION="1.0.0-beta.1"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: golf_bits/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14

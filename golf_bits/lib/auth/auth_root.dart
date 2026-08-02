@@ -110,6 +110,8 @@ class AuthRootState extends State<AuthRoot> {
   }
 
   bool _isRecoveryLink() {
+    // Web: query/fragment on the current page. Native: PendingAuthLink +
+    // AuthChangeEvent.passwordRecovery (deep link handled by supabase_flutter).
     if (!kIsWeb) return false;
     final uri = Uri.base;
     if (uri.queryParameters['type'] == 'recovery') return true;

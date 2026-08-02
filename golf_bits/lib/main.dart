@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -43,7 +44,7 @@ Future<void> main() async {
   };
 
   if (SupabaseEnv.isConfigured) {
-    PendingAuthLink.captureFromUriBeforeSupabaseInit(Uri.base);
+    await _capturePendingAuthLink();
     await Supabase.initialize(
       url: SupabaseEnv.url,
       publishableKey: SupabaseEnv.anonKey,
@@ -61,6 +62,22 @@ Future<void> main() async {
 
   final initialThemeMode = await ThemePreferences.loadInitialMode();
   runApp(GolfBitsApp(initialThemeMode: initialThemeMode));
+}
+
+/// Snapshot recovery / signup / invite params before Supabase may strip the URI.
+Future<void> _capturePendingAuthLink() async {
+  if (kIsWeb) {
+    PendingAuthLink.captureFromUriBeforeSupabaseInit(Uri.base);
+    return;
+  }
+  try {
+    final initial = await AppLinks().getInitialLink();
+    if (initial != null) {
+      PendingAuthLink.captureFromUriBeforeSupabaseInit(initial);
+    }
+  } catch (_) {
+    // Best-effort; AuthChangeEvent.passwordRecovery still covers reset links.
+  }
 }
 
 /// Root app: Material 3, Bits Dots Junk brand, dark ("on course") + light

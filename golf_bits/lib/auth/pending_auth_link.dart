@@ -1,17 +1,15 @@
-import 'package:flutter/foundation.dart';
-
 /// Supabase email links put `type` and tokens in the URL query or fragment. With
 /// [FlutterAuthClientOptions.detectSessionInUri], [Supabase.initialize] may strip
-/// that data before widgets run, so we snapshot [Uri.base] **before** initialize.
+/// that data before widgets run, so we snapshot the launch URI **before** initialize
+/// (web: [Uri.base]; native: initial app link when present).
 abstract final class PendingAuthLink {
   static bool _passwordRecovery = false;
   static bool _emailSignupConfirmed = false;
   static String? _roundInviteToken;
   static String? _roundInviteEmail;
 
-  /// Call from [main] immediately before [Supabase.initialize] (web only).
+  /// Call from [main] immediately before [Supabase.initialize].
   static void captureFromUriBeforeSupabaseInit(Uri uri) {
-    if (!kIsWeb) return;
     final params = _mergedQueryAndFragment(uri);
     final type = params['type']?.toLowerCase() ?? '';
     _passwordRecovery = type == 'recovery';

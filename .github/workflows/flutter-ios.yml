@@ -1,0 +1,67 @@
+# Unsigned iOS build smoke-test (--no-codesign). Signing + TestFlight come later.
+# Manual / tag triggers only — macOS minutes are expensive.
+
+name: Flutter iOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'golf_bits/**'
+      - '.github/workflows/flutter-ios.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        working-directory: golf_bits
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: golf_bits
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        working-directory: golf_bits
+        run: flutter test
+
+      - name: Build iOS (no codesign)
+        working-directory: golf_bits
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --dart-define=BUILD_SHA="${{ github.sha }}" \
+            --dart-define=APP_VERSION="1.0.0-beta.1"
+
+      - name: Upload iOS build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-runner
+          path: golf_bits/build/ios/iphoneos
+          retention-days: 7
